@@ -46,7 +46,7 @@ function groupedClubs(keyFor: (club: Club) => string) {
   CLUBS.forEach((club) => groups.set(keyFor(club), [...(groups.get(keyFor(club)) ?? []), club]));
   return [...groups.entries()];
 }
-function cupName(countryCode: string) {
+export function nationalCupName(countryCode: string) {
   return CUP_NAMES[countryCode] ?? `${country(countryCode).name} Cup`;
 }
 function playerHonour(
@@ -104,11 +104,11 @@ export function simulateHonours(input: HonoursInput, random: () => number = Math
     const ballonDor = winsBallonDor
       ? { name: input.player.name, club: input.offer.name, isPlayer: true }
       : fictionalWinner(worldClub, random);
-    const nationalCupName = cupName(input.offer.country);
+    const cupTitle = nationalCupName(input.offer.country);
     const playerHonours: PlayerHonour[] = [];
 
     if (seniorEligible && champion === input.offer.name) playerHonours.push(playerHonour(input, season, "league-title", "team", `${league} champion`, "🏆"));
-    if (seniorEligible && cupWinner === input.offer.name) playerHonours.push(playerHonour(input, season, "national-cup", "team", `${nationalCupName} winner`, "🏆"));
+    if (seniorEligible && cupWinner === input.offer.name) playerHonours.push(playerHonour(input, season, "national-cup", "team", `${cupTitle} winner`, "🏆"));
     if (winsGoldenBoot) playerHonours.push(playerHonour(input, season, "golden-boot", "individual", `${league} Golden Boot`, "👟"));
     if (winsPlayerOfSeason) playerHonours.push(playerHonour(input, season, "player-of-season", "individual", `${league} Player of the Season`, "⭐"));
     if (winsBallonDor) playerHonours.push(playerHonour(input, season, "ballon-dor", "individual", "Ballon d'Or", "◉"));
@@ -129,13 +129,13 @@ export function simulateHonours(input: HonoursInput, random: () => number = Math
       });
     const cupRoll = groupedClubs((club) => club.country).map(([countryCode, clubs]) => ({
       country: countryCode,
-      name: cupName(countryCode),
+      name: nationalCupName(countryCode),
       winner: countryCode === input.offer.country ? cupWinner : weightedClub(clubs, "", 0, random),
     }));
 
     return {
       season, league, champion, topScorer, playerOfSeason,
-      cup: { name: nationalCupName, winner: cupWinner }, ballonDor, playerHonours,
+      cup: { name: cupTitle, winner: cupWinner }, ballonDor, playerHonours,
       divisionRoll, cupRoll,
     };
   });

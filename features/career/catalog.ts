@@ -41,7 +41,7 @@ const FEATURED_CLUBS: Club[] = [
   { name: "Southampton", country: "ENG", league: "English Championship", level: 2, development: 5, identity: "Minutes before headlines", short: "SOU", colors: "#d71920", crest: crest(340) },
   { name: "Sunderland", country: "ENG", league: "English Championship", level: 2, development: 4, identity: "A huge crowd and a real pathway", short: "SUN", colors: "#eb172b" },
   { name: "Coventry City", country: "ENG", league: "English Championship", level: 1, development: 4, identity: "A first team that rewards patience", short: "COV", colors: "#69b3e7" },
-  { name: "Bristol City", country: "ENG", league: "English Championship", level: 1, development: 4, identity: "Senior minutes without celebrity", short: "BRC", colors: "#e21a2d" },
+  { name: "Bristol City", country: "ENG", league: "English Championship", level: 1, development: 4, identity: "Senior minutes without celebrity", short: "BRC", colors: "#e21a2d", crest: "https://r2.thesportsdb.com/images/media/team/badge/0ejxwz1601721013.png" },
 
   { name: "Real Madrid", country: "ESP", league: "La Liga", level: 5, development: 3, identity: "Win now or become trivia", short: "RMA", colors: "#ffffff", crest: crest(86) },
   { name: "FC Barcelona", country: "ESP", league: "La Liga", level: 5, development: 5, identity: "Academy ideals, global pressure", short: "BAR", colors: "#a50044", crest: crest(81) },

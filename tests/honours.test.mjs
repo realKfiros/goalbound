@@ -132,3 +132,21 @@ test("old saves retain unnamed trophy totals during migration", () => {
   assert.equal(room.careers[0].honours[0].count, 3);
   assert.equal(trophyRoomTotals(room).team, 3);
 });
+test("the collection exposes every division award, national cup, and club", () => {
+  const { CLUBS } = loadTypeScriptModule("features/career/catalog.ts");
+  const { clubDivision } = loadTypeScriptModule("features/career/finances.ts");
+  const { EMPTY_TROPHY_ROOM, mergeCareerSnapshot } = loadTypeScriptModule("features/career/trophyRoom.ts");
+  const { clubAlbum, representedClubs, trophyCollection } = loadTypeScriptModule("features/career/trophyCollection.ts");
+  const divisions = new Set(CLUBS.map((club) => `${club.country}:${clubDivision(club)}`));
+  const countries = new Set(CLUBS.map((club) => club.country));
+  const empty = trophyCollection(EMPTY_TROPHY_ROOM);
+
+  assert.equal(empty.team.length, divisions.size + countries.size);
+  assert.equal(empty.individual.length, divisions.size * 2 + 1);
+  assert.equal(empty.all.filter((entry) => entry.unlocked).length, 0);
+  assert.equal(clubAlbum(EMPTY_TROPHY_ROOM).flatMap((group) => group.clubs).length, CLUBS.length);
+
+  const room = mergeCareerSnapshot(EMPTY_TROPHY_ROOM, "album-career", player());
+  assert.equal(representedClubs(room).has("Manchester City"), true);
+  assert.equal(clubAlbum(room).reduce((total, group) => total + group.collected, 0), 1);
+});
