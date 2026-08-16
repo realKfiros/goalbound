@@ -9,15 +9,15 @@ export const START_COUNTRIES: Country[] = [
   { code: "FRA", name: "France", flag: "🇫🇷", threshold: 84 },
   { code: "POR", name: "Portugal", flag: "🇵🇹", threshold: 80 },
   { code: "NED", name: "Netherlands", flag: "🇳🇱", threshold: 80 },
-  { code: "ISR", name: "Israel", flag: "🇮🇱", threshold: 76 },
-  { code: "POL", name: "Poland", flag: "🇵🇱", threshold: 78 },
-  { code: "CYP", name: "Cyprus", flag: "🇨🇾", threshold: 73 },
   { code: "BRA", name: "Brazil", flag: "🇧🇷", threshold: 84 },
   { code: "ARG", name: "Argentina", flag: "🇦🇷", threshold: 84 },
   { code: "USA", name: "United States", flag: "🇺🇸", threshold: 75 },
 ];
 
 const EXTRA_COUNTRIES: Country[] = [
+  { code: "ISR", name: "Israel", flag: "🇮🇱", threshold: 76 },
+  { code: "POL", name: "Poland", flag: "🇵🇱", threshold: 78 },
+  { code: "CYP", name: "Cyprus", flag: "🇨🇾", threshold: 73 },
   { code: "BEL", name: "Belgium", flag: "🇧🇪", threshold: 78 },
   { code: "SCO", name: "Scotland", flag: "🏴", threshold: 76 },
   { code: "TUR", name: "Türkiye", flag: "🇹🇷", threshold: 78 },

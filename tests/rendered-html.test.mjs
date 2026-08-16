@@ -24,6 +24,7 @@ test("server-renders the Goalbound career simulator", async () => {
   assert.match(html, /A career, not a transfer tour/);
   assert.match(html, /Every requested 2026–27 division is complete/);
   assert.match(html, /429(?:<!-- -->)? real clubs/);
+  assert.doesNotMatch(html, /title="(?:Israel|Poland|Cyprus)"/);
   assert.match(html, /Draw my starting route|Start your career/);
   assert.doesNotMatch(html, /Your site is taking shape|react-loading-skeleton/);
 });
@@ -56,9 +57,12 @@ test("keeps career rules, content, persistence, and rendering behind clear modul
   assert.match(game, /motion-screen/);
   assert.match(layout, /Goalbound — Your Football Career/);
   assert.match(packageJson, /"build": "WRANGLER_LOG_PATH=/);
-  assert.match(catalog, /name: "Israel", flag: "🇮🇱"/);
-  assert.match(catalog, /name: "Poland", flag: "🇵🇱"/);
-  assert.match(catalog, /name: "Cyprus", flag: "🇨🇾"/);
+  const startingCountries = catalog.slice(catalog.indexOf("START_COUNTRIES"), catalog.indexOf("EXTRA_COUNTRIES"));
+  const extraCountries = catalog.slice(catalog.indexOf("EXTRA_COUNTRIES"), catalog.indexOf("export const COUNTRIES"));
+  assert.doesNotMatch(startingCountries, /name: "(?:Israel|Poland|Cyprus)"/);
+  assert.match(extraCountries, /name: "Israel", flag: "🇮🇱"/);
+  assert.match(extraCountries, /name: "Poland", flag: "🇵🇱"/);
+  assert.match(extraCountries, /name: "Cyprus", flag: "🇨🇾"/);
   assert.match(leagueCatalog, /Premier League/);
   assert.match(leagueCatalog, /National League/);
   assert.match(leagueCatalog, /Maccabi Tel Aviv/);
