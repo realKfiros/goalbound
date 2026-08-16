@@ -1,5 +1,6 @@
 import { DEFAULT_SAVE, type SavedGame, type TrophyRoom } from "./domain";
 import { EMPTY_TROPHY_ROOM } from "./trophyRoom";
+import { migrateWorldState } from "./world";
 
 const SAVE_KEY = "goalbound-career-v3";
 const TROPHY_ROOM_KEY = "goalbound-trophy-room-v1";
@@ -13,7 +14,12 @@ export function loadCareer(): SavedGame | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as SavedGame;
-    return { ...DEFAULT_SAVE, ...parsed, careerId: parsed.careerId ?? newCareerId() };
+    return {
+      ...DEFAULT_SAVE,
+      ...parsed,
+      careerId: parsed.careerId ?? newCareerId(),
+      world: parsed.player ? migrateWorldState(parsed.world) : null,
+    };
   } catch {
     window.localStorage.removeItem(SAVE_KEY);
     return null;

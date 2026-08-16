@@ -105,19 +105,22 @@ export function CareerScreen({
                   <div className="annual-honours" key={annual.season}>
                     <h4>{annual.season} · {annual.league}</h4>
                     <div className="honour-results">
-                      <div className={annual.champion === game.lastSeason?.club ? "honour-result won" : "honour-result"}><small>League winner</small><strong>{annual.champion}</strong><span>{annual.league}</span></div>
+                      {(annual.titles ?? [{ name: "Champion", winner: annual.champion }]).map((title) => (
+                        <div className={title.winner === game.lastSeason?.club ? "honour-result won" : "honour-result"} key={`${title.name}-${title.winner}`}><small>{title.name === "Champion" ? "League winner" : title.name}</small><strong>{title.winner}</strong><span>{annual.league}</span></div>
+                      ))}
                       <div className={annual.cup.winner === game.lastSeason?.club ? "honour-result won" : "honour-result"}><small>{annual.cup.name}</small><strong>{annual.cup.winner}</strong><span>Cup winner</span></div>
                       <div className={annual.topScorer.isPlayer ? "honour-result won" : "honour-result"}><small>Golden Boot</small><strong>{annual.topScorer.name}</strong><span>{annual.topScorer.club}{annual.topScorer.detail ? ` · ${annual.topScorer.detail}` : ""}</span></div>
                       <div className={annual.playerOfSeason.isPlayer ? "honour-result won" : "honour-result"}><small>Player of the Season</small><strong>{annual.playerOfSeason.name}</strong><span>{annual.playerOfSeason.club}</span></div>
                       <div className={annual.ballonDor.isPlayer ? "honour-result won" : "honour-result"}><small>Ballon d&apos;Or</small><strong>{annual.ballonDor.name}</strong><span>{annual.ballonDor.club}</span></div>
                     </div>
                     {!!annual.playerHonours.length && <div className="player-honours-earned">You won: {annual.playerHonours.map((honour) => `${honour.icon} ${honour.name}`).join(" · ")}</div>}
+                    {!!annual.movements?.length && <details className="world-honours-roll"><summary>Promotion &amp; relegation · {annual.movements.length / 2} swaps</summary><div className="world-honours-columns"><div><h5>Promoted</h5>{annual.movements.filter((movement) => movement.direction === "promoted").map((movement) => <div className="world-honour-row" key={`up-${movement.country}-${movement.club}`}><span>↑</span><div><strong>{movement.club}</strong><small>{movement.fromLeague} → {movement.toLeague} · {movement.route}</small></div></div>)}</div><div><h5>Relegated</h5>{annual.movements.filter((movement) => movement.direction === "relegated").map((movement) => <div className="world-honour-row" key={`down-${movement.country}-${movement.club}`}><span>↓</span><div><strong>{movement.club}</strong><small>{movement.fromLeague} → {movement.toLeague} · {movement.route}</small></div></div>)}</div></div></details>}
                     <details className="world-honours-roll">
                       <summary>Full world roll · {annual.divisionRoll?.length ?? 1} divisions · {annual.cupRoll?.length ?? 1} national cups</summary>
                       <div className="world-honours-columns">
                         <div><h5>Division honours</h5>{(annual.divisionRoll ?? [{ country: game.lastSeason!.country, league: annual.league, champion: annual.champion, topScorer: annual.topScorer, playerOfSeason: annual.playerOfSeason }]).map((division) => (
                           <div className="world-honour-row" key={`${division.country}-${division.league}`}>
-                            <span>{country(division.country).flag}</span><div><strong>{division.league}</strong><small>{division.champion} · {division.topScorer.name} Golden Boot · {division.playerOfSeason.name} POTS</small></div>
+                            <span>{country(division.country).flag}</span><div><strong>{division.league}</strong><small>{(division.titleWinners ?? [{ name: "Champion", winner: division.champion }]).map((title) => title.name === "Champion" ? title.winner : `${title.name}: ${title.winner}`).join(" · ")} · {division.topScorer.name} Golden Boot · {division.playerOfSeason.name} POTS</small></div>
                           </div>
                         ))}</div>
                         <div><h5>National cups</h5>{(annual.cupRoll ?? [{ country: game.lastSeason!.country, ...annual.cup }]).map((cup) => (

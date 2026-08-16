@@ -11,6 +11,7 @@ import { DEFAULT_SAVE, type CareerBeat, type CareerDraft, type Motion, type Offe
 import { careerEngine } from "./engine";
 import { clearCareer, loadCareer, loadTrophyRoom, newCareerId, saveCareer, saveTrophyRoom } from "./storage";
 import { EMPTY_TROPHY_ROOM, mergeCareerSnapshot, trophyRoomTotals } from "./trophyRoom";
+import { createWorldState } from "./world";
 
 const DEFAULT_DRAFT: CareerDraft = { name: "Kai Nash", nation: "ENG", position: "ST", number: 9 };
 
@@ -59,23 +60,24 @@ export function GoalboundGame() {
   function startCareer() {
     const start = careerEngine.createCareer(draft);
     const careerId = newCareerId();
+    const world = createWorldState();
     showMotion({ kind: "origin", title: "Drawing your starting route", detail: "Academy prospect, early professional… or something rarer." }, () => {
-      setGame((current) => ({ ...current, careerId, screen: "career", phase: "origin-reveal", player: start.player, offers: start.offers, lastSeason: null, scenarioId: null, outcome: null, decisionKind: "first-club", decisionTitle: start.title, decisionDescription: start.description }));
+      setGame((current) => ({ ...current, careerId, screen: "career", phase: "origin-reveal", player: start.player, offers: start.offers, lastSeason: null, scenarioId: null, outcome: null, decisionKind: "first-club", decisionTitle: start.title, decisionDescription: start.description, world }));
       setTrophyRoom((current) => mergeCareerSnapshot(current, careerId, start.player));
     }, 1050);
   }
   function chooseOffer(offer: Offer) {
     if (!player) return;
     const careerId = game.careerId ?? newCareerId();
-    const result = careerEngine.simulateSeason(player, offer, game.seasonSpan);
+    const result = careerEngine.simulateSeason(player, offer, game.seasonSpan, game.world);
     const years = result.season.toAge - result.season.fromAge;
     showMotion({ kind: "season", title: years === 1 ? "The season is playing out" : `${years} seasons are playing out`, detail: `${offer.name} · ${offer.role} · form, minutes and fitness are moving.` }, () => {
-      setGame((current) => ({ ...current, careerId, screen: "career", phase: "season-result", player: result.player, offers: [], lastSeason: result.season, scenarioId: null, outcome: null }));
+      setGame((current) => ({ ...current, careerId, screen: "career", phase: "season-result", player: result.player, offers: [], lastSeason: result.season, scenarioId: null, outcome: null, world: result.world }));
       setTrophyRoom((current) => mergeCareerSnapshot(current, careerId, result.player));
     }, 1200);
   }
   function continueAfterSeason() {
-    if (player) applyBeat(careerEngine.nextBeat(player, game.lastSeason));
+    if (player) applyBeat(careerEngine.nextBeat(player, game.lastSeason, game.world));
   }
   function resolveScenario(option: ScenarioOption) {
     if (!player || !scenario) return;
@@ -103,7 +105,7 @@ export function GoalboundGame() {
 
       {game.screen === "home" && <HomeScreen player={player} trophyCount={trophyTotals.total} onStart={() => setGame((current) => ({ ...current, screen: "setup" }))} onResume={() => player && setGame((current) => ({ ...current, screen: player.age >= 36 ? "summary" : "career" }))} onTrophyRoom={() => setGame((current) => ({ ...current, screen: "trophy-room" }))} />}
       {game.screen === "setup" && <SetupScreen draft={draft} seasonSpan={game.seasonSpan} onDraftChange={setDraft} onSeasonSpanChange={(seasonSpan) => setGame((current) => ({ ...current, seasonSpan }))} onBack={() => setGame((current) => ({ ...current, screen: "home" }))} onStart={startCareer} />}
-      {game.screen === "career" && player && <CareerScreen game={game} player={player} scenario={scenario} achievements={achievements} onSeasonSpanChange={(seasonSpan) => setGame((current) => ({ ...current, seasonSpan }))} onRevealOrigin={() => setGame((current) => ({ ...current, phase: "decision" }))} onOffer={chooseOffer} onContinueSeason={continueAfterSeason} onScenario={resolveScenario} onContinueScenario={() => player && applyBeat(careerEngine.ordinaryDecision(player))} />}
+      {game.screen === "career" && player && <CareerScreen game={game} player={player} scenario={scenario} achievements={achievements} onSeasonSpanChange={(seasonSpan) => setGame((current) => ({ ...current, seasonSpan }))} onRevealOrigin={() => setGame((current) => ({ ...current, phase: "decision" }))} onOffer={chooseOffer} onContinueSeason={continueAfterSeason} onScenario={resolveScenario} onContinueScenario={() => player && applyBeat(careerEngine.ordinaryDecision(player, game.world))} />}
       {game.screen === "summary" && player && <SummaryScreen player={player} onReset={resetGame} onTrophyRoom={() => setGame((current) => ({ ...current, screen: "trophy-room" }))} />}
       {game.screen === "trophy-room" && <TrophyRoomScreen room={trophyRoom} onBack={() => setGame((current) => ({ ...current, screen: "home" }))} />}
 

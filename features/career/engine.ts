@@ -1,6 +1,7 @@
 import { CLUBS, SCENARIOS, clubByName, country } from "./catalog";
 import { clubDivision, maxSingleFee } from "./finances";
-import { simulateHonours } from "./honours";
+import { simulateHonoursWithWorld } from "./honours";
+import { clubInWorld, createWorldState } from "./world";
 import type {
   CareerBeat,
   CareerDecision,
@@ -16,6 +17,7 @@ import type {
   ScenarioResolution,
   Season,
   SeasonSimulation,
+  WorldState,
 } from "./domain";
 
 const ROLE_SCORE: Record<Role, number> = { Prospect: 1, Rotation: 2, Starter: 3, Star: 4 };
@@ -47,13 +49,15 @@ export function createCareerEngine(random = Math.random) {
   function formatMoney(value: number) {
     return value >= 1_000_000 ? `€${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1)}m` : `€${Math.round(value / 1_000)}k`;
   }
-  function isPlausibleMarketClub(club: Club, player: Player) {
+  function isPlausibleMarketClub(club: Club, player: Player, world?: WorldState | null) {
     if (clubDivision(club) === 1) return true;
-    const current = clubByName(player.currentClub);
+    const catalogCurrent = clubByName(player.currentClub);
+    const current = catalogCurrent ? clubInWorld(catalogCurrent, world) : undefined;
     return club.country === player.nation || club.country === current?.country;
   }
-  function offerReason(club: Club, player: Player, role: Role) {
-    const current = clubByName(player.currentClub);
+  function offerReason(club: Club, player: Player, role: Role, world?: WorldState | null) {
+    const catalogCurrent = clubByName(player.currentClub);
+    const current = catalogCurrent ? clubInWorld(catalogCurrent, world) : undefined;
     const isHomecoming = current && current.country !== player.nation && club.country === player.nation;
     if (isHomecoming) return "A homecoming with a clearer route to senior minutes";
     if (player.age >= 32) return "One last adventure, one serious contract";
@@ -66,9 +70,9 @@ export function createCareerEngine(random = Math.random) {
     if (role === "Star") return "The team is being built around you";
     return `${club.development}/5 development · a credible next step`;
   }
-  function makeOffer(club: Club, player: Player, label: string, kind: OfferKind, role?: Role, reason?: string): Offer {
+  function makeOffer(club: Club, player: Player, label: string, kind: OfferKind, role?: Role, reason?: string, world?: WorldState | null): Offer {
     const resolvedRole = role ?? roleFor(player.rating, club.level, player.age, player.roleBoost);
-    return { ...club, role: resolvedRole, label, reason: reason ?? offerReason(club, player, resolvedRole), kind };
+    return { ...club, role: resolvedRole, label, reason: reason ?? offerReason(club, player, resolvedRole, world), kind };
   }
   function firstOffers(player: Player): Offer[] {
     const domestic = CLUBS.filter((club) => club.country === player.nation);
@@ -84,13 +88,13 @@ export function createCareerEngine(random = Math.random) {
       return makeOffer(club, player, player.origin === "gem" && club.level >= 4 ? "First-team fast track" : "Senior contract", "permanent", role, player.origin === "gem" ? `${role} role · the scouts believe the hype` : `${role} role · senior football immediately`);
     });
   }
-  function externalOffers(player: Player, count = 2, permanentOnly = false, requiresTransferFee = false): Offer[] {
+  function externalOffers(player: Player, count = 2, permanentOnly = false, requiresTransferFee = false, world?: WorldState | null): Offer[] {
     const ideal = player.rating >= 87 ? 5 : player.rating >= 80 ? 4 : player.rating >= 72 ? 3 : player.rating >= 64 ? 2 : 1;
     const minimumFee = player.value * .92;
-    const market = CLUBS.filter((club) => {
+    const market = CLUBS.map((club) => clubInWorld(club, world)).filter((club) => {
       const role = roleFor(player.rating, club.level, player.age, player.roleBoost);
       return club.name !== player.currentClub
-        && isPlausibleMarketClub(club, player)
+        && isPlausibleMarketClub(club, player, world)
         && (!requiresTransferFee || maxSingleFee(club, role) >= minimumFee);
     });
     let pool = market.filter((club) => Math.abs(club.level - ideal) <= (player.agent.includes("International") ? 2 : 1));
@@ -108,25 +112,27 @@ export function createCareerEngine(random = Math.random) {
     return shuffle(pool).slice(0, count).map((club) => {
       const role = roleFor(player.rating, club.level, player.age, player.roleBoost);
       const loan = !permanentOnly && player.age <= 22 && role === "Prospect" && random() < .55;
-      const current = clubByName(player.currentClub);
+      const catalogCurrent = clubByName(player.currentClub);
+      const current = catalogCurrent ? clubInWorld(catalogCurrent, world) : undefined;
       const label = club.country === current?.country ? "Domestic move" : club.country === player.nation ? "Homecoming" : player.age >= 31 ? "Final adventure" : "Move abroad";
-      return makeOffer(club, player, loan ? "Loan proposal" : label, loan ? "loan" : "permanent", loan ? "Starter" : role);
+      return makeOffer(club, player, loan ? "Loan proposal" : label, loan ? "loan" : "permanent", loan ? "Starter" : role, undefined, world);
     });
   }
-  function permanentOffers(player: Player, count = 2, requiresTransferFee = false): Offer[] {
-    return externalOffers(player, count, true, requiresTransferFee);
+  function permanentOffers(player: Player, count = 2, requiresTransferFee = false, world?: WorldState | null): Offer[] {
+    return externalOffers(player, count, true, requiresTransferFee, world);
   }
-  function contractedBids(player: Player, count = 2): Offer[] {
-    return permanentOffers(player, count, true).map((offer) => {
+  function contractedBids(player: Player, count = 2, world?: WorldState | null): Offer[] {
+    return permanentOffers(player, count, true, world).map((offer) => {
       const rounding = clubDivision(offer) <= 2 ? 50_000 : 10_000;
       const proposedFee = Math.round(player.value * (randomInt(92, 128) / 100) / rounding) * rounding;
       const fee = Math.min(proposedFee, maxSingleFee(offer, offer.role));
       return makeOffer(offer, player, "Accepted transfer bid", "permanent", offer.role, `${offer.name} agreed ${formatMoney(fee)} with ${player.currentClub} · proposed ${offer.role.toLowerCase()} role`);
     });
   }
-  function stayOffer(player: Player, kind: "stay" | "renewal" | "promotion" = "stay"): Offer | null {
-    const club = clubByName(player.currentClub);
-    if (!club) return null;
+  function stayOffer(player: Player, kind: "stay" | "renewal" | "promotion" = "stay", world?: WorldState | null): Offer | null {
+    const catalogClub = clubByName(player.currentClub);
+    if (!catalogClub) return null;
+    const club = clubInWorld(catalogClub, world);
     const role = player.squad === "academy" && kind === "stay" ? "Prospect" : roleFor(player.rating, club.level, player.age, player.roleBoost + (kind === "promotion" ? 0 : 1));
     const copy = kind === "renewal"
       ? { label: "Renew contract", reason: "A new 3–5 year deal · keep building in familiar colours" }
@@ -189,9 +195,11 @@ export function createCareerEngine(random = Math.random) {
     return { player, offers: firstOffers(player), title, description };
   }
 
-  function simulateSeason(player: Player, offer: Offer, requestedYears: number): SeasonSimulation {
+  function simulateSeason(player: Player, offer: Offer, requestedYears: number, existingWorld?: WorldState | null): SeasonSimulation {
+    const startingWorld = existingWorld ?? createWorldState();
+    const destination = { ...offer, ...clubInWorld(offer, startingWorld), role: offer.role, label: offer.label, reason: offer.reason, kind: offer.kind };
     const years = Math.min(requestedYears, 36 - player.age);
-    const roleScore = clamp(ROLE_SCORE[offer.role] + player.roleBoost, 1, 4);
+    const roleScore = clamp(ROLE_SCORE[destination.role] + player.roleBoost, 1, 4);
     const perYearApps = roleScore === 1 ? randomInt(4, 15) : roleScore === 2 ? randomInt(16, 29) : roleScore === 3 ? randomInt(28, 42) : randomInt(36, 48);
     const injuryChance = clamp(.08 + (100 - player.fitness) / 240 + Math.max(0, player.age - 30) / 80, .07, .38);
     const injured = random() < injuryChance;
@@ -202,11 +210,12 @@ export function createCareerEngine(random = Math.random) {
     const ageBase = player.age < 19 ? 5 : player.age < 22 ? 4 : player.age < 26 ? 2 : player.age < 29 ? 1 : player.age < 32 ? 0 : -2;
     const positionAgeAdjustment = player.position === "GK" ? (player.age < 21 ? -2 : player.age >= 29 ? 1 : 0) : ["CB", "CDM"].includes(player.position) && player.age >= 29 ? 1 : 0;
     const minutesBonus = apps / years >= 28 ? 2 : apps / years >= 16 ? 0 : -2;
-    const rawGrowth = Math.round((ageBase + positionAgeAdjustment + Math.floor(offer.development / 2) + minutesBonus + player.morale / 50 - (injured ? 2 : 0)) * Math.sqrt(years) / 1.8);
+    const rawGrowth = Math.round((ageBase + positionAgeAdjustment + Math.floor(destination.development / 2) + minutesBonus + player.morale / 50 - (injured ? 2 : 0)) * Math.sqrt(years) / 1.8);
     const nextRating = clamp(Math.min(player.potential, player.rating + rawGrowth), 45, 96);
-    const honours = simulateHonours({
-      player, offer, years, apps, goals, assists, rating: nextRating, reputation: player.reputation,
-    }, random);
+    const honoursSimulation = simulateHonoursWithWorld({
+      player, offer: destination, years, apps, goals, assists, rating: nextRating, reputation: player.reputation,
+    }, startingWorld, random);
+    const honours = honoursSimulation.honours;
     const playerHonours = honours.flatMap((annual) => annual.playerHonours);
     const trophies = playerHonours.filter((honour) => honour.category === "team").length;
     const individualAwards = playerHonours.filter((honour) => honour.category === "individual").length;
@@ -214,39 +223,39 @@ export function createCareerEngine(random = Math.random) {
     const caps = nextRating >= threshold || nextRating >= threshold - 3 && player.reputation >= 55 ? years * randomInt(2, 8) : 0;
     const nationalGoals = Math.round(caps * positionRates(player.position, nextRating).goals * .65);
     const season: Season = {
-      fromAge: player.age, toAge: player.age + years, club: offer.name, country: offer.country, league: offer.league,
-      role: offer.role, kind: offer.kind, apps, goals, assists, before: player.rating, after: nextRating, trophies,
-      event: seasonNarrative(offer.role, apps, offer.country !== player.nation, injured, playerHonours.map((honour) => honour.kind)),
+      fromAge: player.age, toAge: player.age + years, club: destination.name, country: destination.country, league: destination.league,
+      role: destination.role, kind: destination.kind, apps, goals, assists, before: player.rating, after: nextRating, trophies,
+      event: seasonNarrative(destination.role, apps, destination.country !== player.nation, injured, playerHonours.map((honour) => honour.kind)),
       honours,
     };
-    const contractAtKickoff = offer.kind === "renewal" ? randomInt(3, 5)
-      : offer.kind === "academy" ? randomInt(3, 4)
-        : offer.kind === "promotion" ? Math.max(player.contractYears, randomInt(2, 4))
-          : offer.kind === "permanent" ? randomInt(2, 5)
+    const contractAtKickoff = destination.kind === "renewal" ? randomInt(3, 5)
+      : destination.kind === "academy" ? randomInt(3, 4)
+        : destination.kind === "promotion" ? Math.max(player.contractYears, randomInt(2, 4))
+          : destination.kind === "permanent" ? randomInt(2, 5)
             : player.contractYears;
     const next: Player = {
       ...player, age: player.age + years, rating: nextRating, value: marketValue(nextRating, player.age + years, player.potential),
-      currentClub: offer.kind === "loan" ? player.currentClub : offer.name, parentClub: null,
+      currentClub: destination.kind === "loan" ? player.currentClub : destination.name, parentClub: null,
       totalApps: player.totalApps + apps, totalGoals: player.totalGoals + goals, totalAssists: player.totalAssists + assists,
       trophies: player.trophies + trophies, caps: player.caps + caps, nationalGoals: player.nationalGoals + nationalGoals,
       morale: clamp(player.morale + (apps / years >= 25 ? 6 : -8) + trophies * 8 + individualAwards * 4, 20, 100),
       fitness: clamp(player.fitness + (injured ? -22 : 5) - Math.max(0, player.age - 31), 25, 100),
       reputation: clamp(player.reputation + Math.round(apps / years / 7) + trophies * 6 + individualAwards * 5, 0, 100),
-      roleBoost: 0, squad: offer.kind === "academy" || offer.kind === "stay" && player.squad === "academy" ? "academy" : "senior",
+      roleBoost: 0, squad: destination.kind === "academy" || destination.kind === "stay" && player.squad === "academy" ? "academy" : "senior",
       contractYears: Math.max(0, contractAtKickoff - years),
-      clubSeasons: offer.name === player.currentClub || offer.kind === "loan" ? player.clubSeasons + years : years,
-      lastRole: offer.role, history: [season, ...player.history],
+      clubSeasons: destination.name === player.currentClub || destination.kind === "loan" ? player.clubSeasons + years : years,
+      lastRole: destination.role, history: [season, ...player.history],
     };
-    return { player: next, season };
+    return { player: next, season, world: honoursSimulation.world };
   }
 
-  function ordinaryDecision(player: Player): CareerDecision {
-    const stay = stayOffer(player);
+  function ordinaryDecision(player: Player, world?: WorldState | null): CareerDecision {
+    const stay = stayOffer(player, "stay", world);
     const latest = player.history[0];
     const seasons = Math.max(1, (latest?.toAge ?? player.age) - (latest?.fromAge ?? player.age - 1));
     const formBonus = (latest?.apps ?? 0) / seasons >= 25 ? .12 : player.lastRole === "Star" ? .1 : 0;
     const interestChance = clamp(.18 + player.reputation / 170 + formBonus, .18, .74);
-    const outsideInterest = player.squad === "academy" || random() >= interestChance ? [] : contractedBids(player, random() < .72 ? 1 : 2);
+    const outsideInterest = player.squad === "academy" || random() >= interestChance ? [] : contractedBids(player, random() < .72 ? 1 : 2, world);
     return decision(
       outsideInterest.length ? "transfer-interest" : "continue",
       outsideInterest.length ? "Transfer bids have arrived while you are under contract" : `What should the next chapter at ${player.currentClub} look like?`,
@@ -255,36 +264,37 @@ export function createCareerEngine(random = Math.random) {
     );
   }
 
-  function nextBeat(player: Player, latest: Season | null): CareerBeat {
+  function nextBeat(player: Player, latest: Season | null, world?: WorldState | null): CareerBeat {
     if (player.age >= 36) return { type: "summary" };
-    const current = clubByName(player.currentClub);
+    const catalogCurrent = clubByName(player.currentClub);
+    const current = catalogCurrent ? clubInWorld(catalogCurrent, world) : undefined;
     if (player.squad === "academy" && player.age >= 18) {
-      const promotion = stayOffer(player, "promotion");
+      const promotion = stayOffer(player, "promotion", world);
       const notRetained = player.rating < 59 && random() < .32;
-      const offers = [...(!notRetained && promotion ? [promotion] : []), ...(notRetained ? permanentOffers(player, 3) : externalOffers(player, 2))];
+      const offers = [...(!notRetained && promotion ? [promotion] : []), ...(notRetained ? permanentOffers(player, 3, false, world) : externalOffers(player, 2, false, false, world))];
       return decision(notRetained ? "released" : "graduation", notRetained ? `${player.currentClub} will not offer senior terms` : "Academy graduation day has arrived", notRetained ? "The development report uses the phrase ‘different pathway’. Your access card stops working on Monday." : "The youth-team shirt is finished. You can join the senior queue, take a loan, or leave before becoming training-cone furniture.", offers);
     }
-    if (player.squad === "academy") return random() < .46 ? { type: "scenario", scenario: eligibleScenario(player) } : ordinaryDecision(player);
+    if (player.squad === "academy") return random() < .46 ? { type: "scenario", scenario: eligibleScenario(player) } : ordinaryDecision(player, world);
     if (latest?.kind === "loan") {
-      const returning = stayOffer(player);
-      return decision("loan-return", `The loan is over. ${player.currentClub} wants an answer.`, "The parent club says it watched every minute. Your agent says that sentence was delivered while someone searched for your name.", [...(returning ? [returning] : []), ...externalOffers(player, 2)]);
+      const returning = stayOffer(player, "stay", world);
+      return decision("loan-return", `The loan is over. ${player.currentClub} wants an answer.`, "The parent club says it watched every minute. Your agent says that sentence was delivered while someone searched for your name.", [...(returning ? [returning] : []), ...externalOffers(player, 2, false, false, world)]);
     }
     if (player.contractYears <= 0) {
       const seasons = Math.max(1, (latest?.toAge ?? player.age) - (latest?.fromAge ?? player.age - 1));
       const useful = (latest?.apps ?? 0) / seasons >= 14 || player.lastRole === "Star" || player.lastRole === "Starter";
       const rejected = !useful && random() < .62 || player.age >= 34 && random() < .28;
-      const renewal = rejected ? null : stayOffer(player, "renewal");
-      return decision(rejected ? "released" : "contract", rejected ? `${player.currentClub} will not renew your contract` : `${player.currentClub} has offered a new contract`, rejected ? "The sporting director thanks you for your service, then asks security whether the meeting room is needed at eleven." : `You can stay beyond ${player.clubSeasons} seasons at the club, or listen to the market.`, [...(renewal ? [renewal] : []), ...permanentOffers(player, rejected ? 3 : 2)]);
+      const renewal = rejected ? null : stayOffer(player, "renewal", world);
+      return decision(rejected ? "released" : "contract", rejected ? `${player.currentClub} will not renew your contract` : `${player.currentClub} has offered a new contract`, rejected ? "The sporting director thanks you for your service, then asks security whether the meeting room is needed at eleven." : `You can stay beyond ${player.clubSeasons} seasons at the club, or listen to the market.`, [...(renewal ? [renewal] : []), ...permanentOffers(player, rejected ? 3 : 2, false, world)]);
     }
     const forcedSaleChance = current && current.level <= 2 && player.rating >= 72 ? .2 : player.value >= 35_000_000 && current && current.level <= 3 ? .14 : .045;
     if (random() < forcedSaleChance) {
-      return decision("forced-sale", `${player.currentClub} has accepted that you must be sold`, current && current.level <= 2 ? "Your value is now larger than several items on the club balance sheet. The board calls the sale ‘strategic’." : "The accounts need help. The board has discovered that loyalty does not appear as cash on the annual report.", permanentOffers(player, 3, true));
+      return decision("forced-sale", `${player.currentClub} has accepted that you must be sold`, current && current.level <= 2 ? "Your value is now larger than several items on the club balance sheet. The board calls the sale ‘strategic’." : "The accounts need help. The board has discovered that loyalty does not appear as cash on the annual report.", permanentOffers(player, 3, true, world));
     }
     const seasons = Math.max(1, (latest?.toAge ?? player.age) - (latest?.fromAge ?? player.age - 1));
     if ((latest?.apps ?? 99) / seasons < 12 && player.age >= 20 && random() < .42) {
-      return decision("released", `${player.currentClub} no longer sees a role for you`, "The manager says this is purely professional, which is football language for ‘please choose one of these exits’.", permanentOffers(player, 3));
+      return decision("released", `${player.currentClub} no longer sees a role for you`, "The manager says this is purely professional, which is football language for ‘please choose one of these exits’.", permanentOffers(player, 3, false, world));
     }
-    return random() < .54 ? { type: "scenario", scenario: eligibleScenario(player) } : ordinaryDecision(player);
+    return random() < .54 ? { type: "scenario", scenario: eligibleScenario(player) } : ordinaryDecision(player, world);
   }
 
   function resolveScenario(player: Player, scenario: Scenario, option: ScenarioOption): ScenarioResolution {

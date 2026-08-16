@@ -37,14 +37,17 @@ export type DivisionHonours = {
   country: string;
   league: string;
   champion: string;
+  titleWinners?: CompetitionTitle[];
   topScorer: AwardWinner;
   playerOfSeason: AwardWinner;
 };
 export type CupHonours = { country: string; name: string; winner: string };
+export type CompetitionTitle = { name: string; winner: string };
 export type AnnualHonours = {
   season: string;
   league: string;
   champion: string;
+  titles?: CompetitionTitle[];
   topScorer: AwardWinner;
   playerOfSeason: AwardWinner;
   cup: { name: string; winner: string };
@@ -52,6 +55,7 @@ export type AnnualHonours = {
   playerHonours: PlayerHonour[];
   divisionRoll?: DivisionHonours[];
   cupRoll?: CupHonours[];
+  movements?: WorldMovement[];
 };
 export type Season = {
   fromAge: number;
@@ -102,6 +106,39 @@ export type Player = {
   history: Season[];
 };
 
+export type ClubSeasonState = {
+  club: string;
+  country: string;
+  league: string;
+  division: number;
+  squadQuality: number;
+  finances: number;
+  reputation: number;
+  momentum: number;
+  previousFinish: number | null;
+  rollingPerformance: number[];
+};
+export type WorldMovement = {
+  club: string;
+  country: string;
+  fromLeague: string;
+  toLeague: string;
+  direction: "promoted" | "relegated";
+  route: "automatic" | "playoff";
+};
+export type WorldSeasonRecord = {
+  index: number;
+  champions: Record<string, CompetitionTitle[]>;
+  movements: WorldMovement[];
+};
+export type WorldState = {
+  version: 1;
+  catalogSeason: string;
+  elapsedYears: number;
+  clubs: Record<string, ClubSeasonState>;
+  history: WorldSeasonRecord[];
+};
+
 export type Effect = {
   rating?: number;
   value?: number;
@@ -139,6 +176,7 @@ export type SavedGame = {
   decisionKind: DecisionKind;
   decisionTitle: string;
   decisionDescription: string;
+  world: WorldState | null;
 };
 export type TrophyRoomHonour = PlayerHonour & { careerId: string; playerName: string; count: number };
 export type TrophyRoomCareer = {
@@ -157,7 +195,7 @@ export type CareerDraft = { name: string; nation: string; position: string; numb
 export type CareerStart = { player: Player; offers: Offer[]; title: string; description: string };
 export type CareerDecision = { type: "decision"; kind: DecisionKind; title: string; description: string; offers: Offer[] };
 export type CareerBeat = CareerDecision | { type: "scenario"; scenario: Scenario } | { type: "summary" };
-export type SeasonSimulation = { player: Player; season: Season };
+export type SeasonSimulation = { player: Player; season: Season; world: WorldState };
 export type ScenarioResolution = { player: Player; outcome: ResolvedOutcome };
 
 export const DEFAULT_SAVE: SavedGame = {
@@ -173,4 +211,5 @@ export const DEFAULT_SAVE: SavedGame = {
   decisionKind: "first-club",
   decisionTitle: "Choose your first club",
   decisionDescription: "Your route into professional football is about to be drawn.",
+  world: null,
 };
