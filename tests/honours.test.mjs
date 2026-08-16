@@ -71,6 +71,10 @@ test("each simulated year has a complete named honours board", () => {
   assert.equal(annual.cupRoll.length, expectedCountries.size);
   assert.ok(annual.divisionRoll.every((division) => division.champion && division.topScorer.name && division.playerOfSeason.name));
   assert.ok(annual.cupRoll.every((cup) => cup.name && cup.winner));
+  assert.equal(annual.standingGroups.length, 1);
+  assert.equal(annual.standingGroups[0].clubs.length, 20);
+  assert.equal(annual.standingGroups[0].clubs[0], annual.champion);
+  assert.ok(annual.playoffBrackets.some((bracket) => bracket.name.includes("Promotion Playoff")));
   assert.deepEqual(
     annual.playerHonours.map((honour) => honour.kind).sort(),
     ["ballon-dor", "golden-boot", "league-title", "national-cup", "player-of-season"],

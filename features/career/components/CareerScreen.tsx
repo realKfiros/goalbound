@@ -1,5 +1,5 @@
 import { clubByName, country } from "../catalog";
-import type { Offer, Player, SavedGame, Scenario, ScenarioOption } from "../domain";
+import type { AnnualHonours, Offer, Player, PlayoffBracket, SavedGame, Scenario, ScenarioOption, StandingGroup } from "../domain";
 import { ClubBadge } from "./ClubBadge";
 
 type CareerScreenProps = {
@@ -19,6 +19,54 @@ function formatMoney(value: number) {
   return value >= 1_000_000
     ? `€${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1)}m`
     : `€${Math.round(value / 1_000)}k`;
+}
+
+function StandingTable({ group, annual, activeClub }: { group: StandingGroup; annual: AnnualHonours; activeClub: string }) {
+  return (
+    <div className="standing-group">
+      <h5>{group.name}</h5>
+      <div className="standing-rows">
+        {group.clubs.map((club, index) => {
+          const movement = annual.movements?.find((item) => item.club === club && item.fromLeague === annual.league);
+          const isChampion = (annual.titles ?? [{ name: "Champion", winner: annual.champion }]).some((title) => title.winner === club);
+          const marker = movement?.direction === "promoted" ? "P" : movement?.direction === "relegated" ? "R" : isChampion ? "C" : "";
+          return (
+            <div className={club === activeClub ? "standing-row active" : "standing-row"} key={club}>
+              <span className="standing-position">{index + 1}</span>
+              <ClubBadge club={clubByName(club)} small fetchRemote={false} />
+              <strong>{club}</strong>
+              {marker && <span className={`standing-marker ${marker.toLowerCase()}`}>{marker}</span>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function PlayoffBracketView({ bracket, activeClub }: { bracket: PlayoffBracket; activeClub: string }) {
+  const rounds = [...new Set(bracket.ties.map((tie) => tie.round))];
+  return (
+    <div className="playoff-bracket">
+      <div className="playoff-bracket-heading"><h5>{bracket.name}</h5><small>{bracket.competition}</small></div>
+      <div className="playoff-rounds">
+        {rounds.map((round) => (
+          <div className="playoff-round" key={round}>
+            <span>{round}</span>
+            {bracket.ties.filter((tie) => tie.round === round).map((tie, index) => (
+              <div className="playoff-tie" key={`${round}-${tie.home}-${tie.away}-${index}`}>
+                {[tie.home, tie.away].map((club) => (
+                  <div className={`${club === tie.winner ? "winner" : ""} ${club === activeClub ? "active" : ""}`} key={club}>
+                    <strong>{club}</strong>{club === tie.winner && <b>›</b>}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export function CareerScreen({
@@ -114,6 +162,8 @@ export function CareerScreen({
                       <div className={annual.ballonDor.isPlayer ? "honour-result won" : "honour-result"}><small>Ballon d&apos;Or</small><strong>{annual.ballonDor.name}</strong><span>{annual.ballonDor.club}</span></div>
                     </div>
                     {!!annual.playerHonours.length && <div className="player-honours-earned">You won: {annual.playerHonours.map((honour) => `${honour.icon} ${honour.name}`).join(" · ")}</div>}
+                    {!!annual.standingGroups?.length && <details className="world-honours-roll competition-roll"><summary>{annual.standingGroups.length === 1 ? `League table · ${annual.standingGroups[0].clubs.length} clubs` : `League tables · ${annual.standingGroups.length} groups`}</summary><div className="standing-groups">{annual.standingGroups.map((group) => <StandingTable group={group} annual={annual} activeClub={game.lastSeason!.club} key={group.name} />)}</div><div className="standing-legend"><span><b>C</b> Champion</span><span><b>P</b> Promoted</span><span><b>R</b> Relegated</span></div></details>}
+                    {!!annual.playoffBrackets?.length && <details className="world-honours-roll competition-roll"><summary>Playoff brackets · {annual.playoffBrackets.length}</summary><div className="playoff-brackets">{annual.playoffBrackets.map((bracket) => <PlayoffBracketView bracket={bracket} activeClub={game.lastSeason!.club} key={`${bracket.competition}-${bracket.name}`} />)}</div></details>}
                     {!!annual.movements?.length && <details className="world-honours-roll"><summary>Promotion &amp; relegation · {annual.movements.length / 2} swaps</summary><div className="world-honours-columns"><div><h5>Promoted</h5>{annual.movements.filter((movement) => movement.direction === "promoted").map((movement) => <div className="world-honour-row" key={`up-${movement.country}-${movement.club}`}><span>↑</span><div><strong>{movement.club}</strong><small>{movement.fromLeague} → {movement.toLeague} · {movement.route}</small></div></div>)}</div><div><h5>Relegated</h5>{annual.movements.filter((movement) => movement.direction === "relegated").map((movement) => <div className="world-honour-row" key={`down-${movement.country}-${movement.club}`}><span>↓</span><div><strong>{movement.club}</strong><small>{movement.fromLeague} → {movement.toLeague} · {movement.route}</small></div></div>)}</div></div></details>}
                     <details className="world-honours-roll">
                       <summary>Full world roll · {annual.divisionRoll?.length ?? 1} divisions · {annual.cupRoll?.length ?? 1} national cups</summary>

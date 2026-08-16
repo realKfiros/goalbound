@@ -72,6 +72,8 @@ test("loaded pyramids move clubs atomically and preserve every division size", (
   assert.equal(englishMovements.filter((movement) => movement.direction === "promoted").length, 12);
   assert.equal(englishMovements.filter((movement) => movement.direction === "relegated").length, 12);
   assert.ok(englishMovements.some((movement) => movement.route === "playoff"));
+  assert.ok(simulation.playoffBrackets.some((bracket) => bracket.name === "EFL Championship Promotion Playoff"));
+  assert.ok(simulation.playoffBrackets.every((bracket) => bracket.ties.every((tie) => tie.home && tie.away && tie.winner)));
 
   COMPLETE_LEAGUES.forEach((competition) => {
     const members = Object.values(simulation.world.clubs).filter((club) =>
@@ -98,6 +100,12 @@ test("MLS and short-season leagues produce their actual title shapes", () => {
   assert.deepEqual(mls.titles.map((title) => title.name), ["MLS Cup"]);
   assert.deepEqual(argentina.titles.map((title) => title.name), ["Apertura", "Clausura"]);
   assert.deepEqual(mexico.titles.map((title) => title.name), ["Apertura", "Clausura"]);
+  assert.deepEqual(mls.standings.map((group) => group.name), ["Eastern Conference", "Western Conference"]);
+  assert.equal(mls.standings.reduce((total, group) => total + group.clubs.length, 0), 30);
+  assert.equal(mls.playoffBrackets[0].ties.at(-1).round, "MLS Cup");
+  assert.deepEqual(mexico.standings.map((group) => group.name), ["Apertura table", "Clausura table"]);
+  assert.deepEqual(mexico.playoffBrackets.map((bracket) => bracket.name), ["Apertura Liguilla", "Clausura Liguilla"]);
+  assert.equal(argentina.standings.length, 4);
 });
 
 test("club state evolves and persists across multiple seasons", () => {

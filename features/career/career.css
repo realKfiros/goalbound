@@ -345,6 +345,36 @@ legend { margin-bottom: 13px; }
 .world-honour-row > div { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .world-honour-row strong { font-size: 10px; }
 .world-honour-row small { color: var(--muted); font-size: 8px; line-height: 1.35; }
+.standing-groups { padding: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 18px; }
+.standing-group h5 { margin: 0 0 8px; color: var(--muted); font: 8px monospace; text-transform: uppercase; letter-spacing: .1em; }
+.standing-rows { border-top: 1px solid rgba(255,255,255,.08); }
+.standing-row { min-height: 38px; padding: 4px 8px; display: grid; grid-template-columns: 22px 28px minmax(0, 1fr) 24px; align-items: center; gap: 7px; border-bottom: 1px solid rgba(255,255,255,.06); }
+.standing-row.active { background: rgba(199,255,53,.07); box-shadow: inset 2px 0 var(--lime); }
+.standing-row .club-badge.small { width: 24px; height: 24px; font-size: 7px; }
+.standing-position { color: #72766f; font: 9px monospace; }
+.standing-row strong { min-width: 0; overflow: hidden; color: #c8cbc4; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.standing-marker { width: 19px; height: 19px; display: grid; place-items: center; justify-self: end; color: #090a09; border-radius: 50%; font: 8px monospace; font-weight: 900; }
+.standing-marker.c, .standing-marker.p { background: var(--lime); }
+.standing-marker.r { color: #fff; background: var(--orange); }
+.standing-legend { padding: 0 14px 14px; display: flex; flex-wrap: wrap; gap: 14px; color: var(--muted); font-size: 8px; }
+.standing-legend span { display: flex; align-items: center; gap: 5px; }
+.standing-legend b { width: 16px; height: 16px; display: grid; place-items: center; color: #090a09; background: var(--lime); border-radius: 50%; font: 7px monospace; }
+.standing-legend span:last-child b { color: #fff; background: var(--orange); }
+.playoff-brackets { padding: 14px; display: grid; gap: 14px; }
+.playoff-bracket { min-width: 0; padding: 12px; background: rgba(255,255,255,.018); border: 1px solid rgba(255,255,255,.07); }
+.playoff-bracket-heading { margin-bottom: 12px; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.playoff-bracket-heading h5 { margin: 0; color: #d0d3cc; font-size: 10px; }
+.playoff-bracket-heading small { color: var(--muted); font: 8px monospace; }
+.playoff-rounds { padding-bottom: 5px; display: flex; gap: 10px; overflow-x: auto; }
+.playoff-round { min-width: 170px; flex: 1 0 170px; }
+.playoff-round > span { display: block; margin-bottom: 7px; color: var(--lime); font: 7px monospace; text-transform: uppercase; letter-spacing: .08em; }
+.playoff-tie { margin-bottom: 7px; background: rgba(0,0,0,.22); border: 1px solid rgba(255,255,255,.07); }
+.playoff-tie > div { min-height: 27px; padding: 5px 7px; display: flex; align-items: center; justify-content: space-between; gap: 5px; color: #777b74; }
+.playoff-tie > div + div { border-top: 1px solid rgba(255,255,255,.06); }
+.playoff-tie strong { overflow: hidden; font-size: 8px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.playoff-tie .winner { color: #dfe2da; background: rgba(199,255,53,.055); }
+.playoff-tie .winner b { color: var(--lime); }
+.playoff-tie .active strong { color: var(--lime); }
 .story-continue { margin-top: 28px; }
 .scenario-stage { padding-top: 38px; }
 .scenario-icon { width: 66px; height: 66px; margin-bottom: 24px; display: grid; place-items: center; background: rgba(199,255,53,.1); border: 1px solid rgba(199,255,53,.22); border-radius: 50%; font-size: 31px; }

@@ -3,7 +3,7 @@ import { competitionFormat, PYRAMID_BOUNDARIES, type PyramidBoundary } from "./c
 import { competitionStrength } from "./competitionStrength";
 import { clubFinance } from "./finances";
 import { CATALOG_SEASON, COMPLETE_LEAGUES } from "./leagueCatalog";
-import type { Club, ClubSeasonState, CompetitionTitle, WorldMovement, WorldState } from "./domain";
+import type { Club, ClubSeasonState, CompetitionTitle, PlayoffBracket, PlayoffTie, StandingGroup, WorldMovement, WorldState } from "./domain";
 
 export type WorldPlayerImpact = { club: string; boost: number };
 export type WorldCompetitionOutcome = {
@@ -13,12 +13,15 @@ export type WorldCompetitionOutcome = {
   division: number;
   table: string[];
   titles: CompetitionTitle[];
+  standings: StandingGroup[];
+  playoffBrackets: PlayoffBracket[];
 };
 export type WorldSeasonSimulation = {
   world: WorldState;
   competitions: WorldCompetitionOutcome[];
   cupWinners: Record<string, string>;
   movements: WorldMovement[];
+  playoffBrackets: PlayoffBracket[];
 };
 
 const MLS_EAST = new Set([
@@ -72,63 +75,137 @@ function seededKnockout(clubs: ClubSeasonState[], impact: WorldPlayerImpact, ran
   return round[0];
 }
 
-function mlsChampion(clubs: ClubSeasonState[], impact: WorldPlayerImpact, random: () => number) {
-  const conferenceWinner = (conference: ClubSeasonState[]) => {
-    const ranked = rankClubs(conference, impact, random);
-    const wildCard = matchWinner(ranked[7], ranked[8], impact, random);
+function recordedMatch(
+  round: string,
+  left: ClubSeasonState,
+  right: ClubSeasonState,
+  impact: WorldPlayerImpact,
+  random: () => number,
+  ties: PlayoffTie[],
+  series = false,
+) {
+  const winner = matchWinner(left, right, impact, random, series);
+  ties.push({ round, home: left.club, away: right.club, winner: winner.club });
+  return winner;
+}
+
+function knockoutRoundName(size: number) {
+  if (size >= 16) return "Round of 16";
+  if (size >= 8) return "Quarter-final";
+  if (size >= 6) return "Playoff round";
+  if (size >= 4) return "Semi-final";
+  if (size === 3) return "Semi-final";
+  return "Final";
+}
+
+function recordedKnockout(clubs: ClubSeasonState[], impact: WorldPlayerImpact, random: () => number, series = false) {
+  const ties: PlayoffTie[] = [];
+  let round = [...clubs];
+  while (round.length > 1) {
+    const next: ClubSeasonState[] = [];
+    const roundName = knockoutRoundName(round.length);
+    for (let index = 0; index < Math.floor(round.length / 2); index += 1) {
+      next.push(recordedMatch(roundName, round[index], round[round.length - 1 - index], impact, random, ties, series));
+    }
+    if (round.length % 2 === 1) next.push(round[Math.floor(round.length / 2)]);
+    round = next;
+  }
+  return { winner: round[0], ties };
+}
+
+function mlsCompetition(clubs: ClubSeasonState[], impact: WorldPlayerImpact, random: () => number) {
+  const ties: PlayoffTie[] = [];
+  const eastTable = rankClubs(clubs.filter((club) => MLS_EAST.has(club.club)), impact, random);
+  const westTable = rankClubs(clubs.filter((club) => !MLS_EAST.has(club.club)), impact, random);
+  const conferenceWinner = (ranked: ClubSeasonState[], conference: string) => {
+    const wildCard = recordedMatch(`${conference} Wild Card`, ranked[7], ranked[8], impact, random, ties);
     const firstRound = [
-      matchWinner(ranked[0], wildCard, impact, random, true),
-      matchWinner(ranked[1], ranked[6], impact, random, true),
-      matchWinner(ranked[2], ranked[5], impact, random, true),
-      matchWinner(ranked[3], ranked[4], impact, random, true),
+      recordedMatch(`${conference} First Round`, ranked[0], wildCard, impact, random, ties, true),
+      recordedMatch(`${conference} First Round`, ranked[1], ranked[6], impact, random, ties, true),
+      recordedMatch(`${conference} First Round`, ranked[2], ranked[5], impact, random, ties, true),
+      recordedMatch(`${conference} First Round`, ranked[3], ranked[4], impact, random, ties, true),
     ];
-    const semiOne = matchWinner(firstRound[0], firstRound[3], impact, random);
-    const semiTwo = matchWinner(firstRound[1], firstRound[2], impact, random);
-    return matchWinner(semiOne, semiTwo, impact, random);
+    const semiOne = recordedMatch(`${conference} Semi-final`, firstRound[0], firstRound[3], impact, random, ties);
+    const semiTwo = recordedMatch(`${conference} Semi-final`, firstRound[1], firstRound[2], impact, random, ties);
+    return recordedMatch(`${conference} Final`, semiOne, semiTwo, impact, random, ties);
   };
-  const east = conferenceWinner(clubs.filter((club) => MLS_EAST.has(club.club)));
-  const west = conferenceWinner(clubs.filter((club) => !MLS_EAST.has(club.club)));
-  return matchWinner(east, west, impact, random);
+  const east = conferenceWinner(eastTable, "Eastern Conference");
+  const west = conferenceWinner(westTable, "Western Conference");
+  const champion = recordedMatch("MLS Cup", east, west, impact, random, ties);
+  const table = eastTable.flatMap((club, index) => [club, westTable[index]]).filter(Boolean);
+  return {
+    table,
+    standings: [
+      { name: "Eastern Conference", clubs: eastTable.map((club) => club.club) },
+      { name: "Western Conference", clubs: westTable.map((club) => club.club) },
+    ],
+    titles: [{ name: "MLS Cup", winner: champion.club }],
+    playoffBrackets: [{ name: "MLS Cup Playoffs", country: clubs[0].country, competition: clubs[0].league, ties }],
+  };
 }
 
-function ligaMxChampion(clubs: ClubSeasonState[], impact: WorldPlayerImpact, random: () => number) {
+function ligaMxStage(clubs: ClubSeasonState[], impact: WorldPlayerImpact, random: () => number, stage: string) {
+  const ties: PlayoffTie[] = [];
   const ranked = rankClubs(clubs, impact, random);
-  const seventhSeed = matchWinner(ranked[6], ranked[7], impact, random);
+  const seventhSeed = recordedMatch("Play-In", ranked[6], ranked[7], impact, random, ties);
   const firstPlayInLoser = seventhSeed === ranked[6] ? ranked[7] : ranked[6];
-  const ninthTenthWinner = matchWinner(ranked[8], ranked[9], impact, random);
-  const eighthSeed = matchWinner(firstPlayInLoser, ninthTenthWinner, impact, random);
-  return seededKnockout([...ranked.slice(0, 6), seventhSeed, eighthSeed], impact, random, true);
+  const ninthTenthWinner = recordedMatch("Play-In", ranked[8], ranked[9], impact, random, ties);
+  const eighthSeed = recordedMatch("Play-In", firstPlayInLoser, ninthTenthWinner, impact, random, ties);
+  const knockout = recordedKnockout([...ranked.slice(0, 6), seventhSeed, eighthSeed], impact, random, true);
+  return { ranked, winner: knockout.winner, ties: [...ties, ...knockout.ties], stage };
 }
 
-function argentinaChampion(clubs: ClubSeasonState[], impact: WorldPlayerImpact, random: () => number, offset: number) {
+function argentinaStage(clubs: ClubSeasonState[], impact: WorldPlayerImpact, random: () => number, stage: string, offset: number) {
+  const ties: PlayoffTie[] = [];
   const zones = [clubs.filter((_, index) => (index + offset) % 2 === 0), clubs.filter((_, index) => (index + offset) % 2 === 1)];
-  const zoneA = rankClubs(zones[0], impact, random).slice(0, 8);
-  const zoneB = rankClubs(zones[1], impact, random).slice(0, 8);
+  const zoneA = rankClubs(zones[0], impact, random);
+  const zoneB = rankClubs(zones[1], impact, random);
   const roundOf16: ClubSeasonState[] = [];
   for (let index = 0; index < 8; index += 1) {
-    roundOf16.push(matchWinner(zoneA[index], zoneB[7 - index], impact, random));
+    roundOf16.push(recordedMatch("Round of 16", zoneA[index], zoneB[7 - index], impact, random, ties));
   }
-  return seededKnockout(roundOf16, impact, random);
+  const knockout = recordedKnockout(roundOf16, impact, random);
+  return { zoneA, zoneB, winner: knockout.winner, ties: [...ties, ...knockout.ties], stage };
 }
 
-function titlesFor(clubs: ClubSeasonState[], table: ClubSeasonState[], impact: WorldPlayerImpact, random: () => number) {
+function competitionOutcome(clubs: ClubSeasonState[], impact: WorldPlayerImpact, random: () => number) {
   const format = competitionFormat(clubs[0].country, clubs[0].league);
-  if (format?.titleStructure === "playoff" && clubs[0].country === "USA") {
-    return [{ name: "MLS Cup", winner: mlsChampion(clubs, impact, random).club }];
-  }
+  if (format?.titleStructure === "playoff" && clubs[0].country === "USA") return mlsCompetition(clubs, impact, random);
   if (format?.titleStructure === "short-season-playoff" && clubs[0].country === "MEX") {
-    return [
-      { name: "Apertura", winner: ligaMxChampion(clubs, impact, random).club },
-      { name: "Clausura", winner: ligaMxChampion(clubs, impact, random).club },
-    ];
+    const apertura = ligaMxStage(clubs, impact, random, "Apertura");
+    const clausura = ligaMxStage(clubs, impact, random, "Clausura");
+    return {
+      table: clausura.ranked,
+      standings: [
+        { name: "Apertura table", clubs: apertura.ranked.map((club) => club.club) },
+        { name: "Clausura table", clubs: clausura.ranked.map((club) => club.club) },
+      ],
+      titles: [{ name: "Apertura", winner: apertura.winner.club }, { name: "Clausura", winner: clausura.winner.club }],
+      playoffBrackets: [apertura, clausura].map((stage) => ({ name: `${stage.stage} Liguilla`, country: clubs[0].country, competition: clubs[0].league, ties: stage.ties })),
+    };
   }
   if (format?.titleStructure === "short-season-playoff" && clubs[0].country === "ARG") {
-    return [
-      { name: "Apertura", winner: argentinaChampion(clubs, impact, random, 0).club },
-      { name: "Clausura", winner: argentinaChampion(clubs, impact, random, 1).club },
-    ];
+    const apertura = argentinaStage(clubs, impact, random, "Apertura", 0);
+    const clausura = argentinaStage(clubs, impact, random, "Clausura", 1);
+    return {
+      table: apertura.zoneA.flatMap((club, index) => [club, apertura.zoneB[index]]).filter(Boolean),
+      standings: [
+        { name: "Apertura Zone A", clubs: apertura.zoneA.map((club) => club.club) },
+        { name: "Apertura Zone B", clubs: apertura.zoneB.map((club) => club.club) },
+        { name: "Clausura Zone A", clubs: clausura.zoneA.map((club) => club.club) },
+        { name: "Clausura Zone B", clubs: clausura.zoneB.map((club) => club.club) },
+      ],
+      titles: [{ name: "Apertura", winner: apertura.winner.club }, { name: "Clausura", winner: clausura.winner.club }],
+      playoffBrackets: [apertura, clausura].map((stage) => ({ name: `${stage.stage} Playoffs`, country: clubs[0].country, competition: clubs[0].league, ties: stage.ties })),
+    };
   }
-  return [{ name: format?.titleNames[0] ?? "Champion", winner: table[0].club }];
+  const table = rankClubs(clubs, impact, random);
+  return {
+    table,
+    standings: [{ name: format?.titleStructure === "split-table" ? "Final table after the split" : "Final table", clubs: table.map((club) => club.club) }],
+    titles: [{ name: format?.titleNames[0] ?? "Champion", winner: table[0].club }],
+    playoffBrackets: [] as PlayoffBracket[],
+  };
 }
 
 function knockoutCupWinner(clubs: ClubSeasonState[], impact: WorldPlayerImpact, random: () => number) {
@@ -207,7 +284,7 @@ function playoffCandidate(table: string[], boundary: PyramidBoundary, clubs: Rec
     .slice(boundary.playoffPromotion.from - 1, boundary.playoffPromotion.to)
     .map((name) => clubs[worldClubKey(boundary.country, name)])
     .filter(Boolean);
-  return seededKnockout(candidates, impact, random, true);
+  return recordedKnockout(candidates, impact, random, true);
 }
 
 function applyMovement(
@@ -237,6 +314,7 @@ function applyMovement(
 
 function resolveMovements(world: WorldState, outcomes: WorldCompetitionOutcome[], impact: WorldPlayerImpact, random: () => number) {
   const movements: WorldMovement[] = [];
+  const playoffBrackets: PlayoffBracket[] = [];
   for (const boundary of PYRAMID_BOUNDARIES) {
     const upper = outcomes.find((outcome) => outcome.country === boundary.country && outcome.division === boundary.upperDivision);
     const lower = outcomes.find((outcome) => outcome.country === boundary.country && outcome.division === boundary.lowerDivision);
@@ -249,7 +327,10 @@ function resolveMovements(world: WorldState, outcomes: WorldCompetitionOutcome[]
       .slice(0, boundary.automaticPromotions)
       .map((name) => ({ promoted: world.clubs[worldClubKey(boundary.country, name)], route: "automatic" }));
     const playoff = playoffCandidate(eligibleLower, boundary, world.clubs, impact, random);
-    if (playoff) promotionPairs.push({ promoted: playoff, route: "playoff" });
+    if (playoff) {
+      promotionPairs.push({ promoted: playoff.winner, route: "playoff" });
+      playoffBrackets.push({ name: `${lowerCompetition.league} Promotion Playoff`, country: boundary.country, competition: lowerCompetition.league, ties: playoff.ties });
+    }
 
     const automaticRelegated = upper.table.slice(-promotionPairs.length)
       .map((name) => world.clubs[worldClubKey(boundary.country, name)]);
@@ -262,12 +343,17 @@ function resolveMovements(world: WorldState, outcomes: WorldCompetitionOutcome[]
       const upperCandidateName = upper.table[upper.table.length - boundary.automaticPromotions - 1];
       const lowerCandidate = world.clubs[worldClubKey(boundary.country, lowerCandidateName)];
       const upperCandidate = world.clubs[worldClubKey(boundary.country, upperCandidateName)];
-      if (lowerCandidate && upperCandidate && matchWinner(lowerCandidate, upperCandidate, impact, random, true) === lowerCandidate) {
-        movements.push(...applyMovement(world, lowerCandidate, upperCandidate, upperCompetition.league, lowerCompetition.league, "playoff"));
+      if (lowerCandidate && upperCandidate) {
+        const ties: PlayoffTie[] = [];
+        const winner = recordedMatch("Two-legged tie", upperCandidate, lowerCandidate, impact, random, ties, true);
+        playoffBrackets.push({ name: `${upperCompetition.league} / ${lowerCompetition.league} Playoff`, country: boundary.country, competition: upperCompetition.league, ties });
+        if (winner === lowerCandidate) {
+          movements.push(...applyMovement(world, lowerCandidate, upperCandidate, upperCompetition.league, lowerCompetition.league, "playoff"));
+        }
       }
     }
   }
-  return movements;
+  return { movements, playoffBrackets };
 }
 
 function evolveClubs(world: WorldState, outcomes: WorldCompetitionOutcome[], random: () => number) {
@@ -314,21 +400,25 @@ export function simulateWorldSeason(
     groups.set(key, [...(groups.get(key) ?? []), club]);
   });
   const competitions = [...groups.entries()].map(([key, clubs]) => {
-    const table = rankClubs(clubs, impact, random);
+    const competition = competitionOutcome(clubs, impact, random);
     return {
       key,
       country: clubs[0].country,
       league: clubs[0].league,
       division: clubs[0].division,
-      table: table.map((club) => club.club),
-      titles: titlesFor(clubs, table, impact, random),
+      table: competition.table.map((club) => club.club),
+      titles: competition.titles,
+      standings: competition.standings,
+      playoffBrackets: competition.playoffBrackets,
     } satisfies WorldCompetitionOutcome;
   });
   const cupWinners = Object.fromEntries([...new Set(Object.values(world.clubs).map((club) => club.country))]
     .map((country) => [country, knockoutCupWinner(Object.values(world.clubs).filter((club) => club.country === country), impact, random)]));
 
   evolveClubs(world, competitions, random);
-  const movements = resolveMovements(world, competitions, impact, random);
+  const movementSimulation = resolveMovements(world, competitions, impact, random);
+  const movements = movementSimulation.movements;
+  const playoffBrackets = [...competitions.flatMap((competition) => competition.playoffBrackets), ...movementSimulation.playoffBrackets];
   world.elapsedYears += 1;
   world.history = [...world.history, {
     index: world.elapsedYears,
@@ -336,5 +426,5 @@ export function simulateWorldSeason(
     movements,
   }].slice(-30);
   assertMembership(world);
-  return { world, competitions, cupWinners, movements };
+  return { world, competitions, cupWinners, movements, playoffBrackets };
 }

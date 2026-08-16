@@ -43,6 +43,9 @@ export type DivisionHonours = {
 };
 export type CupHonours = { country: string; name: string; winner: string };
 export type CompetitionTitle = { name: string; winner: string };
+export type StandingGroup = { name: string; clubs: string[] };
+export type PlayoffTie = { round: string; home: string; away: string; winner: string };
+export type PlayoffBracket = { name: string; country: string; competition: string; ties: PlayoffTie[] };
 export type AnnualHonours = {
   season: string;
   league: string;
@@ -56,6 +59,8 @@ export type AnnualHonours = {
   divisionRoll?: DivisionHonours[];
   cupRoll?: CupHonours[];
   movements?: WorldMovement[];
+  standingGroups?: StandingGroup[];
+  playoffBrackets?: PlayoffBracket[];
 };
 export type Season = {
   fromAge: number;

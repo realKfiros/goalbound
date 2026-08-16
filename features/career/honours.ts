@@ -152,6 +152,8 @@ export function simulateHonoursWithWorld(
       season, league, champion, titles: titleWinners, topScorer, playerOfSeason,
       cup: { name: cupTitle, winner: cupWinner }, ballonDor, playerHonours,
       divisionRoll, cupRoll, movements: simulated.movements,
+      standingGroups: activeCompetition?.standings,
+      playoffBrackets: simulated.playoffBrackets.filter((bracket) => bracket.country === input.offer.country),
     });
   }
   return { honours, world };
