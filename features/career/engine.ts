@@ -1,6 +1,7 @@
 import { CLUBS, SCENARIOS, clubByName, country } from "./catalog";
 import { clubDivision, maxSingleFee } from "./finances";
 import { simulateHonoursWithWorld } from "./honours";
+import { generateName } from "./names";
 import { clubInWorld, createWorldState } from "./world";
 import type {
   CareerBeat,
@@ -185,7 +186,7 @@ export function createCareerEngine(random = Math.random) {
     const rating = origin === "gem" ? randomInt(67, 72) : origin === "senior" ? randomInt(58, 64) : randomInt(48, 56);
     const potential = origin === "gem" ? randomInt(90, 96) : origin === "senior" ? randomInt(79, 91) : randomInt(76, 93);
     const player: Player = {
-      ...draft, name: draft.name.trim() || "Kai Nash", age, rating, potential,
+      ...draft, name: draft.name.trim() || generateName(draft.nation, random), age, rating, potential,
       value: marketValue(rating, age, potential), currentClub: "Free agent", parentClub: null,
       totalApps: 0, totalGoals: 0, totalAssists: 0, trophies: 0, caps: 0, nationalGoals: 0,
       morale: origin === "gem" ? 84 : 72, fitness: 92, reputation: origin === "gem" ? 24 : origin === "senior" ? 13 : 6,

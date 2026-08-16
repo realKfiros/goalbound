@@ -172,9 +172,12 @@ button { color: inherit; }
 .form-panel { padding: 36px; }
 .field-grid { display: grid; grid-template-columns: 1fr 150px; gap: 16px; }
 .field { display: flex; flex-direction: column; gap: 10px; }
-.field span, legend { color: var(--muted); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; }
+.field span, .field > label, legend { color: var(--muted); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; }
 .field input { width: 100%; height: 54px; padding: 0 16px; color: var(--ink); background: #0d0f0d; border: 1px solid var(--line); border-radius: 3px; outline: none; }
 .field input:focus { border-color: var(--lime); box-shadow: 0 0 0 3px rgba(199,255,53,.09); }
+.name-field-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.name-generator { min-width: 104px; padding: 0 13px; color: var(--ink); background: #171a17; border: 1px solid var(--line); border-radius: 3px; font-size: 10px; font-weight: 800; cursor: pointer; }
+.name-generator:hover { color: var(--lime); border-color: rgba(199,255,53,.5); }
 fieldset { padding: 0; margin: 34px 0 0; border: 0; }
 legend { margin-bottom: 13px; }
 .country-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }

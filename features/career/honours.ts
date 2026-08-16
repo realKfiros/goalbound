@@ -1,6 +1,7 @@
 import { CLUBS, clubByName, country } from "./catalog";
 import { competitionStrength, exceptionalPlayerBoost } from "./competitionStrength";
 import { clubDivision } from "./finances";
+import { generateName } from "./names";
 import { clubSeasonState, createWorldState, simulateWorldSeason } from "./world";
 import type { AnnualHonours, AwardWinner, DivisionHonours, Offer, Player, PlayerHonour, WorldState } from "./domain";
 
@@ -25,18 +26,15 @@ const CUP_NAMES: Record<string, string> = {
   BEL: "Belgian Cup", SCO: "Scottish Cup", TUR: "Turkish Cup", CRO: "Croatian Cup",
   GRE: "Greek Cup", SAU: "King's Cup", JPN: "Emperor's Cup", MEX: "Copa MX",
 };
-const FIRST_NAMES = ["Mateo", "Jamal", "Luka", "Noah", "Rafael", "Elias", "Milan", "Thiago", "Omar", "Leo"];
-const LAST_NAMES = ["Costa", "Diallo", "Novak", "Silva", "Moretti", "Santos", "Bakayoko", "Ibrahim", "Kovač", "Martin"];
-
 function randomInt(random: () => number, min: number, max: number) {
   return Math.floor(random() * (max - min + 1)) + min;
 }
 function pick<T>(items: T[], random: () => number): T | undefined {
   return items[Math.floor(random() * items.length)];
 }
-function fictionalWinner(club: string, random: () => number, detail?: string): AwardWinner {
+function fictionalWinner(club: string, countryCode: string, random: () => number, detail?: string): AwardWinner {
   return {
-    name: `${pick(FIRST_NAMES, random) ?? "Alex"} ${pick(LAST_NAMES, random) ?? "Martin"}`,
+    name: generateName(countryCode, random),
     club,
     isPlayer: false,
     detail,
@@ -103,19 +101,20 @@ export function simulateHonoursWithWorld(
     const winsGoldenBoot = seniorEligible && apps >= 16 && goals >= rivalGoals;
     const topScorer = winsGoldenBoot
       ? { name: input.player.name, club: input.offer.name, isPlayer: true, detail: `${goals} goals` }
-      : fictionalWinner(rivalClub, random, `${rivalGoals} goals`);
+      : fictionalWinner(rivalClub, input.offer.country, random, `${rivalGoals} goals`);
     const playerSeasonScore = input.rating + goals * 1.25 + assists * .7 + Math.min(8, apps / 5);
     const winsPlayerOfSeason = seniorEligible && apps >= 20 && playerSeasonScore >= randomInt(random, 104, 122);
     const playerOfSeason = winsPlayerOfSeason
       ? { name: input.player.name, club: input.offer.name, isPlayer: true }
-      : fictionalWinner(rivalClub, random);
-    const worldClub = pick(worldClubs, random)?.name ?? input.offer.name;
+      : fictionalWinner(rivalClub, input.offer.country, random);
+    const worldClubData = pick(worldClubs, random);
+    const worldClub = worldClubData?.name ?? input.offer.name;
     const ballonScore = input.rating + input.reputation * .24 + goals * .85 + assists * .35 +
       (wonLeagueTitles.length ? 5 : 0) + (cupWinner === input.offer.name ? 3 : 0);
     const winsBallonDor = seniorEligible && input.rating >= 83 && apps >= 24 && ballonScore >= randomInt(random, 121, 139);
     const ballonDor = winsBallonDor
       ? { name: input.player.name, club: input.offer.name, isPlayer: true }
-      : fictionalWinner(worldClub, random);
+      : fictionalWinner(worldClub, worldClubData?.country ?? input.offer.country, random);
     const cupTitle = nationalCupName(input.offer.country);
     const playerHonours: PlayerHonour[] = [];
 
@@ -138,8 +137,8 @@ export function simulateHonoursWithWorld(
           league: competition.league,
           champion: winningClub,
           titleWinners: competition.titles,
-          topScorer: fictionalWinner(awardClub, random, `${randomInt(random, 14, 31)} goals`),
-          playerOfSeason: fictionalWinner(awardClub, random),
+          topScorer: fictionalWinner(awardClub, competition.country, random, `${randomInt(random, 14, 31)} goals`),
+          playerOfSeason: fictionalWinner(awardClub, competition.country, random),
         };
       });
     const cupRoll = Object.entries(simulated.cupWinners).map(([countryCode, winner]) => ({

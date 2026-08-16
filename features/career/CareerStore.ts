@@ -12,11 +12,12 @@ import {
   type TrophyRoom,
 } from "./domain";
 import { careerEngine } from "./engine";
+import { generateName } from "./names";
 import { clearCareer, loadCareer, loadTrophyRoom, newCareerId, saveCareer, saveTrophyRoom } from "./storage";
 import { EMPTY_TROPHY_ROOM, mergeCareerSnapshot, trophyRoomTotals } from "./trophyRoom";
 import { createWorldState } from "./world";
 
-const DEFAULT_DRAFT: CareerDraft = { name: "Kai Nash", nation: "ENG", position: "ST", number: 9 };
+const DEFAULT_DRAFT: CareerDraft = { name: generateName("ENG", () => .16), nation: "ENG", position: "ST", number: 9 };
 
 export class CareerStore {
   game: SavedGame = DEFAULT_SAVE;
@@ -84,6 +85,25 @@ export class CareerStore {
 
   setDraft(draft: CareerDraft) {
     this.draft = draft;
+  }
+
+  beginCareerSetup() {
+    this.draft = {
+      ...this.draft,
+      name: generateName(this.draft.nation, Math.random, this.draft.name),
+    };
+    this.navigate("setup");
+  }
+
+  setNation(nation: string) {
+    this.draft = { ...this.draft, nation, name: generateName(nation) };
+  }
+
+  regenerateDraftName() {
+    this.draft = {
+      ...this.draft,
+      name: generateName(this.draft.nation, Math.random, this.draft.name),
+    };
   }
 
   setSeasonSpan(seasonSpan: number) {
@@ -190,7 +210,7 @@ export class CareerStore {
   resetGame() {
     clearCareer();
     this.game = DEFAULT_SAVE;
-    this.draft = DEFAULT_DRAFT;
+    this.draft = { ...DEFAULT_DRAFT };
   }
 
   private updateGame(patch: Partial<SavedGame>) {

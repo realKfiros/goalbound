@@ -34,7 +34,7 @@ function loadTypeScriptModule(relativePath) {
 
 function player(overrides = {}) {
   return {
-    name: "Kai Nash", nation: "ENG", position: "ST", number: 9,
+    name: "Oliver Bennett", nation: "ENG", position: "ST", number: 9,
     age: 25, rating: 94, potential: 96, value: 150_000_000,
     currentClub: "Manchester City", parentClub: null,
     totalApps: 180, totalGoals: 120, totalAssists: 45, trophies: 0,
@@ -102,6 +102,11 @@ test("academy players appear in the world but cannot win senior honours", () => 
   assert.equal(annual.topScorer.isPlayer, false);
   assert.equal(annual.playerOfSeason.isPlayer, false);
   assert.equal(annual.ballonDor.isPlayer, false);
+  const { isGeneratedName } = loadTypeScriptModule("features/career/names.ts");
+  assert.ok(annual.divisionRoll.every((division) =>
+    isGeneratedName(division.country, division.topScorer.name)
+      && isGeneratedName(division.country, division.playerOfSeason.name),
+  ));
 });
 
 test("the trophy room is idempotent and keeps separate career saves", () => {

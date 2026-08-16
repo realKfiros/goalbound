@@ -53,7 +53,7 @@ export const GoalboundGame = observer(function GoalboundGame() {
           <HomeScreen
             player={player}
             trophyCount={trophyTotals.total}
-            onStart={() => store.navigate("setup")}
+            onStart={store.beginCareerSetup}
             onResume={store.resumeCareer}
             onTrophyRoom={() => store.navigate("trophy-room")}
           />
@@ -63,6 +63,8 @@ export const GoalboundGame = observer(function GoalboundGame() {
             draft={draft}
             seasonSpan={game.seasonSpan}
             onDraftChange={store.setDraft}
+            onNationChange={store.setNation}
+            onGenerateName={store.regenerateDraftName}
             onSeasonSpanChange={store.setSeasonSpan}
             onBack={() => store.navigate("home")}
             onStart={store.startCareer}

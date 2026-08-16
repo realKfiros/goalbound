@@ -94,6 +94,35 @@ test("every loaded nation is playable and produces domestic starting offers", ()
   });
 });
 
+test("every playable nation has a broad local name pool", () => {
+  const { COUNTRIES } = loadTypeScriptModule("features/career/catalog.ts");
+  const { availableNameCount, generateName, isGeneratedName } = loadTypeScriptModule("features/career/names.ts");
+
+  COUNTRIES.forEach((nation, index) => {
+    assert.ok(availableNameCount(nation.code) >= 64, nation.code);
+    const random = seededRandom(9000 + index);
+    const samples = Array.from({ length: 24 }, () => generateName(nation.code, random));
+    assert.ok(new Set(samples).size >= 16, nation.code);
+    assert.ok(samples.every((name) => isGeneratedName(nation.code, name)), nation.code);
+    assert.ok(samples.every((name) => name.length <= 22), nation.code);
+  });
+
+  assert.equal(generateName("ENG", () => 0), "Oliver Bennett");
+  assert.equal(generateName("JPN", () => 0), "Haruto Sato");
+});
+
+test("a blank player name receives a nationality-aware fallback", () => {
+  const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
+  const { isGeneratedName } = loadTypeScriptModule("features/career/names.ts");
+  const start = createCareerEngine(seededRandom(2048)).createCareer({
+    name: "   ",
+    nation: "SRB",
+    position: "CM",
+    number: 8,
+  });
+  assert.ok(isGeneratedName("SRB", start.player.name));
+});
+
 test("a new save contains every club exactly once", () => {
   const { CLUBS } = loadTypeScriptModule("features/career/catalog.ts");
   const { createWorldState } = loadTypeScriptModule("features/career/world.ts");
