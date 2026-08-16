@@ -17,7 +17,7 @@ features/career/
   leagueCatalog.ts           Complete researched league membership
   engine.ts                  Career simulation and decision rules
   storage.ts                 Device-local save adapter
-  career.css                 Goalbound feature styles
+  styles.ts                  Goalbound styled-components global styles
   components/
     HomeScreen.tsx
     SetupScreen.tsx

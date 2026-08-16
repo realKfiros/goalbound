@@ -1,4 +1,6 @@
+import { createGlobalStyle } from "styled-components";
 
+export const GlobalStyles = createGlobalStyle`
 :root {
   --ink: #f3f3ee;
   --muted: #989b96;
@@ -611,3 +613,4 @@ footer { position: relative; z-index: 1; width: min(1320px, calc(100% - 64px)); 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+`;

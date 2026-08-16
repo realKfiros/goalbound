@@ -12,6 +12,7 @@ import { careerEngine } from "./engine";
 import { clearCareer, loadCareer, loadTrophyRoom, newCareerId, saveCareer, saveTrophyRoom } from "./storage";
 import { EMPTY_TROPHY_ROOM, mergeCareerSnapshot, trophyRoomTotals } from "./trophyRoom";
 import { createWorldState } from "./world";
+import { GlobalStyles } from "./styles";
 
 const DEFAULT_DRAFT: CareerDraft = { name: "Kai Nash", nation: "ENG", position: "ST", number: 9 };
 
@@ -95,7 +96,9 @@ export function GoalboundGame() {
   }
 
   return (
-    <main className="site-shell">
+    <>
+      <GlobalStyles />
+      <main className="site-shell">
       <div className="ambient ambient-one" /><div className="ambient ambient-two" />
       <header className="topbar">
         <button className="brand" onClick={() => setGame((current) => ({ ...current, screen: "home" }))} aria-label="Goalbound home"><span className="brand-mark">G</span><span>GOALBOUND</span></button>
@@ -110,6 +113,7 @@ export function GoalboundGame() {
       {game.screen === "trophy-room" && <TrophyRoomScreen room={trophyRoom} onBack={() => setGame((current) => ({ ...current, screen: "home" }))} />}
 
       <footer><span>GOALBOUND © 2026</span><span>Real clubs · Original scenarios · No real player likenesses</span></footer>
-    </main>
+      </main>
+    </>
   );
 }
