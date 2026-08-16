@@ -31,6 +31,8 @@ test("server-renders the Goalbound career simulator", async () => {
   assert.match(html, /title="Hungary"/);
   assert.match(html, /Draw my starting route|Start your career/);
   assert.match(html, /Trophy room/);
+  assert.match(html, /data-styled(?:-version)?=/);
+  assert.match(html, /\.site-shell\{/);
   assert.doesNotMatch(html, /Your site is taking shape|react-loading-skeleton/);
 });
 
