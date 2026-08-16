@@ -45,9 +45,26 @@ export function createCareerEngine(random = Math.random) {
   function formatMoney(value: number) {
     return value >= 1_000_000 ? `€${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1)}m` : `€${Math.round(value / 1_000)}k`;
   }
+  function clubDivision(club: Club) {
+    if (club.division) return club.division;
+    const lowerTier = /Championship|Segunda|2\. Bundesliga|Serie B|Ligue 2|Liga Portugal 2|Eerste Divisie|Série B|Primera Nacional|Liga 3/;
+    return lowerTier.test(club.league) ? 2 : 1;
+  }
+  function isPlausibleMarketClub(club: Club, player: Player) {
+    if (clubDivision(club) === 1) return true;
+    const current = clubByName(player.currentClub);
+    return club.country === player.nation || club.country === current?.country;
+  }
   function offerReason(club: Club, player: Player, role: Role) {
-    if (player.age >= 32) return club.country === player.nation ? "A homecoming with real minutes" : "One last adventure, one serious contract";
-    if (club.country !== player.nation && ["POR", "NED", "BEL", "CRO"].includes(club.country)) return "A proven bridge to a bigger league";
+    const current = clubByName(player.currentClub);
+    const isHomecoming = current && current.country !== player.nation && club.country === player.nation;
+    if (isHomecoming) return "A homecoming with a clearer route to senior minutes";
+    if (player.age >= 32) return "One last adventure, one serious contract";
+    const steppingStones = ["POR", "NED", "BEL", "CRO"];
+    const establishedLeagues = ["ENG", "ESP", "GER", "ITA", "FRA"];
+    const isTopFlightStep = clubDivision(club) === 1 && steppingStones.includes(club.country) && current?.country !== club.country;
+    if (isTopFlightStep && current && !establishedLeagues.includes(current.country)) return "A proven bridge to a bigger league";
+    if (isTopFlightStep && current && establishedLeagues.includes(current.country)) return "A top-flight reset with a clearer route to minutes";
     if (role === "Prospect") return "Prestige now, patience required";
     if (role === "Star") return "The team is being built around you";
     return `${club.development}/5 development · a credible next step`;
@@ -70,11 +87,12 @@ export function createCareerEngine(random = Math.random) {
       return makeOffer(club, player, player.origin === "gem" && club.level >= 4 ? "First-team fast track" : "Senior contract", "permanent", role, player.origin === "gem" ? `${role} role · the scouts believe the hype` : `${role} role · senior football immediately`);
     });
   }
-  function externalOffers(player: Player, count = 2): Offer[] {
+  function externalOffers(player: Player, count = 2, permanentOnly = false): Offer[] {
     const ideal = player.rating >= 87 ? 5 : player.rating >= 80 ? 4 : player.rating >= 72 ? 3 : player.rating >= 64 ? 2 : 1;
-    let pool = CLUBS.filter((club) => club.name !== player.currentClub && Math.abs(club.level - ideal) <= (player.agent.includes("International") ? 2 : 1));
+    const market = CLUBS.filter((club) => club.name !== player.currentClub && isPlausibleMarketClub(club, player));
+    let pool = market.filter((club) => Math.abs(club.level - ideal) <= (player.agent.includes("International") ? 2 : 1));
     if (player.age < 18) {
-      pool = CLUBS.filter((club) => club.name !== player.currentClub && club.country === player.nation);
+      pool = market.filter((club) => club.country === player.nation);
     } else if (player.age <= 21) {
       const hubs = new Set([player.nation, "POR", "NED", "BEL", "GER", "FRA"]);
       pool = pool.filter((club) => hubs.has(club.country) || club.development >= 5);
@@ -83,17 +101,17 @@ export function createCareerEngine(random = Math.random) {
       const lateMarkets = new Set([player.nation, "USA", "SAU", "JPN", "MEX", "BRA", "ARG", "TUR"]);
       pool = pool.filter((club) => lateMarkets.has(club.country) || club.level >= 4);
     }
-    if (!pool.length) pool = CLUBS.filter((club) => club.name !== player.currentClub && Math.abs(club.level - ideal) <= 2);
+    if (!pool.length) pool = market.filter((club) => Math.abs(club.level - ideal) <= 2);
     return shuffle(pool).slice(0, count).map((club) => {
       const role = roleFor(player.rating, club.level, player.age, player.roleBoost);
-      const loan = player.age <= 22 && role === "Prospect" && random() < .55;
-      return makeOffer(club, player, loan ? "Loan proposal" : club.country === player.nation ? "Domestic move" : player.age >= 31 ? "Final adventure" : "Move abroad", loan ? "loan" : "permanent", loan ? "Starter" : role);
+      const loan = !permanentOnly && player.age <= 22 && role === "Prospect" && random() < .55;
+      const current = clubByName(player.currentClub);
+      const label = club.country === current?.country ? "Domestic move" : club.country === player.nation ? "Homecoming" : player.age >= 31 ? "Final adventure" : "Move abroad";
+      return makeOffer(club, player, loan ? "Loan proposal" : label, loan ? "loan" : "permanent", loan ? "Starter" : role);
     });
   }
   function permanentOffers(player: Player, count = 2): Offer[] {
-    return externalOffers(player, count).map((offer) => offer.kind === "loan"
-      ? makeOffer(offer, player, offer.country === player.nation ? "Domestic contract" : "Permanent transfer", "permanent", roleFor(player.rating, offer.level, player.age, player.roleBoost), "A permanent deal. No loan-return meeting has been scheduled.")
-      : offer);
+    return externalOffers(player, count, true);
   }
   function contractedBids(player: Player, count = 2): Offer[] {
     return permanentOffers(player, count).map((offer) => {

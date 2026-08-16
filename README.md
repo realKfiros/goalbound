@@ -26,6 +26,7 @@ features/career/
     ClubBadge.tsx
 tests/
   rendered-html.test.mjs     Render and module-shape checks
+  transfer-market.test.mjs   Deterministic offer-realism regression checks
 ```
 
 ## Module seams
