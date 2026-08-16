@@ -24,7 +24,11 @@ test("server-renders the Goalbound career simulator", async () => {
   assert.match(html, /A career, not a transfer tour/);
   assert.match(html, /Every represented division is complete/);
   assert.match(html, /738(?:<!-- -->)? real clubs/);
-  assert.doesNotMatch(html, /title="(?:Israel|Poland|Cyprus)"/);
+  assert.match(html, /aria-label="31 playable nations"/);
+  assert.match(html, /title="Israel"/);
+  assert.match(html, /title="Poland"/);
+  assert.match(html, /title="Cyprus"/);
+  assert.match(html, /title="Hungary"/);
   assert.match(html, /Draw my starting route|Start your career/);
   assert.match(html, /Trophy room/);
   assert.doesNotMatch(html, /Your site is taking shape|react-loading-skeleton/);
@@ -63,9 +67,8 @@ test("keeps career rules, content, persistence, and rendering behind clear modul
   assert.match(game, /motion-screen/);
   assert.match(layout, /Goalbound — Your Football Career/);
   assert.match(packageJson, /"build": "WRANGLER_LOG_PATH=/);
-  const startingCountries = catalog.slice(catalog.indexOf("START_COUNTRIES"), catalog.indexOf("EXTRA_COUNTRIES"));
   const extraCountries = catalog.slice(catalog.indexOf("EXTRA_COUNTRIES"), catalog.indexOf("export const COUNTRIES"));
-  assert.doesNotMatch(startingCountries, /name: "(?:Israel|Poland|Cyprus)"/);
+  assert.match(catalog, /export const START_COUNTRIES = COUNTRIES/);
   assert.match(extraCountries, /name: "Israel", flag: "🇮🇱"/);
   assert.match(extraCountries, /name: "Poland", flag: "🇵🇱"/);
   assert.match(extraCountries, /name: "Cyprus", flag: "🇨🇾"/);

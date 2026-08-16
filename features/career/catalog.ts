@@ -1,7 +1,7 @@
 import type { Club, Country, Scenario } from "./domain";
 import { FULL_LEAGUE_CLUBS } from "./leagueCatalog";
 
-export const START_COUNTRIES: Country[] = [
+const ORIGINAL_START_COUNTRIES: Country[] = [
   { code: "ENG", name: "England", flag: "🇬🇧", threshold: 83 },
   { code: "ESP", name: "Spain", flag: "🇪🇸", threshold: 83 },
   { code: "GER", name: "Germany", flag: "🇩🇪", threshold: 82 },
@@ -38,7 +38,8 @@ const EXTRA_COUNTRIES: Country[] = [
   { code: "MEX", name: "Mexico", flag: "🇲🇽", threshold: 76 },
 ];
 
-export const COUNTRIES = [...START_COUNTRIES, ...EXTRA_COUNTRIES];
+export const COUNTRIES = [...ORIGINAL_START_COUNTRIES, ...EXTRA_COUNTRIES];
+export const START_COUNTRIES = COUNTRIES;
 export const POSITIONS = ["LW", "ST", "RW", "CAM", "CM", "CDM", "LB", "CB", "RB", "GK"];
 const crest = (id: number) => `https://crests.football-data.org/${id}.png`;
 
@@ -299,5 +300,5 @@ export const SCENARIOS: Scenario[] = [
 ];
 
 
-export function country(code: string) { return COUNTRIES.find((item) => item.code === code) ?? START_COUNTRIES[0]; }
+export function country(code: string) { return COUNTRIES.find((item) => item.code === code) ?? COUNTRIES[0]; }
 export function clubByName(name: string) { return CLUBS.find((item) => item.name === name); }

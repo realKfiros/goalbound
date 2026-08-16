@@ -1,4 +1,4 @@
-import { POSITIONS, START_COUNTRIES, country } from "../catalog";
+import { COUNTRIES, POSITIONS, country } from "../catalog";
 import type { CareerDraft } from "../domain";
 
 type SetupScreenProps = {
@@ -18,7 +18,7 @@ export function SetupScreen({ draft, seasonSpan, onDraftChange, onSeasonSpanChan
       <div className="setup-grid">
         <div className="form-panel">
           <div className="field-grid"><label className="field"><span>Player name</span><input value={draft.name} maxLength={22} onChange={(event) => onDraftChange({ ...draft, name: event.target.value })} placeholder="Your name" /></label><label className="field small-field"><span>Shirt number</span><input type="number" min="1" max="99" value={draft.number} onChange={(event) => onDraftChange({ ...draft, number: Math.max(1, Math.min(99, Number(event.target.value))) })} /></label></div>
-          <fieldset><legend>Nationality</legend><div className="country-grid">{START_COUNTRIES.map((item) => <button key={item.code} className={draft.nation === item.code ? "country-option selected" : "country-option"} onClick={() => onDraftChange({ ...draft, nation: item.code })} aria-pressed={draft.nation === item.code}><span>{item.flag}</span><strong>{item.name}</strong><small>{item.code}</small></button>)}</div></fieldset>
+          <fieldset><legend>Nationality · {COUNTRIES.length} playable nations</legend><div className="country-grid">{COUNTRIES.map((item) => <button key={item.code} className={draft.nation === item.code ? "country-option selected" : "country-option"} onClick={() => onDraftChange({ ...draft, nation: item.code })} aria-pressed={draft.nation === item.code}><span>{item.flag}</span><strong>{item.name}</strong><small>{item.code}</small></button>)}</div></fieldset>
           <fieldset><legend>Position</legend><div className="position-grid">{POSITIONS.map((item) => <button key={item} className={draft.position === item ? "position-option selected" : "position-option"} onClick={() => onDraftChange({ ...draft, position: item })} aria-pressed={draft.position === item}>{item}</button>)}</div></fieldset>
           <fieldset><legend>Decisions every</legend><div className="span-options">{[1, 2, 3].map((years) => <button key={years} className={seasonSpan === years ? "span-option selected" : "span-option"} onClick={() => onSeasonSpanChange(years)}>{years} {years === 1 ? "season" : "seasons"}</button>)}</div><p className="field-note">One season is the full soap opera. Three seasons is chaos at high speed.</p></fieldset>
         </div>

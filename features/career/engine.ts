@@ -79,11 +79,18 @@ export function createCareerEngine(random = Math.random) {
     if (player.origin === "academy") {
       const grounded = domestic.filter((club) => club.level <= 3);
       const elite = domestic.filter((club) => club.level >= 4);
-      const pool = [...shuffle(grounded).slice(0, 3), ...(random() < .12 ? shuffle(elite).slice(0, 1) : [])];
+      const preferred = grounded.length ? grounded : domestic;
+      const fallback = domestic.filter((club) => !preferred.includes(club));
+      let pool = [...shuffle(preferred), ...shuffle(fallback)].slice(0, 3);
+      if (grounded.length >= 3 && elite.length && random() < .12) {
+        pool = [...pool.slice(0, 2), shuffle(elite)[0]];
+      }
       return shuffle(pool).slice(0, 3).map((club) => makeOffer(club, player, "Academy place", "academy", "Prospect", `${club.development}/5 development · a patient route into football`));
     }
     const maxLevel = player.origin === "gem" ? 5 : 3;
-    return shuffle(domestic.filter((club) => club.level <= maxLevel)).slice(0, 3).map((club) => {
+    const eligible = domestic.filter((club) => club.level <= maxLevel);
+    const fallback = domestic.filter((club) => !eligible.includes(club));
+    return [...shuffle(eligible), ...shuffle(fallback)].slice(0, 3).map((club) => {
       const role = roleFor(player.rating, club.level, player.age, player.origin === "gem" ? 1 : 0);
       return makeOffer(club, player, player.origin === "gem" && club.level >= 4 ? "First-team fast track" : "Senior contract", "permanent", role, player.origin === "gem" ? `${role} role · the scouts believe the hype` : `${role} role · senior football immediately`);
     });

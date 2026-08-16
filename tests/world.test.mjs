@@ -66,6 +66,34 @@ test("every catalog division has a versioned competition format", () => {
   });
 });
 
+test("every loaded nation is playable and produces domestic starting offers", () => {
+  const { CLUBS, COUNTRIES, START_COUNTRIES } = loadTypeScriptModule("features/career/catalog.ts");
+  const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
+  const loadedCountries = [...new Set(CLUBS.map((club) => club.country))].sort();
+  const playableCountries = COUNTRIES.map((item) => item.code).sort();
+
+  assert.deepEqual(playableCountries, loadedCountries);
+  assert.deepEqual(START_COUNTRIES, COUNTRIES);
+
+  [
+    ["academy", .5],
+    ["senior", .15],
+    ["gem", .01],
+  ].forEach(([origin, roll]) => {
+    COUNTRIES.forEach((nation) => {
+      const start = createCareerEngine(() => roll).createCareer({
+        name: "Route Test",
+        nation: nation.code,
+        position: "ST",
+        number: 9,
+      });
+      assert.equal(start.player.origin, origin, `${nation.code}:${origin}`);
+      assert.equal(start.offers.length, 3, `${nation.code}:${origin}`);
+      assert.ok(start.offers.every((offer) => offer.country === nation.code), `${nation.code}:${origin}`);
+    });
+  });
+});
+
 test("a new save contains every club exactly once", () => {
   const { CLUBS } = loadTypeScriptModule("features/career/catalog.ts");
   const { createWorldState } = loadTypeScriptModule("features/career/world.ts");

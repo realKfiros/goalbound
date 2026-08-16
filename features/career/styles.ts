@@ -97,7 +97,7 @@ button { color: inherit; }
 .primary-button:hover { background: #d7ff72; transform: translateY(-2px); }
 .secondary-button { background: transparent; color: var(--ink); border-color: var(--line); }
 .secondary-button:hover { border-color: rgba(255,255,255,.36); transform: translateY(-2px); }
-.nation-strip { display: flex; gap: 9px; margin-top: 38px; }
+.nation-strip { display: flex; flex-wrap: wrap; gap: 9px; max-width: 560px; margin-top: 38px; }
 .nation-strip span { width: 32px; height: 32px; display: grid; place-items: center; background: rgba(255,255,255,.05); border: 1px solid var(--line); border-radius: 50%; font-size: 16px; }
 
 .hero-card-wrap { position: relative; min-height: 540px; display: grid; place-items: center; }
