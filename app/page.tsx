@@ -6,7 +6,7 @@ type Screen = "home" | "setup" | "career" | "summary";
 type Phase = "origin-reveal" | "decision" | "season-result" | "scenario" | "scenario-result";
 type Role = "Prospect" | "Rotation" | "Starter" | "Star";
 type Origin = "academy" | "senior" | "gem";
-type DecisionKind = "first-club" | "continue" | "graduation" | "contract" | "forced-sale" | "released" | "loan-return";
+type DecisionKind = "first-club" | "continue" | "transfer-interest" | "graduation" | "contract" | "forced-sale" | "released" | "loan-return";
 
 type Country = { code: string; name: string; flag: string; threshold: number };
 type Club = {
@@ -471,6 +471,12 @@ function buildPermanentOffers(player: Player, count = 2): Offer[] {
     ? makeOffer(offer, player, offer.country === player.nation ? "Domestic contract" : "Permanent transfer", "permanent", roleFor(player.rating, offer.level, player.age, player.roleBoost), "A permanent deal. No loan-return meeting has been scheduled.")
     : offer);
 }
+function buildContractedBids(player: Player, count = 2): Offer[] {
+  return buildPermanentOffers(player, count).map((offer) => {
+    const fee = Math.round(player.value * (randomInt(92, 128) / 100) / 50_000) * 50_000;
+    return makeOffer(offer, player, "Accepted transfer bid", "permanent", offer.role, `${offer.name} agreed ${money(fee)} with ${player.currentClub} · proposed ${offer.role.toLowerCase()} role`);
+  });
+}
 function stayOffer(player: Player, kind: "stay" | "renewal" | "promotion" = "stay"): Offer | null {
   const club = clubByName(player.currentClub);
   if (!club) return null;
@@ -638,8 +644,18 @@ export default function Home() {
   }
   function prepareOrdinaryDecision(nextPlayer: Player) {
     const stay = stayOffer(nextPlayer);
-    const outsideInterest = nextPlayer.squad === "academy" ? [] : randomUnit() < clamp(.15 + nextPlayer.reputation / 180, .15, .62) ? buildExternalOffers(nextPlayer, randomUnit() < .7 ? 1 : 2) : [];
-    setClubDecision(nextPlayer, "continue", `What should the next chapter at ${nextPlayer.currentClub} look like?`, outsideInterest.length ? "The club expects you back. Your agent has also left a few messages marked ‘interesting’." : "No artificial transfer window this time. The club expects you back, and staying is a complete career choice.", [...(stay ? [stay] : []), ...outsideInterest]);
+    const latest = nextPlayer.history[0];
+    const seasons = Math.max(1, (latest?.toAge ?? nextPlayer.age) - (latest?.fromAge ?? nextPlayer.age - 1));
+    const formBonus = (latest?.apps ?? 0) / seasons >= 25 ? .12 : nextPlayer.lastRole === "Star" ? .1 : 0;
+    const interestChance = clamp(.18 + nextPlayer.reputation / 170 + formBonus, .18, .74);
+    const outsideInterest = nextPlayer.squad === "academy" || randomUnit() >= interestChance ? [] : buildContractedBids(nextPlayer, randomUnit() < .72 ? 1 : 2);
+    setClubDecision(
+      nextPlayer,
+      outsideInterest.length ? "transfer-interest" : "continue",
+      outsideInterest.length ? "Transfer bids have arrived while you are under contract" : `What should the next chapter at ${nextPlayer.currentClub} look like?`,
+      outsideInterest.length ? `${nextPlayer.currentClub} has agreed a fee, but your ${nextPlayer.contractYears}-year contract does not force you to leave. Stay, or accept one of the approaches.` : "No artificial transfer window this time. The club expects you back, and staying is a complete career choice.",
+      [...(stay ? [stay] : []), ...outsideInterest],
+    );
   }
   function continueAfterSeason() {
     if (!player) return;

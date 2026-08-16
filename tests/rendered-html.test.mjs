@@ -37,6 +37,8 @@ test("keeps the persistent career model and real decision flow in source", async
   assert.match(page, /type Origin = "academy" \| "senior" \| "gem"/);
   assert.match(page, /contractYears: number/);
   assert.match(page, /forced-sale/);
+  assert.match(page, /Transfer bids have arrived while you are under contract/);
+  assert.match(page, /Accepted transfer bid/);
   assert.match(page, /Renew contract/);
   assert.match(page, /goalbound-career-v3/);
   assert.match(page, /motion-screen/);
