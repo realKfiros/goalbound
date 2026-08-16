@@ -9,6 +9,7 @@ export type Club = {
   name: string;
   country: string;
   league: string;
+  division?: number;
   level: number;
   development: number;
   identity: string;

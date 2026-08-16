@@ -1,4 +1,5 @@
 import type { Club, Country, Scenario } from "./domain";
+import { FULL_LEAGUE_CLUBS } from "./leagueCatalog";
 
 export const START_COUNTRIES: Country[] = [
   { code: "ENG", name: "England", flag: "🇬🇧", threshold: 83 },
@@ -8,6 +9,9 @@ export const START_COUNTRIES: Country[] = [
   { code: "FRA", name: "France", flag: "🇫🇷", threshold: 84 },
   { code: "POR", name: "Portugal", flag: "🇵🇹", threshold: 80 },
   { code: "NED", name: "Netherlands", flag: "🇳🇱", threshold: 80 },
+  { code: "ISR", name: "Israel", flag: "🇮🇱", threshold: 76 },
+  { code: "POL", name: "Poland", flag: "🇵🇱", threshold: 78 },
+  { code: "CYP", name: "Cyprus", flag: "🇨🇾", threshold: 73 },
   { code: "BRA", name: "Brazil", flag: "🇧🇷", threshold: 84 },
   { code: "ARG", name: "Argentina", flag: "🇦🇷", threshold: 84 },
   { code: "USA", name: "United States", flag: "🇺🇸", threshold: 75 },
@@ -28,7 +32,7 @@ export const COUNTRIES = [...START_COUNTRIES, ...EXTRA_COUNTRIES];
 export const POSITIONS = ["LW", "ST", "RW", "CAM", "CM", "CDM", "LB", "CB", "RB", "GK"];
 const crest = (id: number) => `https://crests.football-data.org/${id}.png`;
 
-export const CLUBS: Club[] = [
+const FEATURED_CLUBS: Club[] = [
   { name: "Arsenal", country: "ENG", league: "Premier League", level: 5, development: 5, identity: "Young, technical, impatient", short: "ARS", colors: "#e30613", crest: crest(57) },
   { name: "Liverpool", country: "ENG", league: "Premier League", level: 5, development: 4, identity: "Intensity and expectation", short: "LIV", colors: "#c8102e", crest: crest(64) },
   { name: "Manchester City", country: "ENG", league: "Premier League", level: 5, development: 3, identity: "Elite squad, tiny margin", short: "MCI", colors: "#6cabdd", crest: crest(65) },
@@ -135,6 +139,17 @@ export const CLUBS: Club[] = [
   { name: "Al Nassr", country: "SAU", league: "Saudi Pro League", level: 4, development: 2, identity: "Global attention immediately", short: "NAS", colors: "#f4df00" },
   { name: "Urawa Red Diamonds", country: "JPN", league: "J1 League", level: 3, development: 4, identity: "A meticulous new football life", short: "URD", colors: "#e60012" },
   { name: "Club América", country: "MEX", league: "Liga MX", level: 4, development: 3, identity: "You are either loved or discussed", short: "AME", colors: "#f8df00" },
+];
+
+const featuredByName = new Map(FEATURED_CLUBS.map((club) => [`${club.country}:${club.name}`, club]));
+const catalogNames = new Set(FULL_LEAGUE_CLUBS.map((club) => `${club.country}:${club.name}`));
+
+export const CLUBS: Club[] = [
+  ...FULL_LEAGUE_CLUBS.map((club) => {
+    const featured = featuredByName.get(`${club.country}:${club.name}`);
+    return featured ? { ...club, ...featured, league: club.league, division: club.division } : club;
+  }),
+  ...FEATURED_CLUBS.filter((club) => !catalogNames.has(`${club.country}:${club.name}`)),
 ];
 
 export const SCENARIOS: Scenario[] = [
@@ -279,4 +294,3 @@ export const SCENARIOS: Scenario[] = [
 
 export function country(code: string) { return COUNTRIES.find((item) => item.code === code) ?? START_COUNTRIES[0]; }
 export function clubByName(name: string) { return CLUBS.find((item) => item.name === name); }
-

@@ -13,7 +13,8 @@ app/
 features/career/
   GoalboundGame.tsx          React state and career-flow orchestration
   domain.ts                  Shared career types and default save state
-  catalog.ts                 Countries, clubs, positions, and scenarios
+  catalog.ts                 Countries, featured club details, and scenarios
+  leagueCatalog.ts           Complete researched league membership
   engine.ts                  Career simulation and decision rules
   storage.ts                 Device-local save adapter
   career.css                 Goalbound feature styles
@@ -38,7 +39,9 @@ The career engine is the main behavioural module. Its interface exposes:
 - `resolveScenario`
 - `achievements`
 
-Football content can be edited in `catalog.ts` without touching the rules.
+Football content can be edited in `catalog.ts` and `leagueCatalog.ts` without
+touching the rules. Complete league membership is kept apart from hand-tuned
+club identities so season updates do not disturb the career engine.
 Rendering can change inside `components/` without touching the simulation.
 Browser persistence is isolated in `storage.ts`.
 

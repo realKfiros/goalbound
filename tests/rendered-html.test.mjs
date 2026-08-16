@@ -22,13 +22,14 @@ test("server-renders the Goalbound career simulator", async () => {
   const html = await response.text();
   assert.match(html, /<title>Goalbound — Your Football Career<\/title>/i);
   assert.match(html, /A career, not a transfer tour/);
-  assert.match(html, /Top clubs, smaller clubs and second-tier pathways/);
+  assert.match(html, /Every requested 2026–27 division is complete/);
+  assert.match(html, /429(?:<!-- -->)? real clubs/);
   assert.match(html, /Draw my starting route|Start your career/);
   assert.doesNotMatch(html, /Your site is taking shape|react-loading-skeleton/);
 });
 
 test("keeps career rules, content, persistence, and rendering behind clear modules", async () => {
-  const [page, engine, domain, storage, game, layout, packageJson] = await Promise.all([
+  const [page, engine, domain, storage, game, layout, packageJson, catalog, leagueCatalog] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../features/career/engine.ts", import.meta.url), "utf8"),
     readFile(new URL("../features/career/domain.ts", import.meta.url), "utf8"),
@@ -36,12 +37,15 @@ test("keeps career rules, content, persistence, and rendering behind clear modul
     readFile(new URL("../features/career/GoalboundGame.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
+    readFile(new URL("../features/career/catalog.ts", import.meta.url), "utf8"),
+    readFile(new URL("../features/career/leagueCatalog.ts", import.meta.url), "utf8"),
   ]);
 
   assert.match(page, /<GoalboundGame \/>/);
   assert.ok(page.split("\n").length < 10);
   assert.match(domain, /type Origin = "academy" \| "senior" \| "gem"/);
   assert.match(domain, /contractYears: number/);
+  assert.match(domain, /division\?: number/);
   assert.match(engine, /function createCareerEngine/);
   assert.match(engine, /function simulateSeason/);
   assert.match(engine, /forced-sale/);
@@ -52,5 +56,13 @@ test("keeps career rules, content, persistence, and rendering behind clear modul
   assert.match(game, /motion-screen/);
   assert.match(layout, /Goalbound — Your Football Career/);
   assert.match(packageJson, /"build": "WRANGLER_LOG_PATH=/);
+  assert.match(catalog, /name: "Israel", flag: "🇮🇱"/);
+  assert.match(catalog, /name: "Poland", flag: "🇵🇱"/);
+  assert.match(catalog, /name: "Cyprus", flag: "🇨🇾"/);
+  assert.match(leagueCatalog, /Premier League/);
+  assert.match(leagueCatalog, /National League/);
+  assert.match(leagueCatalog, /Maccabi Tel Aviv/);
+  assert.match(leagueCatalog, /Legia Warszawa/);
+  assert.match(leagueCatalog, /APOEL/);
   assert.doesNotMatch(game, /SkeletonPreview/);
 });
