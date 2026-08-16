@@ -150,3 +150,80 @@ test("the collection exposes every division award, national cup, and club", () =
   assert.equal(representedClubs(room).has("Manchester City"), true);
   assert.equal(clubAlbum(room).reduce((total, group) => total + group.collected, 0), 1);
 });
+
+
+function seededRandom(seed) {
+  let state = seed >>> 0;
+  return () => {
+    state += 0x6D2B79F5;
+    let value = state;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+test("every represented division is a complete catalog league", () => {
+  const { CLUBS } = loadTypeScriptModule("features/career/catalog.ts");
+  const { COMPLETE_LEAGUES, COMPLETE_LEAGUE_CLUB_COUNT } = loadTypeScriptModule("features/career/leagueCatalog.ts");
+  const { clubDivision } = loadTypeScriptModule("features/career/finances.ts");
+  const expected = new Map(COMPLETE_LEAGUES.map((league) => [
+    `${league.country}:${league.league}:${league.division}`,
+    league.expectedClubs,
+  ]));
+  const actual = new Map();
+
+  CLUBS.forEach((club) => {
+    const key = `${club.country}:${club.league}:${clubDivision(club)}`;
+    actual.set(key, (actual.get(key) ?? 0) + 1);
+  });
+
+  assert.equal(CLUBS.length, 596);
+  assert.equal(COMPLETE_LEAGUE_CLUB_COUNT, 596);
+  assert.deepEqual(actual, expected);
+});
+
+test("established contenders dominate league odds until an exceptional player bends them", () => {
+  const { CLUBS } = loadTypeScriptModule("features/career/catalog.ts");
+  const {
+    competitionStrength,
+    exceptionalPlayerBoost,
+    pickCompetitionWinner,
+  } = loadTypeScriptModule("features/career/competitionStrength.ts");
+  const premierLeague = CLUBS.filter((club) => club.country === "ENG" && club.league === "Premier League");
+  const liverpool = premierLeague.find((club) => club.name === "Liverpool");
+  const hull = premierLeague.find((club) => club.name === "Hull City");
+  assert.ok(liverpool && hull);
+  assert.ok(competitionStrength(liverpool) - competitionStrength(hull) >= 40);
+
+  const runs = 20_000;
+  const baseline = new Map();
+  const baselineRandom = seededRandom(4744);
+  for (let index = 0; index < runs; index += 1) {
+    const winner = pickCompetitionWinner(premierLeague, "", 0, "league", baselineRandom);
+    baseline.set(winner, (baseline.get(winner) ?? 0) + 1);
+  }
+
+  const establishedWins = ["Liverpool", "Arsenal", "Manchester City"]
+    .reduce((total, club) => total + (baseline.get(club) ?? 0), 0);
+  const baselineHullWins = baseline.get("Hull City") ?? 0;
+  assert.ok(establishedWins / runs > .72);
+  assert.ok(baselineHullWins / runs < .001);
+
+  const insaneSeasonBoost = exceptionalPlayerBoost({
+    rating: 94, apps: 48, goals: 42, assists: 18, reputation: 95,
+  });
+  const inspired = new Map();
+  const inspiredRandom = seededRandom(4744);
+  for (let index = 0; index < runs; index += 1) {
+    const winner = pickCompetitionWinner(
+      premierLeague, "Hull City", insaneSeasonBoost, "league", inspiredRandom,
+    );
+    inspired.set(winner, (inspired.get(winner) ?? 0) + 1);
+  }
+
+  const inspiredHullRate = (inspired.get("Hull City") ?? 0) / runs;
+  assert.ok(insaneSeasonBoost > 40);
+  assert.ok(inspiredHullRate > .15);
+  assert.ok(inspiredHullRate < .35);
+});

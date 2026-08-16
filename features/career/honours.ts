@@ -1,4 +1,5 @@
 import { CLUBS, clubByName, country } from "./catalog";
+import { competitionStrength, exceptionalPlayerBoost, pickCompetitionWinner } from "./competitionStrength";
 import { clubDivision } from "./finances";
 import type { AnnualHonours, AwardWinner, Club, DivisionHonours, Offer, Player, PlayerHonour } from "./domain";
 
@@ -17,6 +18,9 @@ const CUP_NAMES: Record<string, string> = {
   ENG: "FA Cup", ESP: "Copa del Rey", GER: "DFB-Pokal", ITA: "Coppa Italia",
   FRA: "Coupe de France", POR: "Taça de Portugal", NED: "KNVB Cup",
   ISR: "State Cup", POL: "Polish Cup", CYP: "Cypriot Cup",
+  BRA: "Copa do Brasil", ARG: "Copa Argentina", USA: "U.S. Open Cup",
+  BEL: "Belgian Cup", SCO: "Scottish Cup", TUR: "Turkish Cup", CRO: "Croatian Cup",
+  GRE: "Greek Cup", SAU: "King's Cup", JPN: "Emperor's Cup", MEX: "Copa MX",
 };
 const FIRST_NAMES = ["Mateo", "Jamal", "Luka", "Noah", "Rafael", "Elias", "Milan", "Thiago", "Omar", "Leo"];
 const LAST_NAMES = ["Costa", "Diallo", "Novak", "Silva", "Moretti", "Santos", "Bakayoko", "Ibrahim", "Kovač", "Martin"];
@@ -35,12 +39,7 @@ function fictionalWinner(club: string, random: () => number, detail?: string): A
     detail,
   };
 }
-function weightedClub(clubs: Club[], currentClub: string, playerImpact: number, random: () => number) {
-  return clubs.reduce((best, club) => {
-    const score = club.level * 12 + club.development * 2 + random() * 25 + (club.name === currentClub ? playerImpact : 0);
-    return score > best.score ? { name: club.name, score } : best;
-  }, { name: clubs[0]?.name ?? currentClub, score: -Infinity }).name;
-}
+
 function groupedClubs(keyFor: (club: Club) => string) {
   const groups = new Map<string, Club[]>();
   CLUBS.forEach((club) => groups.set(keyFor(club), [...(groups.get(keyFor(club)) ?? []), club]));
@@ -74,7 +73,7 @@ export function simulateHonours(input: HonoursInput, random: () => number = Math
   const league = activeClub?.league ?? input.offer.league;
   const divisionClubs = CLUBS.filter((club) => club.country === input.offer.country && clubDivision(club) === division);
   const countryClubs = CLUBS.filter((club) => club.country === input.offer.country);
-  const worldClubs = CLUBS.filter((club) => clubDivision(club) === 1 && club.level >= 4);
+  const worldClubs = CLUBS.filter((club) => clubDivision(club) === 1 && competitionStrength(club) >= 80);
   const seniorEligible = input.offer.kind !== "academy";
 
   return Array.from({ length: input.years }, (_, index) => {
@@ -83,9 +82,17 @@ export function simulateHonours(input: HonoursInput, random: () => number = Math
     const goals = yearlyStats(input.goals, input.years, index, random);
     const assists = yearlyStats(input.assists, input.years, index, random);
     const apps = yearlyStats(input.apps, input.years, index, random);
-    const playerImpact = seniorEligible ? Math.max(0, input.rating - 67) + goals * 1.3 + assists * .7 : 0;
-    const champion = weightedClub(divisionClubs.length ? divisionClubs : activeClub ? [activeClub] : [], input.offer.name, playerImpact, random);
-    const cupWinner = weightedClub(countryClubs.length ? countryClubs : activeClub ? [activeClub] : [], input.offer.name, playerImpact * .72, random);
+    const playerImpact = seniorEligible
+      ? exceptionalPlayerBoost({ rating: input.rating, apps, goals, assists, reputation: input.reputation })
+      : 0;
+    const champion = pickCompetitionWinner(
+      divisionClubs.length ? divisionClubs : activeClub ? [activeClub] : [],
+      input.offer.name, playerImpact, "league", random,
+    );
+    const cupWinner = pickCompetitionWinner(
+      countryClubs.length ? countryClubs : activeClub ? [activeClub] : [],
+      input.offer.name, playerImpact * .7, "cup", random,
+    );
     const rivalClub = pick(divisionClubs.filter((club) => club.name !== input.offer.name), random)?.name ?? input.offer.name;
     const rivalGoals = randomInt(random, 16, 30);
     const winsGoldenBoot = seniorEligible && apps >= 16 && goals >= rivalGoals;
@@ -117,7 +124,7 @@ export function simulateHonours(input: HonoursInput, random: () => number = Math
     const divisionRoll: DivisionHonours[] = groupedClubs((club) => `${club.country}:${clubDivision(club)}`)
       .map(([key, clubs]) => {
         if (key === activeDivisionKey) return { country: input.offer.country, league, champion, topScorer, playerOfSeason };
-        const winningClub = weightedClub(clubs, "", 0, random);
+        const winningClub = pickCompetitionWinner(clubs, "", 0, "league", random);
         const awardClub = pick(clubs, random)?.name ?? winningClub;
         return {
           country: clubs[0]?.country ?? "",
@@ -130,7 +137,7 @@ export function simulateHonours(input: HonoursInput, random: () => number = Math
     const cupRoll = groupedClubs((club) => club.country).map(([countryCode, clubs]) => ({
       country: countryCode,
       name: nationalCupName(countryCode),
-      winner: countryCode === input.offer.country ? cupWinner : weightedClub(clubs, "", 0, random),
+      winner: countryCode === input.offer.country ? cupWinner : pickCompetitionWinner(clubs, "", 0, "cup", random),
     }));
 
     return {

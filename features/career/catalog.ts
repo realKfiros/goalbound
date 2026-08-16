@@ -142,14 +142,11 @@ const FEATURED_CLUBS: Club[] = [
 ];
 
 const featuredByName = new Map(FEATURED_CLUBS.map((club) => [`${club.country}:${club.name}`, club]));
-const catalogNames = new Set(FULL_LEAGUE_CLUBS.map((club) => `${club.country}:${club.name}`));
-
 export const CLUBS: Club[] = [
   ...FULL_LEAGUE_CLUBS.map((club) => {
     const featured = featuredByName.get(`${club.country}:${club.name}`);
     return featured ? { ...club, ...featured, league: club.league, division: club.division } : club;
   }),
-  ...FEATURED_CLUBS.filter((club) => !catalogNames.has(`${club.country}:${club.name}`)),
 ];
 
 export const SCENARIOS: Scenario[] = [

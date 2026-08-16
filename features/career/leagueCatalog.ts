@@ -192,11 +192,112 @@ export const COMPLETE_LEAGUES: readonly LeagueSeed[] = [
       "Pafos FC", "Krasava ENY",
     ],
   },
+  {
+    country: "BRA", league: "Brasileirão", division: 1, expectedClubs: 20,
+    clubs: [
+      "Athletico Paranaense", "Atlético Mineiro", "Bahia", "Botafogo", "Chapecoense",
+      "Corinthians", "Coritiba", "Cruzeiro", "Flamengo", "Fluminense", "Grêmio",
+      "Internacional", "Mirassol", "Palmeiras", "Red Bull Bragantino", "Remo", "Santos",
+      "São Paulo", "Vasco da Gama", "Vitória",
+    ],
+  },
+  {
+    country: "ARG", league: "Liga Profesional", division: 1, expectedClubs: 30,
+    clubs: [
+      "Aldosivi", "Argentinos Juniors", "Atlético Tucumán", "Banfield", "Barracas Central",
+      "Belgrano", "Boca Juniors", "Central Córdoba", "Defensa y Justicia",
+      "Deportivo Riestra", "Estudiantes (BA)", "Estudiantes de La Plata",
+      "Gimnasia de Mendoza", "Gimnasia y Esgrima La Plata", "Huracán", "Independiente",
+      "Independiente Rivadavia", "Instituto", "Lanús", "Newell's Old Boys", "Platense",
+      "Racing Club", "River Plate", "Rosario Central", "San Lorenzo", "Sarmiento",
+      "Talleres", "Tigre", "Unión", "Vélez Sarsfield",
+    ],
+  },
+  {
+    country: "USA", league: "Major League Soccer", division: 1, expectedClubs: 30,
+    clubs: [
+      "Atlanta United", "Austin FC", "Charlotte FC", "Chicago Fire", "FC Cincinnati",
+      "Colorado Rapids", "Columbus Crew", "D.C. United", "FC Dallas", "Houston Dynamo",
+      "Inter Miami", "LA Galaxy", "Los Angeles FC", "Minnesota United", "CF Montréal",
+      "Nashville SC", "New England Revolution", "New York City FC", "New York Red Bulls",
+      "Orlando City", "Philadelphia Union", "Portland Timbers", "Real Salt Lake",
+      "San Diego FC", "San Jose Earthquakes", "Seattle Sounders", "Sporting Kansas City",
+      "St. Louis CITY", "Toronto FC", "Vancouver Whitecaps",
+    ],
+  },
+  {
+    country: "BEL", league: "Belgian Pro League", division: 1, expectedClubs: 18,
+    clubs: [
+      "RSC Anderlecht", "Royal Antwerp", "Cercle Brugge", "Club Brugge", "KAA Gent", "Genk",
+      "KV Kortrijk", "KV Mechelen", "KVC Westerlo", "Lommel SK", "OH Leuven",
+      "RAAL La Louvière", "Sporting Charleroi", "SK Beveren", "Standard Liège", "STVV",
+      "Union Saint-Gilloise", "Zulte Waregem",
+    ],
+  },
+  {
+    country: "SCO", league: "Scottish Premiership", division: 1, expectedClubs: 12,
+    clubs: [
+      "Aberdeen", "Celtic", "Dundee", "Dundee United", "Falkirk", "Heart of Midlothian",
+      "Hibernian", "Kilmarnock", "Motherwell", "Rangers", "St Johnstone", "St Mirren",
+    ],
+  },
+  {
+    country: "TUR", league: "Süper Lig", division: 1, expectedClubs: 18,
+    clubs: [
+      "Alanyaspor", "Amedspor", "Beşiktaş", "Çaykur Rizespor", "Çorum FK", "Erzurumspor",
+      "Eyüpspor", "Fenerbahçe", "Galatasaray", "Gaziantep FK", "Gençlerbirliği", "Göztepe",
+      "İstanbul Başakşehir", "Kasımpaşa", "Kocaelispor", "Konyaspor", "Samsunspor",
+      "Trabzonspor",
+    ],
+  },
+  {
+    country: "CRO", league: "Croatian Football League", division: 1, expectedClubs: 10,
+    clubs: [
+      "Dinamo Zagreb", "HNK Gorica", "Hajduk Split", "HNK Rijeka", "Istra 1961",
+      "Lokomotiva Zagreb", "Osijek", "Rudeš", "Slaven Belupo", "Varaždin",
+    ],
+  },
+  {
+    country: "GRE", league: "Super League Greece", division: 1, expectedClubs: 14,
+    clubs: [
+      "AEK Athens", "Aris Thessaloniki", "Asteras Tripolis", "Atromitos", "Volos",
+      "Iraklis", "Kalamata", "Kifisia", "Levadiakos", "Olympiacos", "OFI Crete",
+      "Panathinaikos", "Panetolikos", "PAOK",
+    ],
+  },
+  {
+    country: "SAU", league: "Saudi Pro League", division: 1, expectedClubs: 18,
+    clubs: [
+      "Abha", "Al Ahli", "Al Ettifaq", "Al Faisaly", "Al Fateh", "Al Fayha", "Al Hazem",
+      "Al Hilal", "Al Ittihad", "Al Khaleej", "Al Kholood", "Al Nassr", "Al Qadsiah",
+      "Al Riyadh", "Al Shabab", "Al Taawoun", "Diriyah Club", "Neom S.C.",
+    ],
+  },
+  {
+    country: "JPN", league: "J1 League", division: 1, expectedClubs: 20,
+    clubs: [
+      "Avispa Fukuoka", "Cerezo Osaka", "F.C. Tokyo", "Fagiano Okayama", "Gamba Osaka",
+      "JEF United Chiba", "Kashima Antlers", "Kashiwa Reysol", "Kawasaki Frontale",
+      "Kyoto Sanga", "Machida Zelvia", "Mito Hollyhock", "Nagoya Grampus",
+      "Sanfrecce Hiroshima", "Shimizu S-Pulse", "Tokyo Verdy", "Urawa Red Diamonds",
+      "V-Varen Nagasaki", "Vissel Kobe", "Yokohama F. Marinos",
+    ],
+  },
+  {
+    country: "MEX", league: "Liga MX", division: 1, expectedClubs: 18,
+    clubs: [
+      "Club América", "Atlas", "Atlético San Luis", "Cruz Azul", "Guadalajara", "FC Juárez",
+      "León", "Mazatlán", "Monterrey", "Necaxa", "Pachuca", "Puebla", "Pumas UNAM",
+      "Querétaro", "Santos Laguna", "Tigres UANL", "Tijuana", "Toluca",
+    ],
+  },
 ] as const;
 
 const PALETTE = ["#c7ff35", "#45b7ff", "#ff5c7a", "#ffc857", "#9b7bff", "#36d399", "#ff8a3d"];
 const COUNTRY_LEVEL: Record<string, number> = {
-  ENG: 4, ESP: 4, GER: 4, ITA: 4, FRA: 4, POR: 3, NED: 3, ISR: 2, POL: 2, CYP: 2,
+  ENG: 4, ESP: 4, GER: 4, ITA: 4, FRA: 4, POR: 3, NED: 3, BRA: 4, ARG: 4,
+  USA: 3, BEL: 3, SCO: 3, TUR: 3, SAU: 4, JPN: 3, MEX: 3,
+  ISR: 2, POL: 2, CYP: 2, CRO: 2, GRE: 3,
 };
 
 function shortName(name: string) {
@@ -218,7 +319,7 @@ function clubColor(name: string) {
 }
 
 function profile(country: string, division: number) {
-  if (division === 1) return { level: COUNTRY_LEVEL[country] ?? 2, development: ["GER", "FRA", "POR", "NED"].includes(country) ? 4 : 3 };
+  if (division === 1) return { level: COUNTRY_LEVEL[country] ?? 2, development: ["GER", "FRA", "POR", "NED", "BRA", "ARG", "BEL", "CRO", "JPN"].includes(country) ? 4 : 3 };
   if (division === 2) return { level: 2, development: 4 };
   if (division === 3) return { level: 2, development: 4 };
   return { level: 1, development: division === 4 ? 4 : 3 };
@@ -247,8 +348,8 @@ export const FULL_LEAGUE_CLUBS: Club[] = COMPLETE_LEAGUES.flatMap((league) =>
 
 export const COMPLETE_LEAGUE_CLUB_COUNT = FULL_LEAGUE_CLUBS.length;
 
-if (COMPLETE_LEAGUE_CLUB_COUNT !== 388) {
-  throw new Error(`Complete catalog has ${COMPLETE_LEAGUE_CLUB_COUNT} clubs; expected 388.`);
+if (COMPLETE_LEAGUE_CLUB_COUNT !== 596) {
+  throw new Error(`Complete catalog has ${COMPLETE_LEAGUE_CLUB_COUNT} clubs; expected 596.`);
 }
 
 const uniqueClubKeys = new Set(FULL_LEAGUE_CLUBS.map((club) => `${club.country}:${club.name}`));

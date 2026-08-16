@@ -18,7 +18,7 @@ export function HomeScreen({ player, trophyCount, onStart, onResume, onTrophyRoo
           <div className="floating-tag tag-left"><small>NEXT MOVE</small><strong>YOU DECIDE</strong></div><div className="floating-tag tag-right"><small>OUTCOME</small><strong>FATE DECIDES</strong></div>
         </div>
       </section>
-      <section className="manifesto"><div><span className="step-number">01</span><h3>Real football world</h3><p>Every requested 2026–27 division is complete: England&apos;s first five levels, Europe&apos;s major top-two pathways, plus Israel, Poland and Cyprus.</p></div><div><span className="step-number">02</span><h3>Decisions with teeth</h3><p>See the odds, choose your risk and live with what the football gods decide.</p></div><div><span className="step-number">03</span><h3>A career, not a transfer tour</h3><p>Renew for years, become one-club royalty—or be sold when the balance sheet wins.</p></div></section>
+      <section className="manifesto"><div><span className="step-number">01</span><h3>Real football world</h3><p>Every represented division is complete: England&apos;s first five levels, Europe&apos;s major pathways, and full top flights across the Americas, Middle East and Asia.</p></div><div><span className="step-number">02</span><h3>Decisions with teeth</h3><p>See the odds, choose your risk and live with what the football gods decide.</p></div><div><span className="step-number">03</span><h3>A career, not a transfer tour</h3><p>Renew for years, become one-club royalty—or be sold when the balance sheet wins.</p></div></section>
     </>
   );
 }
