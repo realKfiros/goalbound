@@ -1,4 +1,5 @@
 import { CLUBS, SCENARIOS, clubByName, country } from "./catalog";
+import { clubDivision, maxSingleFee } from "./finances";
 import type {
   CareerBeat,
   CareerDecision,
@@ -45,19 +46,6 @@ export function createCareerEngine(random = Math.random) {
   function formatMoney(value: number) {
     return value >= 1_000_000 ? `€${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1)}m` : `€${Math.round(value / 1_000)}k`;
   }
-  function clubDivision(club: Club) {
-    if (club.division) return club.division;
-    const lowerTier = /Championship|Segunda|2\. Bundesliga|Serie B|Ligue 2|Liga Portugal 2|Eerste Divisie|Série B|Primera Nacional|Liga 3/;
-    return lowerTier.test(club.league) ? 2 : 1;
-  }
-  function transferBudget(club: Club) {
-    const division = clubDivision(club);
-    if (division >= 5) return 500_000;
-    if (division === 4) return 1_500_000;
-    if (division === 3) return 4_000_000;
-    if (division === 2) return club.country === "ENG" ? 25_000_000 : 12_000_000;
-    return [0, 3_000_000, 10_000_000, 30_000_000, 75_000_000, 175_000_000][club.level] ?? 3_000_000;
-  }
   function isPlausibleMarketClub(club: Club, player: Player) {
     if (clubDivision(club) === 1) return true;
     const current = clubByName(player.currentClub);
@@ -98,11 +86,12 @@ export function createCareerEngine(random = Math.random) {
   function externalOffers(player: Player, count = 2, permanentOnly = false, requiresTransferFee = false): Offer[] {
     const ideal = player.rating >= 87 ? 5 : player.rating >= 80 ? 4 : player.rating >= 72 ? 3 : player.rating >= 64 ? 2 : 1;
     const minimumFee = player.value * .92;
-    const market = CLUBS.filter((club) =>
-      club.name !== player.currentClub
-      && isPlausibleMarketClub(club, player)
-      && (!requiresTransferFee || transferBudget(club) >= minimumFee),
-    );
+    const market = CLUBS.filter((club) => {
+      const role = roleFor(player.rating, club.level, player.age, player.roleBoost);
+      return club.name !== player.currentClub
+        && isPlausibleMarketClub(club, player)
+        && (!requiresTransferFee || maxSingleFee(club, role) >= minimumFee);
+    });
     let pool = market.filter((club) => Math.abs(club.level - ideal) <= (player.agent.includes("International") ? 2 : 1));
     if (player.age < 18) {
       pool = market.filter((club) => club.country === player.nation);
@@ -128,8 +117,9 @@ export function createCareerEngine(random = Math.random) {
   }
   function contractedBids(player: Player, count = 2): Offer[] {
     return permanentOffers(player, count, true).map((offer) => {
-      const proposedFee = Math.round(player.value * (randomInt(92, 128) / 100) / 50_000) * 50_000;
-      const fee = Math.min(proposedFee, transferBudget(offer));
+      const rounding = clubDivision(offer) <= 2 ? 50_000 : 10_000;
+      const proposedFee = Math.round(player.value * (randomInt(92, 128) / 100) / rounding) * rounding;
+      const fee = Math.min(proposedFee, maxSingleFee(offer, offer.role));
       return makeOffer(offer, player, "Accepted transfer bid", "permanent", offer.role, `${offer.name} agreed ${formatMoney(fee)} with ${player.currentClub} · proposed ${offer.role.toLowerCase()} role`);
     });
   }

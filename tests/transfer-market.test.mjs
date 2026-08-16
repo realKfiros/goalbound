@@ -112,6 +112,61 @@ function sampledOffers(nation = "ENG") {
   return offers;
 }
 
+function club(name) {
+  const { CLUBS } = loadTypeScriptModule("features/career/catalog.ts");
+  const match = CLUBS.find((item) => item.name === name);
+  assert.ok(match, `Expected ${name} in the club catalog`);
+  return match;
+}
+
+test("club finances vary by stature within the same league", () => {
+  const { clubFinance, maxSingleFee } = loadTypeScriptModule("features/career/finances.ts");
+  const city = club("Manchester City");
+  const brighton = club("Brighton & Hove Albion");
+  const hull = club("Hull City");
+
+  assert.equal(clubFinance(city).financialBand, 5);
+  assert.equal(clubFinance(brighton).financialBand, 3);
+  assert.equal(clubFinance(hull).financialBand, 1);
+  assert.ok(maxSingleFee(city, "Star") > maxSingleFee(brighton, "Star"));
+  assert.ok(maxSingleFee(brighton, "Star") > maxSingleFee(hull, "Star"));
+});
+
+test("club finance estimates are stable and role-sensitive", () => {
+  const { maxSingleFee } = loadTypeScriptModule("features/career/finances.ts");
+  const arsenal = club("Arsenal");
+  assert.equal(maxSingleFee(arsenal, "Starter"), maxSingleFee(arsenal, "Starter"));
+  assert.ok(maxSingleFee(arsenal, "Star") > maxSingleFee(arsenal, "Rotation"));
+});
+
+test("pyramid ceilings still override club stature", () => {
+  const { maxSingleFee } = loadTypeScriptModule("features/career/finances.ts");
+  assert.ok(maxSingleFee(club("Leicester City"), "Star") <= 4_000_000);
+  assert.ok(maxSingleFee(club("Salford City"), "Star") <= 1_500_000);
+  assert.ok(maxSingleFee(club("Southend United"), "Star") <= 500_000);
+  assert.ok(maxSingleFee(club("Dorking Wanderers"), "Star") < 100_000);
+});
+
+test("typical buying power falls down the English pyramid", () => {
+  const { CLUBS } = loadTypeScriptModule("features/career/catalog.ts");
+  const { clubDivision, maxSingleFee } = loadTypeScriptModule("features/career/finances.ts");
+  const ceilings = [0, 175_000_000, 25_000_000, 4_000_000, 1_500_000, 500_000];
+  const medians = [];
+
+  for (let division = 1; division <= 5; division += 1) {
+    const budgets = CLUBS
+      .filter((item) => item.country === "ENG" && clubDivision(item) === division)
+      .map((item) => maxSingleFee(item, "Starter"))
+      .sort((a, b) => a - b);
+    assert.ok(budgets.length > 0, `Expected English division ${division} clubs`);
+    assert.ok(budgets.every((budget) => budget <= ceilings[division]));
+    medians.push(budgets[Math.floor(budgets.length / 2)]);
+  }
+
+  assert.deepEqual([...medians].sort((a, b) => b - a), medians);
+  assert.equal(new Set(medians).size, medians.length);
+});
+
 test("an elite English club does not receive foreign second-division bids", () => {
   const invalid = sampledOffers().find((offer) =>
     (offer.division ?? 1) > 1 && offer.country !== "ENG",
@@ -145,7 +200,7 @@ test("National League clubs do not bid for eight-figure players", () => {
 });
 
 test("National League clubs can still bid for affordable players", () => {
-  const affordable = sampledContractedBids({ rating: 58, value: 250_000 }).find((offer) =>
+  const affordable = sampledContractedBids({ rating: 58, value: 80_000 }).find((offer) =>
     (offer.division ?? 1) >= 5,
   );
   assert.ok(affordable, "Expected an affordable National League transfer to remain possible");
