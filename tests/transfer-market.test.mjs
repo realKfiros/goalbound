@@ -46,7 +46,7 @@ function seededRandom(seed) {
   };
 }
 
-function eliteEnglishProspect(nation = "ENG") {
+function eliteEnglishProspect(nation = "ENG", overrides = {}) {
   return {
     name: "Regression Prospect", nation, position: "CM", number: 18,
     age: 24, rating: 67, potential: 83, value: 8_000_000,
@@ -55,7 +55,38 @@ function eliteEnglishProspect(nation = "ENG") {
     morale: 70, fitness: 92, reputation: 100, agent: "International agent", roleBoost: 0,
     origin: "academy", squad: "senior", contractYears: 3, clubSeasons: 4,
     lastRole: "Rotation", seenScenarios: [], history: [],
+    ...overrides,
   };
+}
+
+function sampledContractedBids(overrides = {}) {
+  const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
+  const offers = [];
+  for (let seed = 1; seed <= 2_000; seed += 1) {
+    const engine = createCareerEngine(seededRandom(seed));
+    const decision = engine.ordinaryDecision(eliteEnglishProspect("ENG", overrides));
+    offers.push(...decision.offers.filter((offer) => offer.reason.includes(" agreed ")));
+  }
+  return offers;
+}
+
+function sampledForcedSaleOffers() {
+  const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
+  const offers = [];
+  for (let seed = 1; seed <= 2_000; seed += 1) {
+    const engine = createCareerEngine(seededRandom(seed));
+    const player = eliteEnglishProspect("ENG", {
+      currentClub: "Bristol City", rating: 72, value: 12_000_000,
+    });
+    const latestSeason = {
+      fromAge: 23, toAge: 24, club: "Bristol City", country: "ENG",
+      league: "EFL Championship", role: "Star", kind: "stay",
+      apps: 34, goals: 7, assists: 10, before: 69, after: 72, trophies: 0, event: "Breakout season",
+    };
+    const beat = engine.nextBeat(player, latestSeason);
+    if (beat.type === "decision" && beat.kind === "forced-sale") offers.push(...beat.offers);
+  }
+  return offers;
 }
 
 function sampledOffers(nation = "ENG") {
@@ -102,4 +133,28 @@ test("a foreign second-division homecoming remains possible", () => {
     offer.country === "NED" && (offer.division ?? 1) > 1,
   );
   assert.ok(homecoming, "Expected a Dutch lower-division homecoming to remain in the market");
+});
+
+test("National League clubs do not bid for eight-figure players", () => {
+  const invalid = sampledContractedBids({ value: 12_000_000 }).find((offer) =>
+    (offer.division ?? 1) >= 5,
+  );
+  assert.equal(invalid, undefined, invalid
+    ? `${invalid.name} submitted this bid: ${invalid.reason}`
+    : undefined);
+});
+
+test("National League clubs can still bid for affordable players", () => {
+  const affordable = sampledContractedBids({ rating: 58, value: 250_000 }).find((offer) =>
+    (offer.division ?? 1) >= 5,
+  );
+  assert.ok(affordable, "Expected an affordable National League transfer to remain possible");
+  assert.match(affordable.reason, /agreed €\d+k/);
+});
+
+test("forced sales also respect the buying club's budget", () => {
+  const invalid = sampledForcedSaleOffers().find((offer) => (offer.division ?? 1) >= 5);
+  assert.equal(invalid, undefined, invalid
+    ? `Forced sale offered an unaffordable move to ${invalid.name}`
+    : undefined);
 });

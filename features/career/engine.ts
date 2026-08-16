@@ -50,6 +50,14 @@ export function createCareerEngine(random = Math.random) {
     const lowerTier = /Championship|Segunda|2\. Bundesliga|Serie B|Ligue 2|Liga Portugal 2|Eerste Divisie|Série B|Primera Nacional|Liga 3/;
     return lowerTier.test(club.league) ? 2 : 1;
   }
+  function transferBudget(club: Club) {
+    const division = clubDivision(club);
+    if (division >= 5) return 500_000;
+    if (division === 4) return 1_500_000;
+    if (division === 3) return 4_000_000;
+    if (division === 2) return club.country === "ENG" ? 25_000_000 : 12_000_000;
+    return [0, 3_000_000, 10_000_000, 30_000_000, 75_000_000, 175_000_000][club.level] ?? 3_000_000;
+  }
   function isPlausibleMarketClub(club: Club, player: Player) {
     if (clubDivision(club) === 1) return true;
     const current = clubByName(player.currentClub);
@@ -87,9 +95,14 @@ export function createCareerEngine(random = Math.random) {
       return makeOffer(club, player, player.origin === "gem" && club.level >= 4 ? "First-team fast track" : "Senior contract", "permanent", role, player.origin === "gem" ? `${role} role · the scouts believe the hype` : `${role} role · senior football immediately`);
     });
   }
-  function externalOffers(player: Player, count = 2, permanentOnly = false): Offer[] {
+  function externalOffers(player: Player, count = 2, permanentOnly = false, requiresTransferFee = false): Offer[] {
     const ideal = player.rating >= 87 ? 5 : player.rating >= 80 ? 4 : player.rating >= 72 ? 3 : player.rating >= 64 ? 2 : 1;
-    const market = CLUBS.filter((club) => club.name !== player.currentClub && isPlausibleMarketClub(club, player));
+    const minimumFee = player.value * .92;
+    const market = CLUBS.filter((club) =>
+      club.name !== player.currentClub
+      && isPlausibleMarketClub(club, player)
+      && (!requiresTransferFee || transferBudget(club) >= minimumFee),
+    );
     let pool = market.filter((club) => Math.abs(club.level - ideal) <= (player.agent.includes("International") ? 2 : 1));
     if (player.age < 18) {
       pool = market.filter((club) => club.country === player.nation);
@@ -110,12 +123,13 @@ export function createCareerEngine(random = Math.random) {
       return makeOffer(club, player, loan ? "Loan proposal" : label, loan ? "loan" : "permanent", loan ? "Starter" : role);
     });
   }
-  function permanentOffers(player: Player, count = 2): Offer[] {
-    return externalOffers(player, count, true);
+  function permanentOffers(player: Player, count = 2, requiresTransferFee = false): Offer[] {
+    return externalOffers(player, count, true, requiresTransferFee);
   }
   function contractedBids(player: Player, count = 2): Offer[] {
-    return permanentOffers(player, count).map((offer) => {
-      const fee = Math.round(player.value * (randomInt(92, 128) / 100) / 50_000) * 50_000;
+    return permanentOffers(player, count, true).map((offer) => {
+      const proposedFee = Math.round(player.value * (randomInt(92, 128) / 100) / 50_000) * 50_000;
+      const fee = Math.min(proposedFee, transferBudget(offer));
       return makeOffer(offer, player, "Accepted transfer bid", "permanent", offer.role, `${offer.name} agreed ${formatMoney(fee)} with ${player.currentClub} · proposed ${offer.role.toLowerCase()} role`);
     });
   }
@@ -265,7 +279,7 @@ export function createCareerEngine(random = Math.random) {
     }
     const forcedSaleChance = current && current.level <= 2 && player.rating >= 72 ? .2 : player.value >= 35_000_000 && current && current.level <= 3 ? .14 : .045;
     if (random() < forcedSaleChance) {
-      return decision("forced-sale", `${player.currentClub} has accepted that you must be sold`, current && current.level <= 2 ? "Your value is now larger than several items on the club balance sheet. The board calls the sale ‘strategic’." : "The accounts need help. The board has discovered that loyalty does not appear as cash on the annual report.", permanentOffers(player, 3));
+      return decision("forced-sale", `${player.currentClub} has accepted that you must be sold`, current && current.level <= 2 ? "Your value is now larger than several items on the club balance sheet. The board calls the sale ‘strategic’." : "The accounts need help. The board has discovered that loyalty does not appear as cash on the annual report.", permanentOffers(player, 3, true));
     }
     const seasons = Math.max(1, (latest?.toAge ?? player.age) - (latest?.fromAge ?? player.age - 1));
     if ((latest?.apps ?? 99) / seasons < 12 && player.age >= 20 && random() < .42) {
