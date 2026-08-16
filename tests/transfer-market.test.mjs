@@ -113,6 +113,15 @@ function sampledOffers(nation = "ENG") {
   return offers;
 }
 
+function sampledDirectMarket(player, seeds = 400) {
+  const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
+  const offers = [];
+  for (let seed = 1; seed <= seeds; seed += 1) {
+    offers.push(...createCareerEngine(seededRandom(seed)).marketOffers(player, 3, true, false));
+  }
+  return offers;
+}
+
 function club(name) {
   const { CLUBS } = loadTypeScriptModule("features/career/catalog.ts");
   const match = CLUBS.find((item) => item.name === name);
@@ -213,4 +222,114 @@ test("forced sales also respect the buying club's budget", () => {
   assert.equal(invalid, undefined, invalid
     ? `Forced sale offered an unaffordable move to ${invalid.name}`
     : undefined);
+});
+
+test("local representation keeps a lower-tier English player out of unrelated foreign markets", () => {
+  const player = eliteEnglishProspect("ENG", {
+    currentClub: "Southend United", age: 24, rating: 58, potential: 66,
+    value: 80_000, reputation: 35, agent: "Self-represented",
+  });
+  const offers = sampledDirectMarket(player);
+  assert.ok(offers.length > 0);
+  assert.ok(offers.every((offer) => offer.country === "ENG"));
+});
+
+test("an international agent can open a credible foreign market for that player", () => {
+  const player = eliteEnglishProspect("ENG", {
+    currentClub: "Southend United", age: 24, rating: 58, potential: 66,
+    value: 80_000, reputation: 55, agent: "International agent",
+  });
+  const offers = sampledDirectMarket(player, 700);
+  assert.ok(offers.some((offer) => offer.country !== "ENG"));
+  assert.ok(offers.some((offer) => offer.country === "ISR"));
+});
+
+test("nationality and known leagues remain reachable without a global agent", () => {
+  const player = eliteEnglishProspect("NED", {
+    currentClub: "Southend United", age: 27, rating: 61, potential: 68,
+    value: 250_000, reputation: 30, agent: "Local specialist",
+  });
+  const offers = sampledDirectMarket(player);
+  assert.ok(offers.some((offer) => offer.country === "NED"));
+  assert.ok(offers.every((offer) => ["ENG", "NED"].includes(offer.country)));
+});
+
+test("former clubs return only when the sporting and financial level is realistic", () => {
+  const maccabiSeason = {
+    fromAge: 18, toAge: 21, club: "Maccabi Haifa", country: "ISR",
+    league: "Israeli Premier League", role: "Star", kind: "stay",
+    apps: 100, goals: 20, assists: 15, before: 68, after: 76, trophies: 2, event: "Breakthrough",
+  };
+  const liverpoolPrime = eliteEnglishProspect("ISR", {
+    currentClub: "Liverpool", age: 27, rating: 90, potential: 92,
+    value: 120_000_000, reputation: 95, agent: "Family representative",
+    history: [maccabiSeason],
+  });
+  assert.equal(sampledDirectMarket(liverpoolPrime).some((offer) => offer.name === "Maccabi Haifa"), false);
+
+  const declinedVeteran = {
+    ...liverpoolPrime, age: 33, rating: 74, potential: 90, value: 4_000_000,
+    history: [{
+      fromAge: 32, toAge: 33, club: "Liverpool", country: "ENG", league: "Premier League",
+      role: "Rotation", kind: "stay", apps: 12, goals: 1, assists: 1,
+      before: 81, after: 74, trophies: 0, event: "A difficult year",
+    }, maccabiSeason],
+  };
+  const returnOffer = sampledDirectMarket(declinedVeteran).find((offer) => offer.name === "Maccabi Haifa");
+  assert.ok(returnOffer);
+  assert.equal(returnOffer.label, "Former-club return");
+});
+
+test("season development can rise for a young player and fall with age or injury", () => {
+  const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
+  const southend = club("Southend United");
+  const bristol = club("Bristol City");
+  const young = eliteEnglishProspect("ENG", {
+    currentClub: southend.name, age: 20, rating: 62, potential: 82,
+    value: 900_000, reputation: 25, fitness: 94, developmentTrend: 0,
+  });
+  const veteran = eliteEnglishProspect("ENG", {
+    currentClub: southend.name, age: 34, rating: 78, potential: 88,
+    value: 1_500_000, reputation: 70, fitness: 90, developmentTrend: 0,
+  });
+  const injuredPrime = eliteEnglishProspect("ENG", {
+    currentClub: bristol.name, age: 27, rating: 75, potential: 84,
+    value: 4_000_000, reputation: 55, fitness: 50, developmentTrend: 0,
+  });
+  const offer = (target, role) => ({ ...target, role, label: "Stay", reason: "Test season", kind: "stay" });
+
+  const youngSeason = createCareerEngine(() => .5).simulateSeason(young, offer(southend, "Starter"), 1);
+  const veteranSeason = createCareerEngine(() => .5).simulateSeason(veteran, offer(southend, "Rotation"), 1);
+  const injurySeason = createCareerEngine(() => 0).simulateSeason(injuredPrime, offer(bristol, "Starter"), 1);
+  assert.ok(youngSeason.player.rating > young.rating, `${young.rating} -> ${youngSeason.player.rating}`);
+  assert.ok(veteranSeason.player.rating < veteran.rating, `${veteran.rating} -> ${veteranSeason.player.rating}`);
+  assert.ok(injurySeason.player.rating < injuredPrime.rating, `${injuredPrime.rating} -> ${injurySeason.player.rating}`);
+});
+
+test("scenario answers can damage rating, potential and future development", () => {
+  const { SCENARIOS } = loadTypeScriptModule("features/career/catalog.ts");
+  const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
+  const scenario = SCENARIOS.find((item) => item.id === "surgery-choice");
+  const riskyOption = scenario.options.find((option) => option.label === "Play through the season");
+  const player = eliteEnglishProspect("ENG", {
+    rating: 80, potential: 88, fitness: 55, developmentTrend: 0,
+  });
+  const result = createCareerEngine(() => .9).resolveScenario(player, scenario, riskyOption);
+  assert.equal(result.player.rating, 77);
+  assert.equal(result.player.potential, 85);
+  assert.equal(result.player.developmentTrend, -2);
+});
+
+test("representation choices change the player's active market profile", () => {
+  const { SCENARIOS } = loadTypeScriptModule("features/career/catalog.ts");
+  const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
+  const { AGENT_PROFILES } = loadTypeScriptModule("features/career/agents.ts");
+  const scenario = SCENARIOS.find((item) => item.id === "agent-pitch");
+  const localOption = scenario.options.find((option) => option.label === "Choose a local specialist");
+  const result = createCareerEngine(() => .5).resolveScenario(eliteEnglishProspect(), scenario, localOption);
+  assert.equal(result.player.agent, "Local specialist");
+  assert.ok(Object.keys(AGENT_PROFILES).length >= 8);
+  SCENARIOS.flatMap((item) => item.options).flatMap((option) => option.outcomes)
+    .map((outcome) => outcome.effect.agent).filter(Boolean)
+    .forEach((agent) => assert.ok(AGENT_PROFILES[agent], agent));
 });
