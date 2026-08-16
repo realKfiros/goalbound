@@ -35,12 +35,13 @@ test("server-renders the Goalbound career simulator", async () => {
 });
 
 test("keeps career rules, content, persistence, and rendering behind clear modules", async () => {
-  const [page, engine, domain, storage, game, layout, packageJson, catalog, leagueCatalog, honours, trophyRoom] = await Promise.all([
+  const [page, engine, domain, storage, game, careerScreen, layout, packageJson, catalog, leagueCatalog, honours, trophyRoom] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../features/career/engine.ts", import.meta.url), "utf8"),
     readFile(new URL("../features/career/domain.ts", import.meta.url), "utf8"),
     readFile(new URL("../features/career/storage.ts", import.meta.url), "utf8"),
     readFile(new URL("../features/career/GoalboundGame.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../features/career/components/CareerScreen.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
     readFile(new URL("../features/career/catalog.ts", import.meta.url), "utf8"),
@@ -65,6 +66,8 @@ test("keeps career rules, content, persistence, and rendering behind clear modul
   assert.match(honours, /function simulateHonours/);
   assert.match(trophyRoom, /function mergeCareerSnapshot/);
   assert.match(game, /motion-screen/);
+  assert.match(careerScreen, /decisionDockRef\.current\?\.scrollIntoView/);
+  assert.match(careerScreen, /prefers-reduced-motion: reduce/);
   assert.match(layout, /Goalbound — Your Football Career/);
   assert.match(packageJson, /"build": "WRANGLER_LOG_PATH=/);
   const extraCountries = catalog.slice(catalog.indexOf("EXTRA_COUNTRIES"), catalog.indexOf("export const COUNTRIES"));

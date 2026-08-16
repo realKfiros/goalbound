@@ -251,7 +251,7 @@ legend { margin-bottom: 13px; }
 .season-control span { margin-right: 8px; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .1em; }
 .season-control button { width: 42px; height: 34px; background: transparent; border: 1px solid var(--line); border-radius: 3px; font-size: 10px; font-weight: 800; cursor: pointer; }
 .season-control button.active { background: var(--lime); border-color: var(--lime); color: #090a09; }
-.decision-dock { position: relative; width: min(1040px, 100%); min-height: 420px; margin: 38px auto 0; overflow: hidden; background: linear-gradient(145deg, rgba(31,34,30,.98), rgba(13,15,13,.98)); border: 1px solid rgba(199,255,53,.28); box-shadow: 0 26px 80px rgba(0,0,0,.3); }
+.decision-dock { position: relative; width: min(1040px, 100%); min-height: 420px; margin: 38px auto 0; scroll-margin-top: 24px; overflow: hidden; background: linear-gradient(145deg, rgba(31,34,30,.98), rgba(13,15,13,.98)); border: 1px solid rgba(199,255,53,.28); box-shadow: 0 26px 80px rgba(0,0,0,.3); }
 .decision-dock::before { content: ""; position: absolute; width: 330px; height: 330px; top: -250px; right: -80px; border: 1px solid rgba(199,255,53,.15); border-radius: 50%; pointer-events: none; }
 .decision-dock > * { position: relative; padding: 34px; animation: dockIn .28s ease both; }
 @keyframes dockIn { from { opacity: 0; transform: translateY(9px); } }

@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useRef } from "react";
 import { clubByName, country } from "../catalog";
 import type { AnnualHonours, Offer, Player, PlayoffBracket, SavedGame, Scenario, ScenarioOption, StandingGroup } from "../domain";
 import { ClubBadge } from "./ClubBadge";
@@ -74,6 +77,27 @@ export function CareerScreen({
   onOffer, onContinueSeason, onScenario, onContinueScenario,
 }: CareerScreenProps) {
   const playerCountry = country(player.nation);
+  const decisionDockRef = useRef<HTMLDivElement>(null);
+  const decisionScrollKey = game.phase === "decision"
+    ? `decision:${game.decisionKind}:${game.decisionTitle}`
+    : game.phase === "scenario" && scenario
+      ? `scenario:${scenario.id}`
+      : game.phase === "origin-reveal"
+        ? "origin-reveal"
+        : null;
+
+  useEffect(() => {
+    if (!decisionScrollKey) return;
+    const frame = window.requestAnimationFrame(() => {
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      decisionDockRef.current?.scrollIntoView({
+        behavior: reducedMotion ? "auto" : "smooth",
+        block: "start",
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [decisionScrollKey]);
+
   return (
     <section className="career-page page-enter">
       <div className="career-head">
@@ -102,7 +126,7 @@ export function CareerScreen({
         <span className="agent-pill"><small>Representation</small><strong>{player.agent}</strong></span>
       </div>
 
-      <div className="decision-dock" aria-live="polite">
+      <div className="decision-dock" ref={decisionDockRef} aria-live="polite">
         {game.phase === "origin-reveal" && (
           <div className={`origin-reveal ${player.origin}`}>
             <span className="story-kicker">Starting route · {player.origin === "gem" ? "7% rare" : player.origin === "senior" ? "16% chance" : "Most common"}</span>
