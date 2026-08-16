@@ -11,7 +11,8 @@ app/
   layout.tsx                 Site metadata and root layout
   page.tsx                   Thin route entry point
 features/career/
-  GoalboundGame.tsx          React state and career-flow orchestration
+  GoalboundGame.tsx          MobX-observed React application shell
+  CareerStore.ts             Observable state, actions, and persistence reactions
   domain.ts                  Shared career types and default save state
   catalog.ts                 Countries, featured club details, and scenarios
   leagueCatalog.ts           Complete researched league membership
@@ -44,7 +45,8 @@ Football content can be edited in `catalog.ts` and `leagueCatalog.ts` without
 touching the rules. Complete league membership is kept apart from hand-tuned
 club identities so season updates do not disturb the career engine.
 Rendering can change inside `components/` without touching the simulation.
-Browser persistence is isolated in `storage.ts`.
+`CareerStore.ts` owns application state and coordinates browser persistence
+through the adapters isolated in `storage.ts`.
 
 ## Development
 
