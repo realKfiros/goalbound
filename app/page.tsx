@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 
 type Screen = "home" | "setup" | "career" | "summary";
-type Phase = "offers" | "season-result" | "scenario" | "scenario-result";
+type Phase = "origin-reveal" | "decision" | "season-result" | "scenario" | "scenario-result";
 type Role = "Prospect" | "Rotation" | "Starter" | "Star";
+type Origin = "academy" | "senior" | "gem";
+type DecisionKind = "first-club" | "continue" | "graduation" | "contract" | "forced-sale" | "released" | "loan-return";
 
 type Country = { code: string; name: string; flag: string; threshold: number };
 type Club = {
@@ -18,7 +20,8 @@ type Club = {
   colors: string;
   crest?: string;
 };
-type Offer = Club & { role: Role; label: string; reason: string; kind: "permanent" | "loan" | "academy" };
+type OfferKind = "permanent" | "loan" | "academy" | "stay" | "renewal" | "promotion";
+type Offer = Club & { role: Role; label: string; reason: string; kind: OfferKind };
 type Season = {
   fromAge: number;
   toAge: number;
@@ -26,7 +29,7 @@ type Season = {
   country: string;
   league: string;
   role: Role;
-  kind: Offer["kind"];
+  kind: OfferKind;
   apps: number;
   goals: number;
   assists: number;
@@ -57,6 +60,11 @@ type Player = {
   reputation: number;
   agent: string;
   roleBoost: number;
+  origin: Origin;
+  squad: "academy" | "senior";
+  contractYears: number;
+  clubSeasons: number;
+  lastRole: Role;
   seenScenarios: string[];
   history: Season[];
 };
@@ -92,7 +100,11 @@ type SavedGame = {
   lastSeason: Season | null;
   scenarioId: string | null;
   outcome: ResolvedOutcome | null;
+  decisionKind: DecisionKind;
+  decisionTitle: string;
+  decisionDescription: string;
 };
+type Motion = { kind: "origin" | "season" | "fate"; title: string; detail: string };
 
 const START_COUNTRIES: Country[] = [
   { code: "ENG", name: "England", flag: "🇬🇧", threshold: 83 },
@@ -120,7 +132,6 @@ const EXTRA_COUNTRIES: Country[] = [
 
 const COUNTRIES = [...START_COUNTRIES, ...EXTRA_COUNTRIES];
 const POSITIONS = ["LW", "ST", "RW", "CAM", "CM", "CDM", "LB", "CB", "RB", "GK"];
-const SHOW_OFFICIAL_CRESTS = false;
 const crest = (id: number) => `https://crests.football-data.org/${id}.png`;
 
 const CLUBS: Club[] = [
@@ -130,6 +141,9 @@ const CLUBS: Club[] = [
   { name: "Chelsea", country: "ENG", league: "Premier League", level: 5, development: 4, identity: "Talent everywhere", short: "CHE", colors: "#034694", crest: crest(61) },
   { name: "Brighton & Hove Albion", country: "ENG", league: "Premier League", level: 3, development: 5, identity: "Smart pathway to the top", short: "BHA", colors: "#0057b8", crest: crest(397) },
   { name: "Southampton", country: "ENG", league: "English Championship", level: 2, development: 5, identity: "Minutes before headlines", short: "SOU", colors: "#d71920", crest: crest(340) },
+  { name: "Sunderland", country: "ENG", league: "English Championship", level: 2, development: 4, identity: "A huge crowd and a real pathway", short: "SUN", colors: "#eb172b" },
+  { name: "Coventry City", country: "ENG", league: "English Championship", level: 1, development: 4, identity: "A first team that rewards patience", short: "COV", colors: "#69b3e7" },
+  { name: "Bristol City", country: "ENG", league: "English Championship", level: 1, development: 4, identity: "Senior minutes without celebrity", short: "BRC", colors: "#e21a2d" },
 
   { name: "Real Madrid", country: "ESP", league: "La Liga", level: 5, development: 3, identity: "Win now or become trivia", short: "RMA", colors: "#ffffff", crest: crest(86) },
   { name: "FC Barcelona", country: "ESP", league: "La Liga", level: 5, development: 5, identity: "Academy ideals, global pressure", short: "BAR", colors: "#a50044", crest: crest(81) },
@@ -137,6 +151,9 @@ const CLUBS: Club[] = [
   { name: "Real Sociedad", country: "ESP", league: "La Liga", level: 4, development: 5, identity: "Patient technical growth", short: "RSO", colors: "#0067b1", crest: crest(92) },
   { name: "Villarreal", country: "ESP", league: "La Liga", level: 4, development: 4, identity: "European nights, clear roles", short: "VIL", colors: "#ffe667", crest: crest(94) },
   { name: "Real Betis", country: "ESP", league: "La Liga", level: 3, development: 4, identity: "Flair with a loud soundtrack", short: "BET", colors: "#00954c", crest: crest(90) },
+  { name: "Real Zaragoza", country: "ESP", league: "Segunda División", level: 2, development: 4, identity: "A grand name rebuilding patiently", short: "ZAR", colors: "#ffffff" },
+  { name: "Sporting Gijón", country: "ESP", league: "Segunda División", level: 1, development: 5, identity: "A traditional academy route", short: "GIJ", colors: "#d71920" },
+  { name: "Eibar", country: "ESP", league: "Segunda División", level: 1, development: 4, identity: "Small ground, serious football", short: "EIB", colors: "#005eb8" },
 
   { name: "Bayern Munich", country: "GER", league: "Bundesliga", level: 5, development: 3, identity: "Titles are the minimum", short: "FCB", colors: "#dc052d", crest: crest(5) },
   { name: "Borussia Dortmund", country: "GER", league: "Bundesliga", level: 5, development: 5, identity: "Young talent on a huge stage", short: "BVB", colors: "#fde100", crest: crest(4) },
@@ -144,6 +161,9 @@ const CLUBS: Club[] = [
   { name: "RB Leipzig", country: "GER", league: "Bundesliga", level: 4, development: 5, identity: "Fast-track development", short: "RBL", colors: "#dd0741", crest: crest(721) },
   { name: "Eintracht Frankfurt", country: "GER", league: "Bundesliga", level: 4, development: 4, identity: "Big nights, fierce crowd", short: "SGE", colors: "#e1000f", crest: crest(19) },
   { name: "SC Freiburg", country: "GER", league: "Bundesliga", level: 3, development: 5, identity: "Coaching over celebrity", short: "SCF", colors: "#e2001a", crest: crest(17) },
+  { name: "Hannover 96", country: "GER", league: "2. Bundesliga", level: 2, development: 4, identity: "A big club looking upward", short: "H96", colors: "#179d64" },
+  { name: "Karlsruher SC", country: "GER", league: "2. Bundesliga", level: 1, development: 5, identity: "Development before headlines", short: "KSC", colors: "#005ca9" },
+  { name: "Fortuna Düsseldorf", country: "GER", league: "2. Bundesliga", level: 2, development: 4, identity: "Ambition with room to play", short: "F95", colors: "#e30613" },
 
   { name: "Inter Milan", country: "ITA", league: "Serie A", level: 5, development: 3, identity: "Tactical detail, title pressure", short: "INT", colors: "#0068a8", crest: crest(108) },
   { name: "AC Milan", country: "ITA", league: "Serie A", level: 5, development: 4, identity: "History watching every touch", short: "MIL", colors: "#fb090b", crest: crest(98) },
@@ -151,6 +171,9 @@ const CLUBS: Club[] = [
   { name: "Napoli", country: "ITA", league: "Serie A", level: 5, development: 4, identity: "Football as civic religion", short: "NAP", colors: "#12a0d7", crest: crest(113) },
   { name: "Atalanta", country: "ITA", league: "Serie A", level: 4, development: 5, identity: "A development laboratory", short: "ATA", colors: "#1d71b8", crest: crest(102) },
   { name: "Bologna", country: "ITA", league: "Serie A", level: 3, development: 5, identity: "Smart coaching, real minutes", short: "BOL", colors: "#1a2f48", crest: crest(103) },
+  { name: "Palermo", country: "ITA", league: "Serie B", level: 2, development: 4, identity: "A football city waiting to rise", short: "PAL", colors: "#f5a6c8" },
+  { name: "Bari", country: "ITA", league: "Serie B", level: 1, development: 4, identity: "Pressure, patience and senior minutes", short: "BAR", colors: "#d71920" },
+  { name: "Cesena", country: "ITA", league: "Serie B", level: 1, development: 5, identity: "A quieter place to become a pro", short: "CES", colors: "#ffffff" },
 
   { name: "Paris Saint-Germain", country: "FRA", league: "Ligue 1", level: 5, development: 2, identity: "Superstars and spotlights", short: "PSG", colors: "#004170", crest: crest(524) },
   { name: "AS Monaco", country: "FRA", league: "Ligue 1", level: 4, development: 5, identity: "The launchpad with a view", short: "ASM", colors: "#e20e17", crest: crest(548) },
@@ -158,36 +181,52 @@ const CLUBS: Club[] = [
   { name: "Olympique Marseille", country: "FRA", league: "Ligue 1", level: 4, development: 3, identity: "Volcanic support", short: "OM", colors: "#2faee0", crest: crest(516) },
   { name: "Olympique Lyonnais", country: "FRA", league: "Ligue 1", level: 3, development: 5, identity: "Academy DNA", short: "OL", colors: "#1b2d57", crest: crest(523) },
   { name: "Stade Rennais", country: "FRA", league: "Ligue 1", level: 3, development: 5, identity: "Young players get trusted", short: "REN", colors: "#d71920", crest: crest(529) },
+  { name: "Saint-Étienne", country: "FRA", league: "Ligue 2", level: 2, development: 5, identity: "History, youth and a demanding crowd", short: "ASSE", colors: "#008c4a" },
+  { name: "Caen", country: "FRA", league: "Ligue 2", level: 1, development: 4, identity: "A proper first professional step", short: "SMC", colors: "#0055a5" },
+  { name: "Guingamp", country: "FRA", league: "Ligue 2", level: 1, development: 5, identity: "A small club that trusts its pathway", short: "EAG", colors: "#e30613" },
 
   { name: "Benfica", country: "POR", league: "Primeira Liga", level: 4, development: 5, identity: "Elite talent factory", short: "SLB", colors: "#e30613", crest: crest(1903) },
   { name: "FC Porto", country: "POR", league: "Primeira Liga", level: 4, development: 5, identity: "Europe's hardest shop window", short: "FCP", colors: "#00428c", crest: crest(503) },
   { name: "Sporting CP", country: "POR", league: "Primeira Liga", level: 4, development: 5, identity: "Academy first, trophies too", short: "SCP", colors: "#008c5a", crest: crest(498) },
   { name: "Braga", country: "POR", league: "Primeira Liga", level: 3, development: 5, identity: "A clever first European step", short: "BRA", colors: "#e30613" },
   { name: "Vitória SC", country: "POR", league: "Primeira Liga", level: 2, development: 4, identity: "A noisy place to grow up", short: "VSC", colors: "#ffffff" },
+  { name: "Marítimo", country: "POR", league: "Liga Portugal 2", level: 1, development: 4, identity: "Island life and immediate responsibility", short: "MAR", colors: "#008c45" },
+  { name: "Académica", country: "POR", league: "Liga 3", level: 1, development: 5, identity: "A famous classroom for footballers", short: "AAC", colors: "#111111" },
 
   { name: "Ajax", country: "NED", league: "Eredivisie", level: 4, development: 5, identity: "The academy is the identity", short: "AJA", colors: "#d2122e", crest: crest(678) },
   { name: "PSV Eindhoven", country: "NED", league: "Eredivisie", level: 4, development: 5, identity: "Attack, develop, repeat", short: "PSV", colors: "#ed1c24", crest: crest(674) },
   { name: "Feyenoord", country: "NED", league: "Eredivisie", level: 4, development: 4, identity: "A demanding football city", short: "FEY", colors: "#e41e2b", crest: crest(675) },
   { name: "AZ Alkmaar", country: "NED", league: "Eredivisie", level: 3, development: 5, identity: "Data, youth, opportunity", short: "AZ", colors: "#d71920", crest: crest(682) },
   { name: "FC Utrecht", country: "NED", league: "Eredivisie", level: 2, development: 4, identity: "Minutes without the microscope", short: "UTR", colors: "#e30613" },
+  { name: "Willem II", country: "NED", league: "Eerste Divisie", level: 1, development: 5, identity: "A direct route to senior football", short: "WIL", colors: "#d71920" },
+  { name: "NAC Breda", country: "NED", league: "Eerste Divisie", level: 1, development: 4, identity: "A loud crowd and honest minutes", short: "NAC", colors: "#f2c600" },
 
   { name: "Flamengo", country: "BRA", league: "Brasileirão", level: 5, development: 4, identity: "A nation-sized fanbase", short: "FLA", colors: "#d71920" },
   { name: "Palmeiras", country: "BRA", league: "Brasileirão", level: 5, development: 5, identity: "Win and develop", short: "PAL", colors: "#006437" },
   { name: "São Paulo", country: "BRA", league: "Brasileirão", level: 4, development: 5, identity: "A famous academy route", short: "SAO", colors: "#e30613" },
   { name: "Santos", country: "BRA", league: "Brasileirão", level: 3, development: 5, identity: "Youth and enormous ghosts", short: "SAN", colors: "#ffffff" },
   { name: "Fluminense", country: "BRA", league: "Brasileirão", level: 4, development: 4, identity: "Technique under pressure", short: "FLU", colors: "#7a263a" },
+  { name: "Ceará", country: "BRA", league: "Brasileirão Série B", level: 2, development: 4, identity: "A senior shirt that must be earned", short: "CEA", colors: "#ffffff" },
+  { name: "Sport Recife", country: "BRA", league: "Brasileirão Série B", level: 2, development: 4, identity: "Heat, noise and opportunity", short: "SCR", colors: "#d71920" },
+  { name: "Vila Nova", country: "BRA", league: "Brasileirão Série B", level: 1, development: 5, identity: "A grounded place to break through", short: "VNO", colors: "#e30613" },
 
   { name: "River Plate", country: "ARG", league: "Liga Profesional", level: 5, development: 5, identity: "The academy must also win", short: "RIV", colors: "#e30613" },
   { name: "Boca Juniors", country: "ARG", league: "Liga Profesional", level: 5, development: 4, identity: "Every match feels decisive", short: "BOC", colors: "#003f7d" },
   { name: "Racing Club", country: "ARG", league: "Liga Profesional", level: 4, development: 4, identity: "Emotion at full volume", short: "RAC", colors: "#59c5eb" },
   { name: "Vélez Sarsfield", country: "ARG", league: "Liga Profesional", level: 3, development: 5, identity: "A genuine youth pathway", short: "VEL", colors: "#005baa" },
   { name: "Newell's Old Boys", country: "ARG", league: "Liga Profesional", level: 3, development: 5, identity: "Technique before hype", short: "NOB", colors: "#d71920" },
+  { name: "Argentinos Juniors", country: "ARG", league: "Liga Profesional", level: 2, development: 5, identity: "A production line with history", short: "ARG", colors: "#e30613" },
+  { name: "Banfield", country: "ARG", league: "Liga Profesional", level: 2, development: 5, identity: "Youth gets a real shirt here", short: "BAN", colors: "#178447" },
+  { name: "Quilmes", country: "ARG", league: "Primera Nacional", level: 1, development: 4, identity: "A hard first rung on the ladder", short: "QUI", colors: "#ffffff" },
 
   { name: "Inter Miami", country: "USA", league: "Major League Soccer", level: 4, development: 2, identity: "Famous faces, instant attention", short: "MIA", colors: "#f7b5cd" },
   { name: "Los Angeles FC", country: "USA", league: "Major League Soccer", level: 4, development: 4, identity: "Modern and ambitious", short: "LAFC", colors: "#c39e6d" },
   { name: "Seattle Sounders", country: "USA", league: "Major League Soccer", level: 3, development: 4, identity: "Stable club, serious crowds", short: "SEA", colors: "#5d9732" },
   { name: "FC Dallas", country: "USA", league: "Major League Soccer", level: 2, development: 5, identity: "A clear academy route", short: "FCD", colors: "#d71920" },
   { name: "Philadelphia Union", country: "USA", league: "Major League Soccer", level: 3, development: 5, identity: "Develop and sell well", short: "PHI", colors: "#071b2c" },
+  { name: "New York Red Bulls", country: "USA", league: "Major League Soccer", level: 3, development: 5, identity: "A direct pathway and relentless pressing", short: "RBNY", colors: "#e30613" },
+  { name: "Real Salt Lake", country: "USA", league: "Major League Soccer", level: 2, development: 5, identity: "Academy graduates are expected, not decorative", short: "RSL", colors: "#b30838" },
+  { name: "Minnesota United", country: "USA", league: "Major League Soccer", level: 2, development: 4, identity: "A stable place to become a starter", short: "MIN", colors: "#8cd2f4" },
 
   { name: "Club Brugge", country: "BEL", league: "Belgian Pro League", level: 3, development: 5, identity: "A proven European bridge", short: "BRU", colors: "#0080c8" },
   { name: "Genk", country: "BEL", league: "Belgian Pro League", level: 3, development: 5, identity: "Young players become assets", short: "GNK", colors: "#0050a4" },
@@ -343,7 +382,19 @@ const SCENARIOS: Scenario[] = [
   },
 ];
 
-const DEFAULT_SAVE: SavedGame = { screen: "home", phase: "offers", player: null, offers: [], seasonSpan: 1, lastSeason: null, scenarioId: null, outcome: null };
+const DEFAULT_SAVE: SavedGame = {
+  screen: "home",
+  phase: "origin-reveal",
+  player: null,
+  offers: [],
+  seasonSpan: 1,
+  lastSeason: null,
+  scenarioId: null,
+  outcome: null,
+  decisionKind: "first-club",
+  decisionTitle: "Choose your first club",
+  decisionDescription: "Your route into professional football is about to be drawn.",
+};
 const ROLE_SCORE: Record<Role, number> = { Prospect: 1, Rotation: 2, Starter: 3, Star: 4 };
 
 function country(code: string) { return COUNTRIES.find((item) => item.code === code) ?? START_COUNTRIES[0]; }
@@ -351,6 +402,7 @@ function clubByName(name: string) { return CLUBS.find((item) => item.name === na
 function money(value: number) { return value >= 1_000_000 ? `€${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1)}m` : `€${Math.round(value / 1_000)}k`; }
 function clamp(value: number, min: number, max: number) { return Math.max(min, Math.min(max, value)); }
 function randomInt(min: number, max: number) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function randomUnit() { return randomInt(0, 1_000_000) / 1_000_000; }
 function shuffle<T>(items: T[]) { return [...items].sort(() => Math.random() - .5); }
 function roleFor(rating: number, clubLevel: number, age: number, boost = 0): Role {
   const required = 49 + clubLevel * 8;
@@ -367,19 +419,32 @@ function marketValue(rating: number, age: number, potential: number) {
   return Math.round(Math.max(80_000, (rating - 45) ** 3 * 430 * ageFactor * potentialFactor));
 }
 function offerReason(club: Club, player: Player, role: Role) {
-  if (player.age <= 17) return `${club.development}/5 academy · ${role.toLowerCase()} pathway`;
   if (player.age >= 32) return club.country === player.nation ? "A homecoming with real minutes" : "One last adventure, one serious contract";
   if (club.country !== player.nation && ["POR", "NED", "BEL", "CRO"].includes(club.country)) return "A proven bridge to a bigger league";
   if (role === "Prospect") return "Prestige now, patience required";
   if (role === "Star") return "The team is being built around you";
   return `${club.development}/5 development · a credible next step`;
 }
-function buildOffers(player: Player, first = false): Offer[] {
-  if (first) {
-    const domestic = CLUBS.filter((club) => club.country === player.nation);
-    return shuffle(domestic).slice(0, 3).map((club) => ({ ...club, role: roleFor(player.rating + club.development, club.level, player.age), label: "Academy offer", reason: `${club.development}/5 development · the first door opens`, kind: "academy" }));
+function makeOffer(club: Club, player: Player, label: string, kind: OfferKind, role?: Role, reason?: string): Offer {
+  const resolvedRole = role ?? roleFor(player.rating, club.level, player.age, player.roleBoost);
+  return { ...club, role: resolvedRole, label, reason: reason ?? offerReason(club, player, resolvedRole), kind };
+}
+function buildFirstOffers(player: Player): Offer[] {
+  const domestic = CLUBS.filter((club) => club.country === player.nation);
+  if (player.origin === "academy") {
+    const grounded = domestic.filter((club) => club.level <= 3);
+    const elite = domestic.filter((club) => club.level >= 4);
+    const pool = [...shuffle(grounded).slice(0, 3), ...(Math.random() < .12 ? shuffle(elite).slice(0, 1) : [])];
+    return shuffle(pool).slice(0, 3).map((club) => makeOffer(club, player, "Academy place", "academy", "Prospect", `${club.development}/5 development · a patient route into football`));
   }
-  const current = clubByName(player.currentClub);
+  const maxLevel = player.origin === "gem" ? 5 : 3;
+  const pool = domestic.filter((club) => club.level <= maxLevel);
+  return shuffle(pool).slice(0, 3).map((club) => {
+    const role = roleFor(player.rating, club.level, player.age, player.origin === "gem" ? 1 : 0);
+    return makeOffer(club, player, player.origin === "gem" && club.level >= 4 ? "First-team fast track" : "Senior contract", "permanent", role, player.origin === "gem" ? `${role} role · the scouts believe the hype` : `${role} role · senior football immediately`);
+  });
+}
+function buildExternalOffers(player: Player, count = 2): Offer[] {
   const ideal = player.rating >= 87 ? 5 : player.rating >= 80 ? 4 : player.rating >= 72 ? 3 : player.rating >= 64 ? 2 : 1;
   let pool = CLUBS.filter((club) => club.name !== player.currentClub && Math.abs(club.level - ideal) <= (player.agent.includes("International") ? 2 : 1));
   if (player.age < 18) {
@@ -392,18 +457,30 @@ function buildOffers(player: Player, first = false): Offer[] {
     const lateMarkets = new Set([player.nation, "USA", "SAU", "JPN", "MEX", "BRA", "ARG", "TUR"]);
     pool = pool.filter((club) => lateMarkets.has(club.country) || club.level >= 4);
   }
-  const selected = shuffle(pool).slice(0, current ? 2 : 3);
+  if (!pool.length) pool = CLUBS.filter((club) => club.name !== player.currentClub && Math.abs(club.level - ideal) <= 2);
+  const selected = shuffle(pool).slice(0, count);
   const offers: Offer[] = selected.map((club) => {
     const role = roleFor(player.rating, club.level, player.age, player.roleBoost);
     const loan = player.age <= 22 && role === "Prospect" && Math.random() < .55;
-    return { ...club, role: loan ? "Starter" : role, label: loan ? "Loan proposal" : club.country === player.nation ? "Domestic move" : player.age >= 31 ? "Final adventure" : "Move abroad", reason: offerReason(club, player, loan ? "Starter" : role), kind: loan ? "loan" : "permanent" };
+    return makeOffer(club, player, loan ? "Loan proposal" : club.country === player.nation ? "Domestic move" : player.age >= 31 ? "Final adventure" : "Move abroad", loan ? "loan" : "permanent", loan ? "Starter" : role);
   });
-  if (current) {
-    const role = roleFor(player.rating, current.level, player.age, player.roleBoost + 1);
-    const backFromLoan = player.history[0]?.kind === "loan";
-    offers.unshift({ ...current, role, label: backFromLoan ? "Return from loan" : "Stay at the club", reason: backFromLoan ? "The parent club has watched the tape—at least that is what they claim" : role === "Prospect" ? "Fight for a place in familiar surroundings" : "Continuity, status and unfinished business", kind: "permanent" });
-  }
-  return offers.slice(0, 3);
+  return offers;
+}
+function buildPermanentOffers(player: Player, count = 2): Offer[] {
+  return buildExternalOffers(player, count).map((offer) => offer.kind === "loan"
+    ? makeOffer(offer, player, offer.country === player.nation ? "Domestic contract" : "Permanent transfer", "permanent", roleFor(player.rating, offer.level, player.age, player.roleBoost), "A permanent deal. No loan-return meeting has been scheduled.")
+    : offer);
+}
+function stayOffer(player: Player, kind: "stay" | "renewal" | "promotion" = "stay"): Offer | null {
+  const club = clubByName(player.currentClub);
+  if (!club) return null;
+  const role = player.squad === "academy" && kind === "stay" ? "Prospect" : roleFor(player.rating, club.level, player.age, player.roleBoost + (kind === "promotion" ? 0 : 1));
+  const copy = kind === "renewal"
+    ? { label: "Renew contract", reason: "A new 3–5 year deal · keep building in familiar colours" }
+    : kind === "promotion"
+      ? { label: "Join the senior squad", reason: role === "Prospect" ? "Train with the first team and wait for minutes" : `The manager sees you as ${role.toLowerCase()}` }
+      : { label: `Stay at ${club.name}`, reason: role === "Prospect" ? "Fight for a place without uprooting your life" : "Continuity, trust and unfinished business" };
+  return makeOffer(club, player, copy.label, kind, role, copy.reason);
 }
 function eligibleScenario(player: Player) {
   const available = SCENARIOS.filter((item) => !player.seenScenarios.includes(item.id) && (!item.minAge || player.age >= item.minAge) && (!item.maxAge || player.age <= item.maxAge) && (!item.needsCaps || player.caps > 0));
@@ -429,7 +506,7 @@ function seasonNarrative(role: Role, apps: number, movedAbroad: boolean, injured
   return "A useful season: enough football to grow, enough bench time to stay humble.";
 }
 function getAchievements(player: Player) {
-  const list = ["Professional debut"];
+  const list: string[] = player.history.length ? ["Professional debut"] : [];
   const nations = new Set(player.history.map((season) => season.country));
   if (nations.size >= 3) list.push("Three-country career");
   if (player.totalApps >= 100) list.push("Century of appearances");
@@ -444,7 +521,7 @@ function ClubBadge({ club, small = false }: { club: Club | undefined; small?: bo
   if (!club) return <span className={small ? "club-badge small" : "club-badge"}>FA</span>;
   return (
     <span className={small ? "club-badge small" : "club-badge"} style={{ "--club-color": club.colors } as CSSProperties}>
-      {SHOW_OFFICIAL_CRESTS && club.crest ? <img src={club.crest} alt={`${club.name} crest`} onError={(event) => { event.currentTarget.style.display = "none"; }} /> : <b>{club.short}</b>}
+      <b>{club.short}</b>
     </span>
   );
 }
@@ -452,30 +529,59 @@ function ClubBadge({ club, small = false }: { club: Club | undefined; small?: bo
 export default function Home() {
   const [game, setGame] = useState<SavedGame>(DEFAULT_SAVE);
   const [loaded, setLoaded] = useState(false);
+  const [motion, setMotion] = useState<Motion | null>(null);
   const [name, setName] = useState("Kai Nash");
   const [nation, setNation] = useState("ENG");
   const [position, setPosition] = useState("ST");
   const [number, setNumber] = useState(9);
 
   useEffect(() => {
-    const raw = window.localStorage.getItem("goalbound-career-v2");
+    const raw = window.localStorage.getItem("goalbound-career-v3");
     if (raw) {
-      try { setGame(JSON.parse(raw) as SavedGame); } catch { window.localStorage.removeItem("goalbound-career-v2"); }
+      try {
+        // Restore once after hydration; the save is deliberately device-local.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setGame(JSON.parse(raw) as SavedGame);
+      } catch { window.localStorage.removeItem("goalbound-career-v3"); }
     }
     setLoaded(true);
   }, []);
-  useEffect(() => { if (loaded) window.localStorage.setItem("goalbound-career-v2", JSON.stringify(game)); }, [game, loaded]);
+  useEffect(() => { if (loaded) window.localStorage.setItem("goalbound-career-v3", JSON.stringify(game)); }, [game, loaded]);
 
   const player = game.player;
   const playerCountry = useMemo(() => country(player?.nation ?? nation), [player?.nation, nation]);
   const scenario = game.scenarioId ? SCENARIOS.find((item) => item.id === game.scenarioId) ?? null : null;
   const achievements = player ? getAchievements(player) : [];
 
-  function startSetup() { setGame((current) => ({ ...current, screen: "setup" })); window.scrollTo({ top: 0, behavior: "smooth" }); }
+  function startSetup() { setGame((current) => ({ ...current, screen: "setup" })); }
+  function showMotion(nextMotion: Motion, action: () => void, delay = 950) {
+    setMotion(nextMotion);
+    window.setTimeout(() => { action(); setMotion(null); }, delay);
+  }
   function startCareer() {
-    const potential = randomInt(76, 94);
-    const next: Player = { name: name.trim() || "Kai Nash", nation, position, number, age: 16, rating: 52, potential, value: 125_000, currentClub: "Free agent", parentClub: null, totalApps: 0, totalGoals: 0, totalAssists: 0, trophies: 0, caps: 0, nationalGoals: 0, morale: 72, fitness: 92, reputation: 8, agent: "Self-represented", roleBoost: 0, seenScenarios: [], history: [] };
-    setGame((current) => ({ ...current, screen: "career", phase: "offers", player: next, offers: buildOffers(next, true), lastSeason: null, scenarioId: null, outcome: null }));
+    const roll = randomUnit();
+    const origin: Origin = roll < .07 ? "gem" : roll < .23 ? "senior" : "academy";
+    const age = origin === "academy" ? 16 : 17;
+    const rating = origin === "gem" ? randomInt(67, 72) : origin === "senior" ? randomInt(58, 64) : randomInt(48, 56);
+    const potential = origin === "gem" ? randomInt(90, 96) : origin === "senior" ? randomInt(79, 91) : randomInt(76, 93);
+    const next: Player = {
+      name: name.trim() || "Kai Nash", nation, position, number, age, rating, potential,
+      value: marketValue(rating, age, potential), currentClub: "Free agent", parentClub: null,
+      totalApps: 0, totalGoals: 0, totalAssists: 0, trophies: 0, caps: 0, nationalGoals: 0,
+      morale: origin === "gem" ? 84 : 72, fitness: 92, reputation: origin === "gem" ? 24 : origin === "senior" ? 13 : 6,
+      agent: "Self-represented", roleBoost: origin === "gem" ? 1 : 0, origin,
+      squad: origin === "academy" ? "academy" : "senior", contractYears: 0, clubSeasons: 0,
+      lastRole: "Prospect", seenScenarios: [], history: [],
+    };
+    const title = origin === "gem" ? "The scouts think they have found a gem" : origin === "senior" ? "A senior coach is willing to take the risk" : "Your first route runs through the academy system";
+    const description = origin === "gem"
+      ? `Only 7% of careers begin here. You start at ${rating} OVR and clubs are discussing the senior squad, not the youth bus.`
+      : origin === "senior"
+        ? `You begin at ${rating} OVR. No glamorous academy photo: a smaller first team needs a footballer now.`
+        : `You begin at ${rating} OVR. The elite academies may call, but most careers start somewhere less photogenic.`;
+    showMotion({ kind: "origin", title: "Drawing your starting route", detail: "Academy prospect, early professional… or something rarer." }, () => {
+      setGame((current) => ({ ...current, screen: "career", phase: "origin-reveal", player: next, offers: buildFirstOffers(next), lastSeason: null, scenarioId: null, outcome: null, decisionKind: "first-club", decisionTitle: title, decisionDescription: description }));
+    }, 1050);
   }
   function chooseOffer(offer: Offer) {
     if (!player) return;
@@ -483,7 +589,7 @@ export default function Home() {
     const roleScore = clamp(ROLE_SCORE[offer.role] + player.roleBoost, 1, 4);
     const perYearApps = roleScore === 1 ? randomInt(4, 15) : roleScore === 2 ? randomInt(16, 29) : roleScore === 3 ? randomInt(28, 42) : randomInt(36, 48);
     const injuryChance = clamp(.08 + (100 - player.fitness) / 240 + Math.max(0, player.age - 30) / 80, .07, .38);
-    const injured = Math.random() < injuryChance;
+    const injured = randomUnit() < injuryChance;
     const apps = Math.max(2, Math.round(perYearApps * years * (injured ? randomInt(45, 72) / 100 : 1)));
     const rates = positionRates(player.position, player.rating);
     const goals = Math.max(0, Math.round(apps * rates.goals * randomInt(75, 125) / 100));
@@ -503,10 +609,37 @@ export default function Home() {
     const movedAbroad = offer.country !== player.nation;
     const event = seasonNarrative(offer.role, apps, movedAbroad, injured, trophies);
     const season: Season = { fromAge: player.age, toAge: player.age + years, club: offer.name, country: offer.country, league: offer.league, role: offer.role, kind: offer.kind, apps, goals, assists, before: player.rating, after: nextRating, trophies, event };
-    const returningParent = offer.kind === "loan" ? player.currentClub : null;
-    const next: Player = { ...player, age: player.age + years, rating: nextRating, value: marketValue(nextRating, player.age + years, player.potential), currentClub: returningParent ?? offer.name, parentClub: null, totalApps: player.totalApps + apps, totalGoals: player.totalGoals + goals, totalAssists: player.totalAssists + assists, trophies: player.trophies + trophies, caps: player.caps + caps, nationalGoals: player.nationalGoals + nationalGoals, morale: clamp(player.morale + (apps / years >= 25 ? 6 : -8) + (trophies ? 8 : 0), 20, 100), fitness: clamp(player.fitness + (injured ? -22 : 5) - Math.max(0, player.age - 31), 25, 100), reputation: clamp(player.reputation + Math.round(apps / years / 7) + trophies * 6, 0, 100), roleBoost: 0, history: [season, ...player.history] };
-    setGame((current) => ({ ...current, screen: "career", phase: "season-result", player: next, offers: [], lastSeason: season, scenarioId: null, outcome: null }));
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    const isSameClub = offer.name === player.currentClub || offer.kind === "loan";
+    const contractAtKickoff = offer.kind === "renewal" ? randomInt(3, 5)
+      : offer.kind === "academy" ? randomInt(3, 4)
+        : offer.kind === "promotion" ? Math.max(player.contractYears, randomInt(2, 4))
+          : offer.kind === "permanent" ? randomInt(2, 5)
+            : player.contractYears;
+    const next: Player = {
+      ...player, age: player.age + years, rating: nextRating,
+      value: marketValue(nextRating, player.age + years, player.potential),
+      currentClub: offer.kind === "loan" ? player.currentClub : offer.name, parentClub: null,
+      totalApps: player.totalApps + apps, totalGoals: player.totalGoals + goals, totalAssists: player.totalAssists + assists,
+      trophies: player.trophies + trophies, caps: player.caps + caps, nationalGoals: player.nationalGoals + nationalGoals,
+      morale: clamp(player.morale + (apps / years >= 25 ? 6 : -8) + (trophies ? 8 : 0), 20, 100),
+      fitness: clamp(player.fitness + (injured ? -22 : 5) - Math.max(0, player.age - 31), 25, 100),
+      reputation: clamp(player.reputation + Math.round(apps / years / 7) + trophies * 6, 0, 100),
+      roleBoost: 0, squad: offer.kind === "academy" || offer.kind === "stay" && player.squad === "academy" ? "academy" : "senior",
+      contractYears: Math.max(0, contractAtKickoff - years),
+      clubSeasons: isSameClub ? player.clubSeasons + years : years, lastRole: offer.role,
+      history: [season, ...player.history],
+    };
+    showMotion({ kind: "season", title: years === 1 ? "The season is playing out" : `${years} seasons are playing out`, detail: `${offer.name} · ${offer.role} · form, minutes and fitness are moving.` }, () => {
+      setGame((current) => ({ ...current, screen: "career", phase: "season-result", player: next, offers: [], lastSeason: season, scenarioId: null, outcome: null }));
+    }, 1200);
+  }
+  function setClubDecision(nextPlayer: Player, kind: DecisionKind, title: string, description: string, offers: Offer[]) {
+    setGame((current) => ({ ...current, phase: "decision", player: nextPlayer, offers, scenarioId: null, outcome: null, decisionKind: kind, decisionTitle: title, decisionDescription: description }));
+  }
+  function prepareOrdinaryDecision(nextPlayer: Player) {
+    const stay = stayOffer(nextPlayer);
+    const outsideInterest = nextPlayer.squad === "academy" ? [] : randomUnit() < clamp(.15 + nextPlayer.reputation / 180, .15, .62) ? buildExternalOffers(nextPlayer, randomUnit() < .7 ? 1 : 2) : [];
+    setClubDecision(nextPlayer, "continue", `What should the next chapter at ${nextPlayer.currentClub} look like?`, outsideInterest.length ? "The club expects you back. Your agent has also left a few messages marked ‘interesting’." : "No artificial transfer window this time. The club expects you back, and staying is a complete career choice.", [...(stay ? [stay] : []), ...outsideInterest]);
   }
   function continueAfterSeason() {
     if (!player) return;
@@ -514,27 +647,74 @@ export default function Home() {
       setGame((current) => ({ ...current, screen: "summary" }));
       return;
     }
-    const nextScenario = eligibleScenario(player);
-    setGame((current) => ({ ...current, phase: "scenario", scenarioId: nextScenario.id, outcome: null }));
+    const latest = game.lastSeason;
+    const current = clubByName(player.currentClub);
+    if (player.squad === "academy" && player.age >= 18) {
+      const promotion = stayOffer(player, "promotion");
+      const notRetained = player.rating < 59 && randomUnit() < .32;
+      const options = [...(!notRetained && promotion ? [promotion] : []), ...(notRetained ? buildPermanentOffers(player, 3) : buildExternalOffers(player, 2))];
+      setClubDecision(player, notRetained ? "released" : "graduation", notRetained ? `${player.currentClub} will not offer senior terms` : "Academy graduation day has arrived", notRetained ? "The development report uses the phrase ‘different pathway’. Your access card stops working on Monday." : "The youth-team shirt is finished. You can join the senior queue, take a loan, or leave before becoming training-cone furniture.", options);
+      return;
+    }
+    if (player.squad === "academy") {
+      if (randomUnit() < .46) {
+        const nextScenario = eligibleScenario(player);
+        setGame((currentGame) => ({ ...currentGame, phase: "scenario", scenarioId: nextScenario.id, outcome: null }));
+      } else {
+        prepareOrdinaryDecision(player);
+      }
+      return;
+    }
+    if (latest?.kind === "loan") {
+      const returnOffer = stayOffer(player);
+      setClubDecision(player, "loan-return", `The loan is over. ${player.currentClub} wants an answer.`, "The parent club says it watched every minute. Your agent says that sentence was delivered while someone searched for your name.", [...(returnOffer ? [returnOffer] : []), ...buildExternalOffers(player, 2)]);
+      return;
+    }
+    if (player.contractYears <= 0) {
+      const seasons = Math.max(1, (latest?.toAge ?? player.age) - (latest?.fromAge ?? player.age - 1));
+      const useful = (latest?.apps ?? 0) / seasons >= 14 || player.lastRole === "Star" || player.lastRole === "Starter";
+      const rejected = !useful && randomUnit() < .62 || player.age >= 34 && randomUnit() < .28;
+      const renewal = rejected ? null : stayOffer(player, "renewal");
+      setClubDecision(player, rejected ? "released" : "contract", rejected ? `${player.currentClub} will not renew your contract` : `${player.currentClub} has offered a new contract`, rejected ? "The sporting director thanks you for your service, then asks security whether the meeting room is needed at eleven." : `You can stay beyond ${player.clubSeasons} seasons at the club, or listen to the market.`, [...(renewal ? [renewal] : []), ...buildPermanentOffers(player, rejected ? 3 : 2)]);
+      return;
+    }
+    const forcedSaleChance = current && current.level <= 2 && player.rating >= 72 ? .2 : player.value >= 35_000_000 && current && current.level <= 3 ? .14 : .045;
+    if (randomUnit() < forcedSaleChance) {
+      setClubDecision(player, "forced-sale", `${player.currentClub} has accepted that you must be sold`, current && current.level <= 2 ? "Your value is now larger than several items on the club balance sheet. The board calls the sale ‘strategic’." : "The accounts need help. The board has discovered that loyalty does not appear as cash on the annual report.", buildPermanentOffers(player, 3));
+      return;
+    }
+    const seasons = Math.max(1, (latest?.toAge ?? player.age) - (latest?.fromAge ?? player.age - 1));
+    const unwanted = (latest?.apps ?? 99) / seasons < 12 && player.age >= 20 && randomUnit() < .42;
+    if (unwanted) {
+      setClubDecision(player, "released", `${player.currentClub} no longer sees a role for you`, "The manager says this is purely professional, which is football language for ‘please choose one of these exits’.", buildPermanentOffers(player, 3));
+      return;
+    }
+    if (randomUnit() < .54) {
+      const nextScenario = eligibleScenario(player);
+      setGame((currentGame) => ({ ...currentGame, phase: "scenario", scenarioId: nextScenario.id, outcome: null }));
+      return;
+    }
+    prepareOrdinaryDecision(player);
   }
   function resolveScenario(option: ScenarioOption) {
     if (!player || !scenario) return;
-    const roll = Math.random();
+    const roll = randomUnit();
     let cursor = 0;
     const outcome = option.outcomes.find((item) => { cursor += item.probability; return roll <= cursor; }) ?? option.outcomes[option.outcomes.length - 1];
     const effect = outcome.effect;
     const nextRating = clamp(player.rating + (effect.rating ?? 0), 45, player.potential);
     const next: Player = { ...player, rating: nextRating, value: Math.round(marketValue(nextRating, player.age, player.potential) * (effect.value ?? 1)), morale: clamp(player.morale + (effect.morale ?? 0), 0, 100), fitness: clamp(player.fitness + (effect.fitness ?? 0), 0, 100), reputation: clamp(player.reputation + (effect.reputation ?? 0), 0, 100), roleBoost: clamp(player.roleBoost + (effect.roleBoost ?? 0), -2, 2), agent: effect.agent ?? player.agent, seenScenarios: [...player.seenScenarios, scenario.id] };
-    setGame((current) => ({ ...current, phase: "scenario-result", player: next, outcome: { label: outcome.label, positive: outcome.positive } }));
+    showMotion({ kind: "fate", title: "The outcome is being decided", detail: option.outcomes.map((item) => `${Math.round(item.probability * 100)}% ${item.positive ? "good" : "bad"}`).join(" · ") }, () => {
+      setGame((current) => ({ ...current, phase: "scenario-result", player: next, outcome: { label: outcome.label, positive: outcome.positive } }));
+    }, 1150);
   }
   function continueAfterScenario() {
     if (!player) return;
-    setGame((current) => ({ ...current, phase: "offers", offers: buildOffers(player), scenarioId: null, outcome: null }));
+    prepareOrdinaryDecision(player);
   }
   function resetGame() {
-    window.localStorage.removeItem("goalbound-career-v2");
+    window.localStorage.removeItem("goalbound-career-v3");
     setGame(DEFAULT_SAVE); setName("Kai Nash"); setNation("ENG"); setPosition("ST"); setNumber(9);
-    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   return (
@@ -544,6 +724,7 @@ export default function Home() {
         <button className="brand" onClick={() => setGame((current) => ({ ...current, screen: "home" }))} aria-label="Goalbound home"><span className="brand-mark">G</span><span>GOALBOUND</span></button>
         <div className="topbar-right"><span className="save-status"><i /> Saved on this device</span>{player && <button className="quiet-button" onClick={resetGame}>New career</button>}</div>
       </header>
+      {motion && <div className="motion-screen" role="status" aria-live="polite"><div className={`motion-card ${motion.kind}`}><span className="motion-ball" /><small>Career in motion</small><h3>{motion.title}</h3><p>{motion.detail}</p><div className="motion-track"><i /><i /><i /></div></div></div>}
 
       {game.screen === "home" && (
         <>
@@ -551,7 +732,7 @@ export default function Home() {
             <div className="hero-copy">
               <div className="eyebrow"><span>Career simulator</span><span>Real clubs</span></div>
               <h1>Your talent.<br /><em>Your choices.</em><br />Your legacy.</h1>
-              <p>Start at 16. Earn your minutes. Survive agents, managers, bad advice and worse television. One career, no reloads.</p>
+              <p>Start in an academy, a smaller senior side or—very rarely—as the gem everyone wants. Stay loyal or survive the day the club makes the choice for you.</p>
               <div className="hero-actions"><button className="primary-button" onClick={startSetup}>Start your career <span>→</span></button>{player && <button className="secondary-button" onClick={() => setGame((current) => ({ ...current, screen: player.age >= 36 ? "summary" : "career" }))}>Resume {player.name}</button>}</div>
               <div className="nation-strip" aria-label="Available nations">{START_COUNTRIES.map((item) => <span key={item.code} title={item.name}>{item.flag}</span>)}</div>
             </div>
@@ -561,13 +742,13 @@ export default function Home() {
               <div className="floating-tag tag-left"><small>NEXT MOVE</small><strong>YOU DECIDE</strong></div><div className="floating-tag tag-right"><small>OUTCOME</small><strong>FATE DECIDES</strong></div>
             </div>
           </section>
-          <section className="manifesto"><div><span className="step-number">01</span><h3>Real football world</h3><p>Join Arsenal, Barcelona, River Plate, Ajax and dozens more real clubs.</p></div><div><span className="step-number">02</span><h3>Decisions with teeth</h3><p>See the odds, choose your risk and live with what the football gods decide.</p></div><div><span className="step-number">03</span><h3>No perfect pathway</h3><p>Loans, injuries, agents and late-career adventures make every run different.</p></div></section>
+          <section className="manifesto"><div><span className="step-number">01</span><h3>Real football world</h3><p>Top clubs, smaller clubs and second-tier pathways across ten starting nations.</p></div><div><span className="step-number">02</span><h3>Decisions with teeth</h3><p>See the odds, choose your risk and live with what the football gods decide.</p></div><div><span className="step-number">03</span><h3>A career, not a transfer tour</h3><p>Renew for years, become one-club royalty—or be sold when the balance sheet wins.</p></div></section>
         </>
       )}
 
       {game.screen === "setup" && (
         <section className="setup-page page-enter">
-          <div className="page-heading"><button className="back-link" onClick={() => setGame((current) => ({ ...current, screen: "home" }))}>← Back</button><span className="eyebrow">New career · Age 16</span><h2>Create your player</h2><p>This is where the story starts. The rest is earned, guessed or blamed on your agent.</p></div>
+          <div className="page-heading"><button className="back-link" onClick={() => setGame((current) => ({ ...current, screen: "home" }))}>← Back</button><span className="eyebrow">New career · Unknown route</span><h2>Create your player</h2><p>Most players begin in an academy. Some go straight into senior football. A rare few arrive with everybody already watching.</p></div>
           <div className="setup-grid">
             <div className="form-panel">
               <div className="field-grid"><label className="field"><span>Player name</span><input value={name} maxLength={22} onChange={(event) => setName(event.target.value)} placeholder="Your name" /></label><label className="field small-field"><span>Shirt number</span><input type="number" min="1" max="99" value={number} onChange={(event) => setNumber(clamp(Number(event.target.value), 1, 99))} /></label></div>
@@ -575,7 +756,7 @@ export default function Home() {
               <fieldset><legend>Position</legend><div className="position-grid">{POSITIONS.map((item) => <button key={item} className={position === item ? "position-option selected" : "position-option"} onClick={() => setPosition(item)} aria-pressed={position === item}>{item}</button>)}</div></fieldset>
               <fieldset><legend>Decisions every</legend><div className="span-options">{[1, 2, 3].map((years) => <button key={years} className={game.seasonSpan === years ? "span-option selected" : "span-option"} onClick={() => setGame((current) => ({ ...current, seasonSpan: years }))}>{years} {years === 1 ? "season" : "seasons"}</button>)}</div><p className="field-note">One season is the full soap opera. Three seasons is chaos at high speed.</p></fieldset>
             </div>
-            <aside className="live-card"><div className="live-card-top"><span>PROSPECT ID</span><span>{playerCountry.code} / 016</span></div><div className="live-score"><strong>52</strong><span>OVR<br />POTENTIAL: ?</span></div><div className="live-shirt"><b>{number}</b><small>{playerCountry.flag}</small></div><div className="live-name">{name || "YOUR NAME"}</div><div className="live-meta"><span><small>NATION</small>{playerCountry.name}</span><span><small>POSITION</small>{position}</span><span><small>STATUS</small>Free agent</span></div><button className="primary-button full-button" onClick={startCareer}>Enter the football world <span>→</span></button></aside>
+            <aside className="live-card"><div className="live-card-top"><span>PROSPECT ID</span><span>{playerCountry.code} / ???</span></div><div className="live-score"><strong>?</strong><span>STARTING OVR<br />ROUTE: UNKNOWN</span></div><div className="live-shirt"><b>{number}</b><small>{playerCountry.flag}</small></div><div className="live-name">{name || "YOUR NAME"}</div><div className="live-meta"><span><small>NATION</small>{playerCountry.name}</span><span><small>POSITION</small>{position}</span><span><small>STATUS</small>Awaiting scouts</span></div><button className="primary-button full-button" onClick={startCareer}>Draw my starting route <span>→</span></button></aside>
           </div>
         </section>
       )}
@@ -584,29 +765,19 @@ export default function Home() {
         <section className="career-page page-enter">
           <div className="career-head"><div className="identity-block"><div className="mini-shirt">{player.number}</div><div><span className="eyebrow">{playerCountry.flag} {playerCountry.name} · #{player.number} {player.position}</span><h2>{player.name}</h2><p>{player.currentClub} · Age {player.age}</p></div></div><div className="rating-block"><strong>{player.rating}</strong><span>OVR</span></div></div>
           <div className="career-stats"><div><small>Market value</small><strong>{money(player.value)}</strong></div><div><small>Appearances</small><strong>{player.totalApps}</strong></div><div><small>Goals</small><strong>{player.totalGoals}</strong></div><div><small>Assists</small><strong>{player.totalAssists}</strong></div><div><small>Trophies</small><strong>{player.trophies}</strong></div><div><small>National caps</small><strong>{player.caps}</strong></div></div>
-          <div className="career-vitals"><span><i style={{ width: `${player.fitness}%` }} /><small>Fitness</small><strong>{player.fitness}</strong></span><span><i style={{ width: `${player.morale}%` }} /><small>Morale</small><strong>{player.morale}</strong></span><span><i style={{ width: `${player.reputation}%` }} /><small>Reputation</small><strong>{player.reputation}</strong></span><span className="agent-pill"><small>Representation</small><strong>{player.agent}</strong></span></div>
+          <div className="career-vitals"><span><i style={{ width: `${player.fitness}%` }} /><small>Fitness</small><strong>{player.fitness}</strong></span><span><i style={{ width: `${player.morale}%` }} /><small>Morale</small><strong>{player.morale}</strong></span><span><i style={{ width: `${player.reputation}%` }} /><small>Reputation</small><strong>{player.reputation}</strong></span><span className="contract-pill"><small>Contract</small><strong>{player.currentClub === "Free agent" ? "None" : player.contractYears ? `${player.contractYears}Y left` : "Expired"}</strong></span><span className="agent-pill"><small>Representation</small><strong>{player.agent}</strong></span></div>
 
-          {game.phase === "offers" && <>
-            <div className="decision-heading"><div><span className="eyebrow">The next decision</span><h3>{player.age === 16 ? "Choose your first academy" : "Where do you go next?"}</h3></div><div className="season-control"><span>Simulate</span>{[1, 2, 3].map((years) => <button key={years} className={game.seasonSpan === years ? "active" : ""} onClick={() => setGame((current) => ({ ...current, seasonSpan: years }))}>{years}Y</button>)}</div></div>
-            <div className="offers-grid">{game.offers.map((offer, index) => <button className="offer-card" key={`${offer.name}-${index}`} onClick={() => chooseOffer(offer)}><div className="offer-index">0{index + 1}</div><div className="offer-top"><span>{offer.label}</span><ClubBadge club={offer} /></div><h4>{offer.name}</h4><p>{offer.league} · {country(offer.country).flag} {country(offer.country).name}</p><div className="offer-details"><span><small>ROLE</small>{offer.role}</span><span><small>WHY IT FITS</small>{offer.reason}</span></div><div className="offer-action"><span>Choose club</span><strong>→</strong></div></button>)}</div>
-          </>}
+          <div className="decision-dock" aria-live="polite">
+            {game.phase === "origin-reveal" && <div className={`origin-reveal ${player.origin}`}><span className="story-kicker">Starting route · {player.origin === "gem" ? "7% rare" : player.origin === "senior" ? "16% chance" : "Most common"}</span><h3>{game.decisionTitle}</h3><p>{game.decisionDescription}</p><div className="origin-facts"><span><small>STARTING AGE</small><strong>{player.age}</strong></span><span><small>STARTING OVR</small><strong>{player.rating}</strong></span><span><small>FIRST LEVEL</small><strong>{player.origin === "academy" ? "Academy" : "Senior team"}</strong></span></div><button className="primary-button story-continue" onClick={() => setGame((current) => ({ ...current, phase: "decision" }))}>See who wants you <span>→</span></button></div>}
 
-          {game.phase === "season-result" && game.lastSeason && <div className="story-stage season-stage">
-            <div className="story-kicker">Season complete · Age {game.lastSeason.fromAge}–{game.lastSeason.toAge}</div>
-            <div className="season-club"><ClubBadge club={clubByName(game.lastSeason.club)} /><div><span>{game.lastSeason.kind === "loan" ? "On loan at" : "Chapter at"}</span><h3>{game.lastSeason.club}</h3><p>{game.lastSeason.league}</p></div></div>
-            <blockquote>{game.lastSeason.event}</blockquote>
-            <div className="season-numbers"><span><strong>{game.lastSeason.apps}</strong><small>Apps</small></span><span><strong>{game.lastSeason.goals}</strong><small>Goals</small></span><span><strong>{game.lastSeason.assists}</strong><small>Assists</small></span><span><strong>{game.lastSeason.trophies}</strong><small>Trophies</small></span><span className={game.lastSeason.after >= game.lastSeason.before ? "up" : "down"}><strong>{game.lastSeason.before} → {game.lastSeason.after}</strong><small>OVR</small></span></div>
-            <button className="primary-button story-continue" onClick={continueAfterSeason}>See what happens off the pitch <span>→</span></button>
-          </div>}
+            {game.phase === "decision" && <div className="club-decision"><div className="dock-heading"><div><span className="story-kicker">{game.decisionKind.replaceAll("-", " ")} · club decision</span><h3>{game.decisionTitle}</h3><p>{game.decisionDescription}</p></div><div className="season-control"><span>Simulate</span>{[1, 2, 3].map((years) => <button key={years} className={game.seasonSpan === years ? "active" : ""} onClick={() => setGame((current) => ({ ...current, seasonSpan: years }))}>{years}Y</button>)}</div></div><div className="club-options">{game.offers.map((offer, index) => <button key={`${offer.name}-${offer.kind}-${index}`} onClick={() => chooseOffer(offer)}><span className="option-number">0{index + 1}</span><ClubBadge club={offer} /><div className="club-option-copy"><small>{offer.label}</small><strong>{offer.name}</strong><span>{offer.league} · {country(offer.country).flag} {offer.role}</span><p>{offer.reason}</p></div><em>Choose →</em></button>)}</div></div>}
 
-          {game.phase === "scenario" && scenario && <div className="story-stage scenario-stage">
-            <div className="scenario-icon">{scenario.icon}</div><span className="story-kicker">{scenario.category} · Career decision</span><h3>{scenario.title}</h3><p className="scenario-description">{scenario.description}</p>
-            <div className="scenario-options">{scenario.options.map((option, index) => <button key={option.label} onClick={() => resolveScenario(option)}><span className="option-number">0{index + 1}</span><div className="option-copy"><strong>{option.label}</strong><small>{option.hint}</small></div><div className="odds">{option.outcomes.map((item) => <span className={item.positive ? "positive" : "negative"} key={item.label}><b>{Math.round(item.probability * 100)}%</b>{item.label}</span>)}</div><em>Choose →</em></button>)}</div>
-          </div>}
+            {game.phase === "season-result" && game.lastSeason && <div className="season-stage"><div className="story-kicker">Season complete · Age {game.lastSeason.fromAge}–{game.lastSeason.toAge}</div><div className="season-club"><ClubBadge club={clubByName(game.lastSeason.club)} /><div><span>{game.lastSeason.kind === "loan" ? "Loan chapter" : game.lastSeason.kind === "stay" ? "Another chapter at" : "Chapter at"}</span><h3>{game.lastSeason.club}</h3><p>{game.lastSeason.league}</p></div></div><blockquote>{game.lastSeason.event}</blockquote><div className="season-numbers"><span><strong>{game.lastSeason.apps}</strong><small>Apps</small></span><span><strong>{game.lastSeason.goals}</strong><small>Goals</small></span><span><strong>{game.lastSeason.assists}</strong><small>Assists</small></span><span><strong>{game.lastSeason.trophies}</strong><small>Trophies</small></span><span className={game.lastSeason.after >= game.lastSeason.before ? "up" : "down"}><strong>{game.lastSeason.before} → {game.lastSeason.after}</strong><small>OVR</small></span></div><button className="primary-button story-continue" onClick={continueAfterSeason}>Continue career <span>→</span></button></div>}
 
-          {game.phase === "scenario-result" && game.outcome && <div className={game.outcome.positive ? "story-stage outcome-stage positive" : "story-stage outcome-stage negative"}>
-            <div className="fate-coin">{game.outcome.positive ? "✓" : "×"}</div><span className="story-kicker">Fate has decided</span><h3>{game.outcome.label}</h3><p>Your rating, value, fitness and status have been updated. Football has moved on already.</p><button className="primary-button story-continue" onClick={continueAfterScenario}>Open the transfer window <span>→</span></button>
-          </div>}
+            {game.phase === "scenario" && scenario && <div className="scenario-stage"><div className="scenario-icon">{scenario.icon}</div><span className="story-kicker">{scenario.category} · career decision</span><h3>{scenario.title}</h3><p className="scenario-description">{scenario.description}</p><div className="scenario-options">{scenario.options.map((option, index) => <button key={`${option.label}-${index}`} onClick={() => resolveScenario(option)}><span className="option-number">0{index + 1}</span><div className="option-copy"><strong>{option.label}</strong><small>{option.hint}</small></div><div className="odds">{option.outcomes.map((item) => <span className={item.positive ? "positive" : "negative"} key={item.label}><b>{Math.round(item.probability * 100)}%</b>{item.label}</span>)}</div><em>Choose →</em></button>)}</div></div>}
+
+            {game.phase === "scenario-result" && game.outcome && <div className={game.outcome.positive ? "outcome-stage positive" : "outcome-stage negative"}><div className="fate-coin">{game.outcome.positive ? "✓" : "×"}</div><span className="story-kicker">Fate has decided</span><h3>{game.outcome.label}</h3><p>Your rating, value, fitness and status have been updated. The club still expects you at training.</p><button className="primary-button story-continue" onClick={continueAfterScenario}>Continue career <span>→</span></button></div>}
+          </div>
 
           <div className="career-lower"><div className="timeline-panel"><div className="panel-heading"><h3>Career path</h3><span>{player.history.length} chapters</span></div>{player.history.length === 0 ? <p className="empty-state">Your first contract will start the timeline.</p> : <div className="timeline">{player.history.map((season, index) => <div className="timeline-row" key={`${season.club}-${season.fromAge}-${index}`}><span className="timeline-age">{season.fromAge}–{season.toAge}</span><ClubBadge club={clubByName(season.club)} small /><div><strong>{season.kind === "loan" ? "↳ " : ""}{season.club}</strong><small>{season.role} · {season.apps} apps · {season.goals} G · {season.assists} A</small></div><span className={season.after >= season.before ? "rating-rise" : "rating-fall"}>{season.before} → {season.after}</span></div>)}</div>}</div><aside className="achievements-panel"><div className="panel-heading"><h3>Legacy</h3><span>{achievements.length}/7</span></div><div className="achievement-list">{achievements.map((item, index) => <div key={item}><span>{index + 1}</span><strong>{item}</strong></div>)}</div></aside></div>
         </section>

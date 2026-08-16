@@ -214,13 +214,28 @@ legend { margin-bottom: 13px; }
 .career-stats > div + div { border-left: 1px solid var(--line); }
 .career-stats small { margin-bottom: 8px; color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: .1em; }
 .career-stats strong { font-size: 22px; }
-.career-vitals { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
+.career-vitals { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 10px; }
 .career-vitals > span { position: relative; min-height: 48px; padding: 10px 12px; overflow: hidden; display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,.035); border: 1px solid var(--line); }
 .career-vitals > span i { position: absolute; left: 0; bottom: 0; height: 2px; background: var(--lime); }
 .career-vitals small { color: var(--muted); font-size: 8px; text-transform: uppercase; letter-spacing: .1em; }
 .career-vitals strong { margin-left: auto; font-size: 11px; }
 .career-vitals .agent-pill { padding-left: 14px; }
 .career-vitals .agent-pill strong { color: var(--lime); }
+.career-vitals .contract-pill strong { color: #f3c667; }
+.motion-screen { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 24px; background: rgba(4,5,4,.86); backdrop-filter: blur(14px); animation: motionFade .18s ease both; }
+.motion-card { width: min(520px, 100%); padding: 42px; text-align: center; background: linear-gradient(145deg, #20231f, #101210); border: 1px solid rgba(199,255,53,.36); box-shadow: 0 36px 120px rgba(0,0,0,.7); animation: motionPop .28s ease both; }
+.motion-card small { display: block; margin: 18px 0 9px; color: var(--lime); font: 9px monospace; text-transform: uppercase; letter-spacing: .18em; }
+.motion-card h3 { margin: 0; font-size: clamp(30px, 5vw, 48px); line-height: 1; letter-spacing: -.05em; }
+.motion-card p { margin: 16px auto 24px; max-width: 400px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.motion-ball { width: 46px; height: 46px; margin: auto; display: block; border: 2px solid var(--lime); border-radius: 50%; box-shadow: inset 0 0 0 9px rgba(199,255,53,.1); animation: ballRoll .8s cubic-bezier(.4,0,.2,1) infinite; }
+.motion-track { width: min(320px, 90%); height: 4px; margin: auto; display: flex; gap: 6px; overflow: hidden; }
+.motion-track i { flex: 1; background: rgba(255,255,255,.12); transform-origin: left; animation: trackFill .9s ease-in-out infinite; }
+.motion-track i:nth-child(2) { animation-delay: .13s; }
+.motion-track i:nth-child(3) { animation-delay: .26s; }
+@keyframes motionFade { from { opacity: 0; } }
+@keyframes motionPop { from { opacity: 0; transform: translateY(16px) scale(.97); } }
+@keyframes ballRoll { 50% { transform: rotate(180deg) scale(1.08); } to { transform: rotate(360deg); } }
+@keyframes trackFill { 0%, 25% { transform: scaleX(.05); background: rgba(255,255,255,.12); } 70%, 100% { transform: scaleX(1); background: var(--lime); } }
 .latest-season { margin-top: 12px; padding: 14px 18px; display: flex; align-items: center; gap: 20px; background: rgba(199,255,53,.08); border-left: 3px solid var(--lime); font-size: 12px; }
 .latest-season > span:last-child { color: #a8aca5; margin-left: auto; }
 .latest-kicker { color: var(--lime); font: 9px monospace; text-transform: uppercase; letter-spacing: .1em; }
@@ -230,6 +245,42 @@ legend { margin-bottom: 13px; }
 .season-control span { margin-right: 8px; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .1em; }
 .season-control button { width: 42px; height: 34px; background: transparent; border: 1px solid var(--line); border-radius: 3px; font-size: 10px; font-weight: 800; cursor: pointer; }
 .season-control button.active { background: var(--lime); border-color: var(--lime); color: #090a09; }
+.decision-dock { position: relative; width: min(1040px, 100%); min-height: 420px; margin: 38px auto 0; overflow: hidden; background: linear-gradient(145deg, rgba(31,34,30,.98), rgba(13,15,13,.98)); border: 1px solid rgba(199,255,53,.28); box-shadow: 0 26px 80px rgba(0,0,0,.3); }
+.decision-dock::before { content: ""; position: absolute; width: 330px; height: 330px; top: -250px; right: -80px; border: 1px solid rgba(199,255,53,.15); border-radius: 50%; pointer-events: none; }
+.decision-dock > * { position: relative; padding: 34px; animation: dockIn .28s ease both; }
+@keyframes dockIn { from { opacity: 0; transform: translateY(9px); } }
+.origin-reveal { min-height: 420px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; }
+.origin-reveal h3, .dock-heading h3 { max-width: 820px; margin: 10px 0; font-size: clamp(34px, 5vw, 62px); line-height: .96; letter-spacing: -.055em; }
+.origin-reveal > p, .dock-heading > div > p { max-width: 760px; margin: 6px 0 0; color: #b9bdb6; font-size: 15px; line-height: 1.6; }
+.origin-reveal.gem { border-left: 4px solid #f3c667; }
+.origin-reveal.gem .story-kicker { color: #f3c667; }
+.origin-facts { width: min(720px, 100%); display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 26px; border: 1px solid var(--line); }
+.origin-facts span { min-height: 72px; padding: 14px 16px; display: flex; flex-direction: column; justify-content: center; }
+.origin-facts span + span { border-left: 1px solid var(--line); }
+.origin-facts small { margin-bottom: 5px; color: var(--muted); font-size: 8px; letter-spacing: .1em; }
+.origin-facts strong { font-size: 20px; }
+.dock-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+.dock-heading .season-control { flex: 0 0 auto; margin-top: 4px; }
+.club-options { display: grid; gap: 8px; }
+.club-options > button { position: relative; min-height: 106px; padding: 16px 74px 16px 56px; display: flex; align-items: center; gap: 18px; text-align: left; background: rgba(255,255,255,.025); border: 1px solid var(--line); cursor: pointer; transition: transform .18s ease, background .18s ease, border-color .18s ease; }
+.club-options > button:hover { transform: translateX(5px); background: rgba(199,255,53,.05); border-color: rgba(199,255,53,.5); }
+.club-options .club-badge { width: 60px; height: 60px; }
+.club-option-copy { min-width: 0; display: grid; grid-template-columns: minmax(170px, .85fr) 1.15fr; align-items: center; column-gap: 18px; flex: 1; }
+.club-option-copy > small { grid-column: 1; color: var(--lime); font-size: 8px; text-transform: uppercase; letter-spacing: .12em; }
+.club-option-copy > strong { grid-column: 1; font-size: 21px; line-height: 1.1; }
+.club-option-copy > span { grid-column: 1; color: var(--muted); font-size: 10px; }
+.club-option-copy > p { grid-column: 2; grid-row: 1 / 4; margin: 0; color: #bec1bb; font-size: 12px; line-height: 1.5; }
+.club-options em { position: absolute; right: 18px; color: var(--lime); font-size: 9px; font-style: normal; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+.decision-dock .season-stage { min-height: 420px; }
+.decision-dock .season-club { margin-top: 24px; }
+.decision-dock .season-club h3 { font-size: clamp(34px, 4.5vw, 58px); }
+.decision-dock .season-stage blockquote { margin: 24px 0 20px; }
+.decision-dock .scenario-stage { padding: 34px; }
+.decision-dock .scenario-icon { width: 54px; height: 54px; margin-bottom: 16px; font-size: 26px; }
+.decision-dock .scenario-stage h3 { font-size: clamp(34px, 4.5vw, 58px); }
+.decision-dock .scenario-description { margin: 12px 0 22px; }
+.decision-dock .scenario-options > button { min-height: 108px; }
+.decision-dock .outcome-stage { min-height: 420px; padding: 34px; }
 .offers-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .offer-card { position: relative; min-height: 320px; padding: 25px; overflow: hidden; text-align: left; background: linear-gradient(150deg, rgba(29,32,28,.96), rgba(14,16,14,.96)); border: 1px solid var(--line); border-radius: 2px; cursor: pointer; transition: transform .25s ease, border-color .25s ease; }
 .offer-card:hover { transform: translateY(-6px); border-color: rgba(199,255,53,.6); }
@@ -338,6 +389,7 @@ footer { position: relative; z-index: 1; width: min(1320px, calc(100% - 64px)); 
   .career-stats > div:nth-child(4) { border-left: 0; border-top: 1px solid var(--line); }
   .career-stats > div:nth-child(5), .career-stats > div:nth-child(6) { border-top: 1px solid var(--line); }
   .career-vitals { grid-template-columns: repeat(2, 1fr); }
+  .career-vitals .agent-pill { grid-column: 1 / -1; }
   .offers-grid { grid-template-columns: 1fr; }
   .offer-card { min-height: 290px; }
   .career-lower { grid-template-columns: 1fr; }
@@ -378,6 +430,19 @@ footer { position: relative; z-index: 1; width: min(1320px, calc(100% - 64px)); 
   .latest-season { align-items: flex-start; flex-direction: column; gap: 5px; }
   .latest-season > span:last-child { margin-left: 0; line-height: 1.5; }
   .decision-heading { margin-top: 48px; align-items: flex-start; flex-direction: column; gap: 18px; }
+  .decision-dock { margin-top: 26px; }
+  .decision-dock > *, .decision-dock .scenario-stage, .decision-dock .outcome-stage { padding: 24px 16px; }
+  .dock-heading { flex-direction: column; gap: 16px; }
+  .origin-facts { grid-template-columns: 1fr; }
+  .origin-facts span + span { border-left: 0; border-top: 1px solid var(--line); }
+  .club-options > button { min-height: 132px; padding: 16px 44px 16px 44px; gap: 12px; align-items: flex-start; }
+  .club-options .club-badge { width: 46px; height: 46px; }
+  .club-option-copy { grid-template-columns: 1fr; row-gap: 3px; }
+  .club-option-copy > small, .club-option-copy > strong, .club-option-copy > span, .club-option-copy > p { grid-column: 1; grid-row: auto; }
+  .club-option-copy > strong { font-size: 17px; }
+  .club-option-copy > p { margin-top: 8px; font-size: 10px; }
+  .club-options em { right: 10px; bottom: 10px; }
+  .motion-card { padding: 32px 20px; }
   .offer-card h4 { margin-top: 38px; }
   .story-stage { margin-top: 38px; padding: 28px 18px; }
   .season-club > .club-badge { width: 64px; height: 64px; }

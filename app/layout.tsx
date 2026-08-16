@@ -10,7 +10,7 @@ const geist = Geist({
 export const metadata: Metadata = {
   metadataBase: new URL("https://goalbound-career.realkfiros.chatgpt.site"),
   title: "Goalbound — Your Football Career",
-  description: "Start at 16, join real clubs, survive the decisions nobody trains you for and build a football legacy of your own.",
+  description: "Begin in an academy, a smaller senior side or as a rare gem, then build a football career across real clubs and consequential decisions.",
   openGraph: {
     title: "Goalbound — Your Football Career",
     description: "Your talent. Your choices. Your legacy.",
