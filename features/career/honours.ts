@@ -95,6 +95,9 @@ export function simulateHonoursWithWorld(
     const champion = titleWinners[0].winner;
     const wonLeagueTitles = titleWinners.filter((title) => title.winner === input.offer.name);
     const cupWinner = simulated.cupWinners[input.offer.country] ?? input.offer.name;
+    const continentalTitles = simulated.continentalCompetitions.filter((competition) =>
+      competition.champion.club === input.offer.name && competition.champion.country === input.offer.country,
+    );
     const divisionClubNames = activeCompetition?.table ?? [input.offer.name];
     const rivalClub = pick(divisionClubNames.filter((name) => name !== input.offer.name), random) ?? input.offer.name;
     const rivalGoals = randomInt(random, 16, 30);
@@ -110,7 +113,7 @@ export function simulateHonoursWithWorld(
     const worldClubData = pick(worldClubs, random);
     const worldClub = worldClubData?.name ?? input.offer.name;
     const ballonScore = input.rating + input.reputation * .24 + goals * .85 + assists * .35 +
-      (wonLeagueTitles.length ? 5 : 0) + (cupWinner === input.offer.name ? 3 : 0);
+      (wonLeagueTitles.length ? 5 : 0) + (cupWinner === input.offer.name ? 3 : 0) + (continentalTitles.length ? 7 : 0);
     const winsBallonDor = seniorEligible && input.rating >= 83 && apps >= 24 && ballonScore >= randomInt(random, 121, 139);
     const ballonDor = winsBallonDor
       ? { name: input.player.name, club: input.offer.name, isPlayer: true }
@@ -123,6 +126,9 @@ export function simulateHonoursWithWorld(
       playerHonours.push(playerHonour(input, season, "league-title", "team", name, "🏆"));
     });
     if (seniorEligible && cupWinner === input.offer.name) playerHonours.push(playerHonour(input, season, "national-cup", "team", `${cupTitle} winner`, "🏆"));
+    if (seniorEligible) continentalTitles.forEach((competition) => {
+      playerHonours.push(playerHonour(input, season, "continental-title", "team", `${competition.name} winner`, "🏆"));
+    });
     if (winsGoldenBoot) playerHonours.push(playerHonour(input, season, "golden-boot", "individual", `${league} Golden Boot`, "👟"));
     if (winsPlayerOfSeason) playerHonours.push(playerHonour(input, season, "player-of-season", "individual", `${league} Player of the Season`, "⭐"));
     if (winsBallonDor) playerHonours.push(playerHonour(input, season, "ballon-dor", "individual", "Ballon d'Or", "◉"));
@@ -150,7 +156,7 @@ export function simulateHonoursWithWorld(
     honours.push({
       season, league, champion, titles: titleWinners, topScorer, playerOfSeason,
       cup: { name: cupTitle, winner: cupWinner }, ballonDor, playerHonours,
-      divisionRoll, cupRoll, movements: simulated.movements,
+      divisionRoll, cupRoll, continentalRoll: simulated.continentalCompetitions, movements: simulated.movements,
       standingGroups: activeCompetition?.standings,
       playoffBrackets: simulated.playoffBrackets.filter((bracket) => bracket.country === input.offer.country),
     });

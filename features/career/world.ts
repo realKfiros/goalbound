@@ -3,7 +3,8 @@ import { competitionFormat, PYRAMID_BOUNDARIES, type PyramidBoundary } from "./c
 import { competitionStrength } from "./competitionStrength";
 import { clubFinance } from "./finances";
 import { CATALOG_SEASON, COMPLETE_LEAGUES } from "./leagueCatalog";
-import type { Club, ClubSeasonState, CompetitionTitle, PlayoffBracket, PlayoffTie, StandingGroup, WorldMovement, WorldState } from "./domain";
+import { simulateUefaCompetitions } from "./uefaCompetitions";
+import type { Club, ClubSeasonState, CompetitionTitle, ContinentalCompetition, PlayoffBracket, PlayoffTie, StandingGroup, WorldMovement, WorldState } from "./domain";
 
 export type WorldPlayerImpact = { club: string; boost: number };
 export type WorldCompetitionOutcome = {
@@ -20,6 +21,7 @@ export type WorldSeasonSimulation = {
   world: WorldState;
   competitions: WorldCompetitionOutcome[];
   cupWinners: Record<string, string>;
+  continentalCompetitions: ContinentalCompetition[];
   movements: WorldMovement[];
   playoffBrackets: PlayoffBracket[];
 };
@@ -414,6 +416,7 @@ export function simulateWorldSeason(
   });
   const cupWinners = Object.fromEntries([...new Set(Object.values(world.clubs).map((club) => club.country))]
     .map((country) => [country, knockoutCupWinner(Object.values(world.clubs).filter((club) => club.country === country), impact, random)]));
+  const continentalCompetitions = simulateUefaCompetitions(world.clubs, competitions, cupWinners, impact, random);
 
   evolveClubs(world, competitions, random);
   const movementSimulation = resolveMovements(world, competitions, impact, random);
@@ -422,9 +425,12 @@ export function simulateWorldSeason(
   world.elapsedYears += 1;
   world.history = [...world.history, {
     index: world.elapsedYears,
-    champions: Object.fromEntries(competitions.map((competition) => [competition.key, competition.titles])),
+    champions: Object.fromEntries([
+      ...competitions.map((competition) => [competition.key, competition.titles] as const),
+      ...continentalCompetitions.map((competition) => [`EUROPE:${competition.key}`, [{ name: "Champion", winner: competition.champion.club }]] as const),
+    ]),
     movements,
   }].slice(-30);
   assertMembership(world);
-  return { world, competitions, cupWinners, movements, playoffBrackets };
+  return { world, competitions, cupWinners, continentalCompetitions, movements, playoffBrackets };
 }

@@ -72,6 +72,8 @@ test("each simulated year has a complete named honours board", () => {
   assert.equal(annual.cupRoll.length, expectedCountries.size);
   assert.ok(annual.divisionRoll.every((division) => division.champion && division.topScorer.name && division.playerOfSeason.name));
   assert.ok(annual.cupRoll.every((cup) => cup.name && cup.winner));
+  assert.equal(annual.continentalRoll.length, 3);
+  assert.ok(annual.continentalRoll.every((competition) => competition.champion.club && competition.table.length === 36));
   assert.equal(annual.standingGroups.length, 1);
   assert.equal(annual.standingGroups[0].clubs.length, 20);
   assert.equal(annual.standingGroups[0].clubs[0], annual.champion);
@@ -106,6 +108,23 @@ test("academy players appear in the world but cannot win senior honours", () => 
   assert.ok(annual.divisionRoll.every((division) =>
     isGeneratedName(division.country, division.topScorer.name)
       && isGeneratedName(division.country, division.playerOfSeason.name),
+  ));
+});
+
+test("a player at a European-winning club receives the continental trophy", () => {
+  const { simulateHonours } = loadTypeScriptModule("features/career/honours.ts");
+  let winningSeason;
+  for (let seed = 1; seed <= 60 && !winningSeason; seed += 1) {
+    const [annual] = simulateHonours({
+      player: player({ rating: 99, reputation: 100 }), offer: cityOffer(), years: 1,
+      apps: 55, goals: 60, assists: 25, rating: 99, reputation: 100,
+    }, seededRandom(seed));
+    if (annual.continentalRoll.some((competition) => competition.champion.club === "Manchester City")) winningSeason = annual;
+  }
+
+  assert.ok(winningSeason, "Expected an exceptional Manchester City player to win a European competition");
+  assert.ok(winningSeason.playerHonours.some((honour) =>
+    honour.kind === "continental-title" && honour.name.endsWith(" League winner"),
   ));
 });
 
@@ -151,8 +170,12 @@ test("the collection exposes every division award, national cup, and club", () =
   const countries = new Set(CLUBS.map((club) => club.country));
   const empty = trophyCollection(EMPTY_TROPHY_ROOM);
 
-  assert.equal(empty.team.length, divisions.size + countries.size);
+  assert.equal(empty.team.length, divisions.size + countries.size + 3);
   assert.equal(empty.individual.length, divisions.size * 2 + 1);
+  assert.deepEqual(
+    empty.team.filter((entry) => entry.kind === "continental-title").map((entry) => entry.name),
+    ["Champions League", "Europa League", "Conference League"],
+  );
   assert.equal(empty.all.filter((entry) => entry.unlocked).length, 0);
   assert.equal(clubAlbum(EMPTY_TROPHY_ROOM).flatMap((group) => group.clubs).length, CLUBS.length);
 

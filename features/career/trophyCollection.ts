@@ -2,6 +2,7 @@ import { CLUBS, country } from "./catalog";
 import type { Club, HonourCategory, HonourKind, TrophyRoom, TrophyRoomHonour } from "./domain";
 import { clubDivision } from "./finances";
 import { nationalCupName } from "./honours";
+import { UEFA_COMPETITION_DEFINITIONS } from "./uefaCompetitions";
 
 export type TrophyCollectionEntry = {
   id: string;
@@ -102,6 +103,18 @@ export function trophyCollection(room: TrophyRoom) {
       kind: "national-cup",
       icon: "🏆",
     }, (honour) => honour.kind === "national-cup" && honour.name === `${cup} winner`));
+  });
+
+  UEFA_COMPETITION_DEFINITIONS.forEach((competition) => {
+    team.push(honourEntry(honours, {
+      id: `continental:${competition.key}`,
+      name: competition.name,
+      detail: "European football",
+      country: null,
+      category: "team",
+      kind: "continental-title",
+      icon: "🏆",
+    }, (honour) => honour.kind === "continental-title" && honour.name === `${competition.name} winner`));
   });
 
   individual.push(honourEntry(honours, {

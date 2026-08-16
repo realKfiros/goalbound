@@ -167,6 +167,7 @@ export function createCareerEngine(random = Math.random) {
   function seasonNarrative(role: Role, apps: number, movedAbroad: boolean, injured: boolean, honourKinds: string[]) {
     if (honourKinds.includes("ballon-dor")) return "You won the Ballon d'Or. The group chat becomes briefly respectful.";
     if (honourKinds.includes("player-of-season") || honourKinds.includes("golden-boot")) return "You collected an individual award. Your agent has already made it their profile photo.";
+    if (honourKinds.includes("continental-title")) return "You conquered Europe. The medal is heavier than it looked on television.";
     if (honourKinds.includes("league-title") || honourKinds.includes("national-cup")) return "You lifted silverware. Nobody remembers the November draw anymore.";
     if (injured) return "The season had momentum. Your hamstring preferred a different narrative.";
     if (apps < 15) return "Your most consistent position was next to the assistant coach.";

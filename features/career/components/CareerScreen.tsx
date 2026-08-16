@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { clubByName, country } from "../catalog";
-import type { AnnualHonours, Offer, Player, PlayoffBracket, SavedGame, Scenario, ScenarioOption, StandingGroup } from "../domain";
+import type { AnnualHonours, ContinentalCompetition, Offer, Player, PlayoffBracket, SavedGame, Scenario, ScenarioOption, StandingGroup } from "../domain";
 import { ClubBadge } from "./ClubBadge";
 
 type CareerScreenProps = {
@@ -24,7 +24,18 @@ function formatMoney(value: number) {
     : `€${Math.round(value / 1_000)}k`;
 }
 
-function StandingTable({ group, annual, activeClub }: { group: StandingGroup; annual: AnnualHonours; activeClub: string }) {
+const EUROPEAN_MARKERS = {
+  "champions-league": { label: "CL", title: "Champions League qualification", className: "cl" },
+  "europa-league": { label: "EL", title: "Europa League qualification", className: "el" },
+  "conference-league": { label: "ECL", title: "Conference League qualification", className: "ecl" },
+} as const;
+
+function StandingTable({ group, annual, activeClub, activeCountry }: {
+  group: StandingGroup;
+  annual: AnnualHonours;
+  activeClub: string;
+  activeCountry: string;
+}) {
   return (
     <div className="standing-group">
       <h5>{group.name}</h5>
@@ -32,13 +43,23 @@ function StandingTable({ group, annual, activeClub }: { group: StandingGroup; an
         {group.clubs.map((club, index) => {
           const movement = annual.movements?.find((item) => item.club === club && item.fromLeague === annual.league);
           const isChampion = (annual.titles ?? [{ name: "Champion", winner: annual.champion }]).some((title) => title.winner === club);
-          const marker = movement?.direction === "promoted" ? "P" : movement?.direction === "relegated" ? "R" : isChampion ? "C" : "";
+          const europeanCompetition = annual.continentalRoll?.find((competition) =>
+            competition.entrants.some((entrant) => entrant.club === club && entrant.country === activeCountry),
+          );
+          const europeanMarker = europeanCompetition ? EUROPEAN_MARKERS[europeanCompetition.key] : null;
+          const markers = [
+            isChampion ? { label: "C", title: "League champion", className: "c" } : null,
+            annual.cup.winner === club ? { label: "CW", title: `${annual.cup.name} winner`, className: "cw" } : null,
+            europeanMarker,
+            movement?.direction === "promoted" ? { label: "P", title: "Promoted", className: "p" } : null,
+            movement?.direction === "relegated" ? { label: "R", title: "Relegated", className: "r" } : null,
+          ].filter((marker): marker is { label: string; title: string; className: string } => !!marker);
           return (
             <div className={club === activeClub ? "standing-row active" : "standing-row"} key={club}>
               <span className="standing-position">{index + 1}</span>
               <ClubBadge club={clubByName(club)} small fetchRemote={false} />
               <strong>{club}</strong>
-              {marker && <span className={`standing-marker ${marker.toLowerCase()}`}>{marker}</span>}
+              <span className="standing-markers">{markers.map((marker) => <span className={`standing-marker ${marker.className}`} title={marker.title} key={marker.className}>{marker.label}</span>)}</span>
             </div>
           );
         })}
@@ -67,6 +88,33 @@ function PlayoffBracketView({ bracket, activeClub }: { bracket: PlayoffBracket; 
             ))}
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function ContinentalTable({ competition, activeClub, activeCountry }: {
+  competition: ContinentalCompetition;
+  activeClub: string;
+  activeCountry: string;
+}) {
+  return (
+    <div className="continental-table-wrap">
+      <div className="continental-table-labels"><span>#</span><span>Club</span><span>P</span><span>W</span><span>D</span><span>L</span><span>GD</span><span>Pts</span><span>Route</span></div>
+      <div className="continental-table">
+        {competition.table.map((standing, index) => {
+          const route = index < 8 ? "R16" : index < 24 ? "PO" : "OUT";
+          const isActive = standing.club === activeClub && standing.country === activeCountry;
+          return (
+            <div className={isActive ? "continental-standing-row active" : "continental-standing-row"} key={`${standing.country}:${standing.club}`}>
+              <span className="standing-position">{index + 1}</span>
+              <div className="continental-club"><ClubBadge club={clubByName(standing.club)} small fetchRemote={false} /><strong>{standing.club}</strong><small>{country(standing.country).flag}</small></div>
+              <span>{standing.played}</span><span>{standing.won}</span><span>{standing.drawn}</span><span>{standing.lost}</span>
+              <span>{standing.goalDifference > 0 ? `+${standing.goalDifference}` : standing.goalDifference}</span><b>{standing.points}</b>
+              <em className={`continental-route ${route.toLowerCase()}`}>{route}</em>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -184,9 +232,34 @@ export function CareerScreen({
                       <div className={annual.topScorer.isPlayer ? "honour-result won" : "honour-result"}><small>Golden Boot</small><strong>{annual.topScorer.name}</strong><span>{annual.topScorer.club}{annual.topScorer.detail ? ` · ${annual.topScorer.detail}` : ""}</span></div>
                       <div className={annual.playerOfSeason.isPlayer ? "honour-result won" : "honour-result"}><small>Player of the Season</small><strong>{annual.playerOfSeason.name}</strong><span>{annual.playerOfSeason.club}</span></div>
                       <div className={annual.ballonDor.isPlayer ? "honour-result won" : "honour-result"}><small>Ballon d&apos;Or</small><strong>{annual.ballonDor.name}</strong><span>{annual.ballonDor.club}</span></div>
+                      {annual.continentalRoll?.map((competition) => (
+                        <div className={competition.champion.club === game.lastSeason?.club && competition.champion.country === game.lastSeason?.country ? "honour-result continental-won won" : "honour-result continental-won"} key={competition.key}>
+                          <small>{competition.shortName}</small><strong>{competition.champion.club}</strong><span>{country(competition.champion.country).flag} European winner</span>
+                        </div>
+                      ))}
                     </div>
                     {!!annual.playerHonours.length && <div className="player-honours-earned">You won: {annual.playerHonours.map((honour) => `${honour.icon} ${honour.name}`).join(" · ")}</div>}
-                    {!!annual.standingGroups?.length && <details className="world-honours-roll competition-roll"><summary>{annual.standingGroups.length === 1 ? `League table · ${annual.standingGroups[0].clubs.length} clubs` : `League tables · ${annual.standingGroups.length} groups`}</summary><div className="standing-groups">{annual.standingGroups.map((group) => <StandingTable group={group} annual={annual} activeClub={game.lastSeason!.club} key={group.name} />)}</div><div className="standing-legend"><span><b>C</b> Champion</span><span><b>P</b> Promoted</span><span><b>R</b> Relegated</span></div></details>}
+                    {!!annual.continentalRoll?.length && (
+                      <details className="world-honours-roll continental-roll">
+                        <summary>European football · {annual.continentalRoll.length} league phases &amp; knockout tournaments</summary>
+                        <div className="continental-competitions">
+                          {annual.continentalRoll.map((competition) => {
+                            const entered = competition.entrants.some((club) => club.club === game.lastSeason?.club && club.country === game.lastSeason?.country);
+                            return (
+                              <details className="continental-competition" key={competition.key} open={entered}>
+                                <summary><span><b>{competition.shortName}</b><small>{competition.leagueMatches}-match league phase · 36 clubs</small></span><span><small>Champion</small><strong>{country(competition.champion.country).flag} {competition.champion.club}</strong></span></summary>
+                                <div className="continental-competition-body">
+                                  <div className="continental-table-heading"><h5>League phase</h5><small>1–8 Round of 16 · 9–24 Play-off · 25–36 Eliminated</small></div>
+                                  <ContinentalTable competition={competition} activeClub={game.lastSeason!.club} activeCountry={game.lastSeason!.country} />
+                                  <PlayoffBracketView bracket={competition.bracket} activeClub={game.lastSeason!.club} />
+                                </div>
+                              </details>
+                            );
+                          })}
+                        </div>
+                      </details>
+                    )}
+                    {!!annual.standingGroups?.length && <details className="world-honours-roll competition-roll"><summary>{annual.standingGroups.length === 1 ? `League table · ${annual.standingGroups[0].clubs.length} clubs` : `League tables · ${annual.standingGroups.length} groups`}</summary><div className="standing-groups">{annual.standingGroups.map((group) => <StandingTable group={group} annual={annual} activeClub={game.lastSeason!.club} activeCountry={game.lastSeason!.country} key={group.name} />)}</div><div className="standing-legend"><span><b className="c">C</b> Champion</span><span><b className="cw">CW</b> Cup winner</span><span><b className="cl">CL</b> Champions League</span><span><b className="el">EL</b> Europa League</span><span><b className="ecl">ECL</b> Conference League</span><span><b className="p">P</b> Promoted</span><span><b className="r">R</b> Relegated</span></div></details>}
                     {!!annual.playoffBrackets?.length && <details className="world-honours-roll competition-roll"><summary>Playoff brackets · {annual.playoffBrackets.length}</summary><div className="playoff-brackets">{annual.playoffBrackets.map((bracket) => <PlayoffBracketView bracket={bracket} activeClub={game.lastSeason!.club} key={`${bracket.competition}-${bracket.name}`} />)}</div></details>}
                     {!!annual.movements?.length && <details className="world-honours-roll"><summary>Promotion &amp; relegation · {annual.movements.length / 2} swaps</summary><div className="world-honours-columns"><div><h5>Promoted</h5>{annual.movements.filter((movement) => movement.direction === "promoted").map((movement) => <div className="world-honour-row" key={`up-${movement.country}-${movement.club}`}><span>↑</span><div><strong>{movement.club}</strong><small>{movement.fromLeague} → {movement.toLeague} · {movement.route}</small></div></div>)}</div><div><h5>Relegated</h5>{annual.movements.filter((movement) => movement.direction === "relegated").map((movement) => <div className="world-honour-row" key={`down-${movement.country}-${movement.club}`}><span>↓</span><div><strong>{movement.club}</strong><small>{movement.fromLeague} → {movement.toLeague} · {movement.route}</small></div></div>)}</div></div></details>}
                     <details className="world-honours-roll">

@@ -151,6 +151,39 @@ test("loaded pyramids move clubs atomically and preserve every division size", (
   });
 });
 
+test("European competitions qualify exclusive fields and play the current league-phase format", () => {
+  const { createWorldState, simulateWorldSeason } = loadTypeScriptModule("features/career/world.ts");
+  const { UEFA_ASSOCIATIONS } = loadTypeScriptModule("features/career/uefaCompetitions.ts");
+  const simulation = simulateWorldSeason(createWorldState(), { club: "", boost: 0 }, seededRandom(202627));
+  const competitions = simulation.continentalCompetitions;
+
+  assert.deepEqual(competitions.map((competition) => competition.name), [
+    "Champions League", "Europa League", "Conference League",
+  ]);
+  assert.deepEqual(competitions.map((competition) => competition.leagueMatches), [8, 8, 6]);
+  const allEntrants = competitions.flatMap((competition) => competition.entrants.map((club) => `${club.country}:${club.club}`));
+  assert.equal(allEntrants.length, 108);
+  assert.equal(new Set(allEntrants).size, 108);
+
+  competitions.forEach((competition) => {
+    assert.equal(competition.entrants.length, 36, competition.name);
+    assert.equal(competition.table.length, 36, competition.name);
+    assert.ok(competition.entrants.every((club) => UEFA_ASSOCIATIONS.includes(club.country)), competition.name);
+    assert.ok(competition.table.every((club) => club.played === competition.leagueMatches), competition.name);
+    assert.ok(competition.table.every((club) => club.won + club.drawn + club.lost === club.played), competition.name);
+    assert.ok(competition.table.every((club) => club.points === club.won * 3 + club.drawn), competition.name);
+    assert.ok(competition.table.every((club, index, table) => index === 0 || table[index - 1].points >= club.points), competition.name);
+    assert.deepEqual(
+      Object.fromEntries(["Knockout phase play-off", "Round of 16", "Quarter-final", "Semi-final", "Final"]
+        .map((round) => [round, competition.bracket.ties.filter((tie) => tie.round === round).length])),
+      { "Knockout phase play-off": 8, "Round of 16": 8, "Quarter-final": 4, "Semi-final": 2, "Final": 1 },
+      competition.name,
+    );
+    assert.equal(competition.bracket.ties.at(-1).winner, competition.champion.club, competition.name);
+  });
+  assert.ok(simulation.world.history[0].champions["EUROPE:champions-league"]);
+});
+
 test("closed and missing pyramids do not invent relegation", () => {
   const { createWorldState, simulateWorldSeason } = loadTypeScriptModule("features/career/world.ts");
   const simulation = simulateWorldSeason(createWorldState(), { club: "", boost: 0 }, seededRandom(12));

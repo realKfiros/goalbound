@@ -20,7 +20,7 @@ export type Club = {
 
 export type OfferKind = "permanent" | "loan" | "academy" | "stay" | "renewal" | "promotion";
 export type Offer = Club & { role: Role; label: string; reason: string; kind: OfferKind };
-export type HonourKind = "league-title" | "national-cup" | "golden-boot" | "player-of-season" | "ballon-dor";
+export type HonourKind = "league-title" | "national-cup" | "continental-title" | "golden-boot" | "player-of-season" | "ballon-dor";
 export type HonourCategory = "team" | "individual";
 export type AwardWinner = { name: string; club: string; isPlayer: boolean; detail?: string };
 export type PlayerHonour = {
@@ -46,6 +46,27 @@ export type CompetitionTitle = { name: string; winner: string };
 export type StandingGroup = { name: string; clubs: string[] };
 export type PlayoffTie = { round: string; home: string; away: string; winner: string };
 export type PlayoffBracket = { name: string; country: string; competition: string; ties: PlayoffTie[] };
+export type ContinentalClub = { club: string; country: string };
+export type ContinentalStanding = ContinentalClub & {
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDifference: number;
+  points: number;
+};
+export type ContinentalCompetition = {
+  key: "champions-league" | "europa-league" | "conference-league";
+  name: string;
+  shortName: string;
+  leagueMatches: number;
+  entrants: ContinentalClub[];
+  table: ContinentalStanding[];
+  champion: ContinentalClub;
+  bracket: PlayoffBracket;
+};
 export type AnnualHonours = {
   season: string;
   league: string;
@@ -58,6 +79,7 @@ export type AnnualHonours = {
   playerHonours: PlayerHonour[];
   divisionRoll?: DivisionHonours[];
   cupRoll?: CupHonours[];
+  continentalRoll?: ContinentalCompetition[];
   movements?: WorldMovement[];
   standingGroups?: StandingGroup[];
   playoffBrackets?: PlayoffBracket[];
