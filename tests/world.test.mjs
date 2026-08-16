@@ -157,6 +157,8 @@ test("European competitions qualify exclusive fields and play the current league
   const simulation = simulateWorldSeason(createWorldState(), { club: "", boost: 0 }, seededRandom(202627));
   const competitions = simulation.continentalCompetitions;
 
+  assert.deepEqual(simulation.additionalCups.map((cup) => `${cup.country}:${cup.name}`), ["ENG:EFL Cup"]);
+
   assert.deepEqual(competitions.map((competition) => competition.name), [
     "Champions League", "Europa League", "Conference League",
   ]);
@@ -168,6 +170,7 @@ test("European competitions qualify exclusive fields and play the current league
   competitions.forEach((competition) => {
     assert.equal(competition.entrants.length, 36, competition.name);
     assert.equal(competition.table.length, 36, competition.name);
+    assert.ok(competition.entrants.every((club) => club.qualifiedVia), `${competition.name} qualification routes`);
     assert.ok(competition.entrants.every((club) => UEFA_ASSOCIATIONS.includes(club.country)), competition.name);
     assert.ok(competition.table.every((club) => club.played === competition.leagueMatches), competition.name);
     assert.ok(competition.table.every((club) => club.won + club.drawn + club.lost === club.played), competition.name);
@@ -182,6 +185,56 @@ test("European competitions qualify exclusive fields and play the current league
     assert.equal(competition.bracket.ties.at(-1).winner, competition.champion.club, competition.name);
   });
   assert.ok(simulation.world.history[0].champions["EUROPE:champions-league"]);
+  assert.ok(simulation.world.history[0].continentalChampions["champions-league"]);
+  assert.ok(Object.keys(simulation.world.history[0].europeanPerformance).length >= 10);
+});
+
+test("European access routes carry titleholders and performance spots into the next season", () => {
+  const { createWorldState, simulateWorldSeason } = loadTypeScriptModule("features/career/world.ts");
+  const first = simulateWorldSeason(createWorldState(), { club: "", boost: 0 }, seededRandom(4101));
+  const second = simulateWorldSeason(first.world, { club: "", boost: 0 }, seededRandom(4102));
+  const firstByKey = new Map(first.continentalCompetitions.map((competition) => [competition.key, competition]));
+  const secondByKey = new Map(second.continentalCompetitions.map((competition) => [competition.key, competition]));
+  const championsEntrants = secondByKey.get("champions-league").entrants;
+  const europaEntrants = secondByKey.get("europa-league").entrants;
+
+  const championsHolder = firstByKey.get("champions-league").champion;
+  const europaHolder = firstByKey.get("europa-league").champion;
+  assert.equal(championsEntrants.find((club) => club.club === championsHolder.club)?.qualifiedVia, "Champions League holder");
+  assert.equal(championsEntrants.find((club) => club.club === europaHolder.club)?.qualifiedVia, "Europa League holder");
+
+  const conferenceHolder = firstByKey.get("conference-league").champion;
+  const conferenceHolderInChampionsLeague = championsEntrants.some((club) => club.club === conferenceHolder.club && club.country === conferenceHolder.country);
+  if (!conferenceHolderInChampionsLeague) {
+    assert.equal(europaEntrants.find((club) => club.club === conferenceHolder.club)?.qualifiedVia, "Conference League holder");
+  }
+
+  const performanceAssociations = Object.entries(first.world.history.at(-1).europeanPerformance)
+    .sort((left, right) => right[1] - left[1]).slice(0, 2).map(([country]) => country);
+  performanceAssociations.forEach((country) => {
+    assert.ok(championsEntrants.some((club) => club.country === country && club.qualifiedVia === "European performance spot"), country);
+  });
+});
+
+test("continental calibration keeps domestic giants realistic in Europe", () => {
+  const { createWorldState, simulateWorldSeason } = loadTypeScriptModule("features/career/world.ts");
+  const { continentalClubStrength } = loadTypeScriptModule("features/career/uefaCompetitions.ts");
+  const world = createWorldState();
+  assert.ok(continentalClubStrength(world.clubs["ESP:Real Madrid"]) - continentalClubStrength(world.clubs["CRO:Dinamo Zagreb"]) >= 20);
+  assert.ok(continentalClubStrength(world.clubs["ENG:Liverpool"]) - continentalClubStrength(world.clubs["SCO:Celtic"]) >= 12);
+
+  const runs = 300;
+  const leadingAssociations = new Set(["ENG", "ITA", "ESP", "GER", "FRA"]);
+  let leadingWins = 0;
+  let dinamoWins = 0;
+  for (let index = 0; index < runs; index += 1) {
+    const simulation = simulateWorldSeason(createWorldState(), { club: "", boost: 0 }, seededRandom(7000 + index));
+    const champion = simulation.continentalCompetitions[0].champion;
+    if (leadingAssociations.has(champion.country)) leadingWins += 1;
+    if (champion.country === "CRO" && champion.club === "Dinamo Zagreb") dinamoWins += 1;
+  }
+  assert.ok(leadingWins / runs >= .8, `Leading-association win rate: ${leadingWins}/${runs}`);
+  assert.ok(dinamoWins <= 1, `Dinamo Zagreb wins: ${dinamoWins}/${runs}`);
 });
 
 test("closed and missing pyramids do not invent relegation", () => {

@@ -46,7 +46,7 @@ export type CompetitionTitle = { name: string; winner: string };
 export type StandingGroup = { name: string; clubs: string[] };
 export type PlayoffTie = { round: string; home: string; away: string; winner: string };
 export type PlayoffBracket = { name: string; country: string; competition: string; ties: PlayoffTie[] };
-export type ContinentalClub = { club: string; country: string };
+export type ContinentalClub = { club: string; country: string; qualifiedVia?: string };
 export type ContinentalStanding = ContinentalClub & {
   played: number;
   won: number;
@@ -75,6 +75,7 @@ export type AnnualHonours = {
   topScorer: AwardWinner;
   playerOfSeason: AwardWinner;
   cup: { name: string; winner: string };
+  additionalCups?: CupHonours[];
   ballonDor: AwardWinner;
   playerHonours: PlayerHonour[];
   divisionRoll?: DivisionHonours[];
@@ -157,6 +158,8 @@ export type WorldSeasonRecord = {
   index: number;
   champions: Record<string, CompetitionTitle[]>;
   movements: WorldMovement[];
+  continentalChampions?: Partial<Record<ContinentalCompetition["key"], ContinentalClub>>;
+  europeanPerformance?: Record<string, number>;
 };
 export type WorldState = {
   version: 1;
