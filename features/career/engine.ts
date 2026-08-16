@@ -1,4 +1,5 @@
 import { CLUBS, SCENARIOS, clubByName, country } from "./catalog";
+import { DEVELOPMENT_MARKETS, VETERAN_MARKETS, agentProfile } from "./agents";
 import { clubDivision, maxSingleFee } from "./finances";
 import { simulateHonoursWithWorld } from "./honours";
 import { generateName } from "./names";
@@ -50,16 +51,57 @@ export function createCareerEngine(random = Math.random) {
   function formatMoney(value: number) {
     return value >= 1_000_000 ? `€${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1)}m` : `€${Math.round(value / 1_000)}k`;
   }
-  function isPlausibleMarketClub(club: Club, player: Player, world?: WorldState | null) {
-    if (clubDivision(club) === 1) return true;
+  function currentClubFor(player: Player, world?: WorldState | null) {
     const catalogCurrent = clubByName(player.currentClub);
-    const current = catalogCurrent ? clubInWorld(catalogCurrent, world) : undefined;
-    return club.country === player.nation || club.country === current?.country;
+    return catalogCurrent ? clubInWorld(catalogCurrent, world) : undefined;
+  }
+  function careerPeak(player: Player) {
+    return Math.max(player.rating, ...player.history.flatMap((season) => [season.before, season.after]));
+  }
+  function isDeclining(player: Player) {
+    const latest = player.history[0];
+    return player.age >= 32 || player.fitness < 65 || !!latest && latest.after < latest.before || player.rating <= careerPeak(player) - 3;
+  }
+  function idealClubLevel(player: Player) {
+    return player.rating >= 87 ? 5 : player.rating >= 80 ? 4 : player.rating >= 72 ? 3 : player.rating >= 64 ? 2 : 1;
+  }
+  function marketRoute(club: Club, player: Player, world?: WorldState | null) {
+    const current = currentClubFor(player, world);
+    const formerClub = player.history.some((season) => season.club === club.name && season.country === club.country);
+    const familiarCountry = player.history.some((season) => season.country === club.country);
+    if (formerClub) return "former-club" as const;
+    if (club.country === current?.country) return "current-country" as const;
+    if (club.country === player.nation) return "home-country" as const;
+    if (familiarCountry) return "familiar-country" as const;
+    return "new-foreign" as const;
+  }
+  function agentCanReach(club: Club, player: Player, world?: WorldState | null) {
+    const route = marketRoute(club, player, world);
+    if (route !== "new-foreign") return true;
+    const profile = agentProfile(player.agent);
+    if (profile.market === "none") return false;
+    if (profile.market === "development") return player.age <= 25 && DEVELOPMENT_MARKETS.has(club.country);
+    if (profile.market === "veteran") return player.age >= 29 && VETERAN_MARKETS.has(club.country);
+    return true;
+  }
+  function isPlausibleMarketClub(club: Club, player: Player, world?: WorldState | null) {
+    const route = marketRoute(club, player, world);
+    const current = currentClubFor(player, world);
+    if (clubDivision(club) > 1 && !["former-club", "current-country", "home-country", "familiar-country"].includes(route)) return false;
+    if (player.age < 18 && club.country !== player.nation && club.country !== current?.country) return false;
+    if (!agentCanReach(club, player, world)) return false;
+    if (player.age <= 21 && route === "new-foreign" && !DEVELOPMENT_MARKETS.has(club.country) && club.development < 5 && player.agent !== "Elite super-agent") return false;
+    if (player.age >= 31 && route === "new-foreign" && !VETERAN_MARKETS.has(club.country) && club.level < 4) return false;
+    return true;
   }
   function offerReason(club: Club, player: Player, role: Role, world?: WorldState | null) {
     const catalogCurrent = clubByName(player.currentClub);
     const current = catalogCurrent ? clubInWorld(catalogCurrent, world) : undefined;
+    const isFormerClub = player.history.some((season) => season.club === club.name && season.country === club.country);
     const isHomecoming = current && current.country !== player.nation && club.country === player.nation;
+    if (isFormerClub) return isDeclining(player)
+      ? "A familiar club believes your experience can lead them again"
+      : "A former club wants to reopen a successful chapter";
     if (isHomecoming) return "A homecoming with a clearer route to senior minutes";
     if (player.age >= 32) return "One last adventure, one serious contract";
     const steppingStones = ["POR", "NED", "BEL", "CRO"];
@@ -67,6 +109,7 @@ export function createCareerEngine(random = Math.random) {
     const isTopFlightStep = clubDivision(club) === 1 && steppingStones.includes(club.country) && current?.country !== club.country;
     if (isTopFlightStep && current && !establishedLeagues.includes(current.country)) return "A proven bridge to a bigger league";
     if (isTopFlightStep && current && establishedLeagues.includes(current.country)) return "A top-flight reset with a clearer route to minutes";
+    if (current && club.country !== current.country && club.country !== player.nation) return `${agentProfile(player.agent).name} opened a credible route abroad`;
     if (role === "Prospect") return "Prestige now, patience required";
     if (role === "Star") return "The team is being built around you";
     return `${club.development}/5 development · a credible next step`;
@@ -97,32 +140,44 @@ export function createCareerEngine(random = Math.random) {
     });
   }
   function externalOffers(player: Player, count = 2, permanentOnly = false, requiresTransferFee = false, world?: WorldState | null): Offer[] {
-    const ideal = player.rating >= 87 ? 5 : player.rating >= 80 ? 4 : player.rating >= 72 ? 3 : player.rating >= 64 ? 2 : 1;
+    const ideal = idealClubLevel(player);
+    const profile = agentProfile(player.agent);
+    const declining = isDeclining(player);
     const minimumFee = player.value * .92;
     const market = CLUBS.map((club) => clubInWorld(club, world)).filter((club) => {
       const role = roleFor(player.rating, club.level, player.age, player.roleBoost);
       return club.name !== player.currentClub
         && isPlausibleMarketClub(club, player, world)
+        && club.level >= ideal - (declining ? 2 : 1)
+        && club.level <= ideal + profile.levelRange
         && (!requiresTransferFee || maxSingleFee(club, role) >= minimumFee);
     });
-    let pool = market.filter((club) => Math.abs(club.level - ideal) <= (player.agent.includes("International") ? 2 : 1));
-    if (player.age < 18) {
-      pool = market.filter((club) => club.country === player.nation);
-    } else if (player.age <= 21) {
-      const hubs = new Set([player.nation, "POR", "NED", "BEL", "GER", "FRA"]);
-      pool = pool.filter((club) => hubs.has(club.country) || club.development >= 5);
-    }
-    if (player.age >= 31) {
-      const lateMarkets = new Set([player.nation, "USA", "SAU", "JPN", "MEX", "BRA", "ARG", "TUR"]);
-      pool = pool.filter((club) => lateMarkets.has(club.country) || club.level >= 4);
-    }
-    if (!pool.length) pool = market.filter((club) => Math.abs(club.level - ideal) <= 2);
-    return shuffle(pool).slice(0, count).map((club) => {
+    const routeCounts = new Map<string, number>();
+    market.forEach((club) => {
+      const route = marketRoute(club, player, world);
+      routeCounts.set(route, (routeCounts.get(route) ?? 0) + 1);
+    });
+    const routeWeight = (club: Club) => {
+      const route = marketRoute(club, player, world);
+      const base = route === "former-club" ? profile.formerClubWeight * (declining ? 1.8 : .55)
+        : route === "current-country" ? profile.domesticWeight
+          : route === "home-country" ? profile.homeWeight * (declining ? 1.45 : 1)
+            : route === "familiar-country" ? profile.familiarCountryWeight * (declining ? 1.35 : 1)
+              : profile.foreignWeight * (.35 + player.reputation / 100) * (currentClubFor(player, world) && clubDivision(currentClubFor(player, world)!) >= 3 ? .6 : 1);
+      return Math.max(.001, base / Math.max(1, routeCounts.get(route) ?? 1));
+    };
+    const desiredCount = Math.min(3, count + profile.offerBonus);
+    const selected = market
+      .map((club) => ({ club, key: Math.pow(Math.max(random(), Number.MIN_VALUE), 1 / routeWeight(club)) }))
+      .sort((left, right) => right.key - left.key)
+      .slice(0, desiredCount)
+      .map(({ club }) => club);
+    return selected.map((club) => {
       const role = roleFor(player.rating, club.level, player.age, player.roleBoost);
       const loan = !permanentOnly && player.age <= 22 && role === "Prospect" && random() < .55;
-      const catalogCurrent = clubByName(player.currentClub);
-      const current = catalogCurrent ? clubInWorld(catalogCurrent, world) : undefined;
-      const label = club.country === current?.country ? "Domestic move" : club.country === player.nation ? "Homecoming" : player.age >= 31 ? "Final adventure" : "Move abroad";
+      const current = currentClubFor(player, world);
+      const route = marketRoute(club, player, world);
+      const label = route === "former-club" ? "Former-club return" : club.country === current?.country ? "Domestic move" : club.country === player.nation ? "Homecoming" : player.age >= 31 ? "Final adventure" : "Move abroad";
       return makeOffer(club, player, loan ? "Loan proposal" : label, loan ? "loan" : "permanent", loan ? "Starter" : role, undefined, world);
     });
   }
@@ -150,8 +205,17 @@ export function createCareerEngine(random = Math.random) {
     return makeOffer(club, player, copy.label, kind, role, copy.reason);
   }
   function eligibleScenario(player: Player) {
-    const available = SCENARIOS.filter((item) => !player.seenScenarios.includes(item.id) && (!item.minAge || player.age >= item.minAge) && (!item.maxAge || player.age <= item.maxAge) && (!item.needsCaps || player.caps > 0));
-    const fallback = SCENARIOS.filter((item) => (!item.minAge || player.age >= item.minAge) && (!item.maxAge || player.age <= item.maxAge));
+    const current = currentClubFor(player);
+    const fits = (item: Scenario) => (!item.minAge || player.age >= item.minAge)
+      && (!item.maxAge || player.age <= item.maxAge)
+      && (!item.minRating || player.rating >= item.minRating)
+      && (!item.minReputation || player.reputation >= item.minReputation)
+      && (!item.maxFitness || player.fitness <= item.maxFitness)
+      && (!item.requiresAbroad || !!current && current.country !== player.nation)
+      && (!item.allowedAgents || item.allowedAgents.includes(player.agent))
+      && (!item.needsCaps || player.caps > 0);
+    const available = SCENARIOS.filter((item) => !player.seenScenarios.includes(item.id) && fits(item));
+    const fallback = SCENARIOS.filter(fits);
     return shuffle(available.length ? available : fallback)[0];
   }
   function positionRates(position: string, rating: number) {
@@ -164,11 +228,14 @@ export function createCareerEngine(random = Math.random) {
     if (position === "CB") return { goals: .02 + quality * .04, assists: .01 + quality * .03 };
     return { goals: 0, assists: .01 };
   }
-  function seasonNarrative(role: Role, apps: number, movedAbroad: boolean, injured: boolean, honourKinds: string[]) {
+  function seasonNarrative(role: Role, apps: number, movedAbroad: boolean, injured: boolean, ratingChange: number, age: number, honourKinds: string[]) {
     if (honourKinds.includes("ballon-dor")) return "You won the Ballon d'Or. The group chat becomes briefly respectful.";
     if (honourKinds.includes("player-of-season") || honourKinds.includes("golden-boot")) return "You collected an individual award. Your agent has already made it their profile photo.";
     if (honourKinds.includes("continental-title")) return "You conquered Europe. The medal is heavier than it looked on television.";
     if (honourKinds.includes("league-title") || honourKinds.includes("national-cup")) return "You lifted silverware. Nobody remembers the November draw anymore.";
+    if (injured && ratingChange < 0) return "The injury cost more than appearances. Your sharpness and rating both took a hit.";
+    if (ratingChange < 0 && age >= 30) return "The reading of the game remains; the body has started charging interest.";
+    if (ratingChange < 0) return "Minutes, form and confidence all slipped. Your rating followed them down.";
     if (injured) return "The season had momentum. Your hamstring preferred a different narrative.";
     if (apps < 15) return "Your most consistent position was next to the assistant coach.";
     if (role === "Star") return "The manager finally built around you. Subtlety was not required.";
@@ -192,6 +259,7 @@ export function createCareerEngine(random = Math.random) {
       totalApps: 0, totalGoals: 0, totalAssists: 0, trophies: 0, caps: 0, nationalGoals: 0,
       morale: origin === "gem" ? 84 : 72, fitness: 92, reputation: origin === "gem" ? 24 : origin === "senior" ? 13 : 6,
       agent: "Self-represented", roleBoost: origin === "gem" ? 1 : 0, origin,
+      developmentTrend: 0,
       squad: origin === "academy" ? "academy" : "senior", contractYears: 0, clubSeasons: 0,
       lastRole: "Prospect", seenScenarios: [], history: [],
     };
@@ -216,11 +284,29 @@ export function createCareerEngine(random = Math.random) {
     const rates = positionRates(player.position, player.rating);
     const goals = Math.max(0, Math.round(apps * rates.goals * randomInt(75, 125) / 100));
     const assists = Math.max(0, Math.round(apps * rates.assists * randomInt(75, 125) / 100));
-    const ageBase = player.age < 19 ? 5 : player.age < 22 ? 4 : player.age < 26 ? 2 : player.age < 29 ? 1 : player.age < 32 ? 0 : -2;
-    const positionAgeAdjustment = player.position === "GK" ? (player.age < 21 ? -2 : player.age >= 29 ? 1 : 0) : ["CB", "CDM"].includes(player.position) && player.age >= 29 ? 1 : 0;
-    const minutesBonus = apps / years >= 28 ? 2 : apps / years >= 16 ? 0 : -2;
-    const rawGrowth = Math.round((ageBase + positionAgeAdjustment + Math.floor(destination.development / 2) + minutesBonus + player.morale / 50 - (injured ? 2 : 0)) * Math.sqrt(years) / 1.8);
-    const nextRating = clamp(Math.min(player.potential, player.rating + rawGrowth), 45, 96);
+    const developmentAge = player.age + (years - 1) / 2;
+    const ageBase = developmentAge < 19 ? 4.5 : developmentAge < 22 ? 3.5 : developmentAge < 25 ? 2
+      : developmentAge < 28 ? 1 : developmentAge < 30 ? .3 : developmentAge < 32 ? -.8
+        : developmentAge < 34 ? -1.8 : -3;
+    const positionAgeAdjustment = player.position === "GK"
+      ? (developmentAge < 21 ? -1 : developmentAge >= 30 ? 1.4 : 0)
+      : ["CB", "CDM"].includes(player.position) && developmentAge >= 29 ? .6
+        : ["LW", "RW", "ST"].includes(player.position) && developmentAge >= 30 ? -.5 : 0;
+    const minutesPerYear = apps / years;
+    const minutesBonus = minutesPerYear >= 30 ? 1 : minutesPerYear >= 18 ? 0 : minutesPerYear >= 10 ? -1.4 : -2.4;
+    const clubDevelopment = (destination.development - 3) * .55;
+    const moraleImpact = (player.morale - 60) / 35;
+    const fitnessImpact = player.fitness < 45 ? -2 : player.fitness < 65 ? -1 : player.fitness >= 92 ? .25 : 0;
+    const injuryImpact = injured ? 2 + Math.max(0, developmentAge - 30) * .08 : 0;
+    const formVariance = randomInt(-1, 1);
+    const expectedOutput = apps * (rates.goals + rates.assists);
+    const outputRatio = expectedOutput > 0 ? (goals + assists) / expectedOutput : 1;
+    const performanceImpact = ["GK", "CB", "CDM"].includes(player.position) ? 0
+      : outputRatio >= 1.18 ? .8 : outputRatio >= .78 ? 0 : outputRatio >= .55 ? -.7 : -1.2;
+    const trajectory = clamp(player.developmentTrend ?? 0, -3, 3);
+    const rawGrowth = Math.round((ageBase + positionAgeAdjustment + minutesBonus + clubDevelopment + moraleImpact + fitnessImpact + trajectory + formVariance + performanceImpact - injuryImpact) * Math.sqrt(years) / 1.7);
+    const changedRating = player.rating + rawGrowth;
+    const nextRating = clamp(rawGrowth > 0 ? Math.min(player.potential, changedRating) : changedRating, 45, 96);
     const honoursSimulation = simulateHonoursWithWorld({
       player, offer: destination, years, apps, goals, assists, rating: nextRating, reputation: player.reputation,
     }, startingWorld, random);
@@ -234,7 +320,7 @@ export function createCareerEngine(random = Math.random) {
     const season: Season = {
       fromAge: player.age, toAge: player.age + years, club: destination.name, country: destination.country, league: destination.league,
       role: destination.role, kind: destination.kind, apps, goals, assists, before: player.rating, after: nextRating, trophies,
-      event: seasonNarrative(destination.role, apps, destination.country !== player.nation, injured, playerHonours.map((honour) => honour.kind)),
+      event: seasonNarrative(destination.role, apps, destination.country !== player.nation, injured, nextRating - player.rating, player.age + years, playerHonours.map((honour) => honour.kind)),
       honours,
     };
     const contractAtKickoff = destination.kind === "renewal" ? randomInt(3, 5)
@@ -251,6 +337,7 @@ export function createCareerEngine(random = Math.random) {
       fitness: clamp(player.fitness + (injured ? -22 : 5) - Math.max(0, player.age - 31), 25, 100),
       reputation: clamp(player.reputation + Math.round(apps / years / 7) + trophies * 6 + individualAwards * 5, 0, 100),
       roleBoost: 0, squad: destination.kind === "academy" || destination.kind === "stay" && player.squad === "academy" ? "academy" : "senior",
+      developmentTrend: trajectory > 0 ? trajectory - 1 : trajectory < 0 ? trajectory + 1 : 0,
       contractYears: Math.max(0, contractAtKickoff - years),
       clubSeasons: destination.name === player.currentClub || destination.kind === "loan" ? player.clubSeasons + years : years,
       lastRole: destination.role, history: [season, ...player.history],
@@ -263,7 +350,7 @@ export function createCareerEngine(random = Math.random) {
     const latest = player.history[0];
     const seasons = Math.max(1, (latest?.toAge ?? player.age) - (latest?.fromAge ?? player.age - 1));
     const formBonus = (latest?.apps ?? 0) / seasons >= 25 ? .12 : player.lastRole === "Star" ? .1 : 0;
-    const interestChance = clamp(.18 + player.reputation / 170 + formBonus, .18, .74);
+    const interestChance = clamp(.18 + player.reputation / 170 + formBonus + agentProfile(player.agent).interestBonus, .12, .82);
     const outsideInterest = player.squad === "academy" || random() >= interestChance ? [] : contractedBids(player, random() < .72 ? 1 : 2, world);
     return decision(
       outsideInterest.length ? "transfer-interest" : "continue",
@@ -311,15 +398,17 @@ export function createCareerEngine(random = Math.random) {
     let cursor = 0;
     const result = option.outcomes.find((item) => { cursor += item.probability; return roll <= cursor; }) ?? option.outcomes[option.outcomes.length - 1];
     const effect = result.effect;
-    const rating = clamp(player.rating + (effect.rating ?? 0), 45, player.potential);
+    const potential = clamp(player.potential + (effect.potential ?? 0), 45, 96);
+    const rating = clamp(player.rating + (effect.rating ?? 0), 45, potential);
     return {
       player: {
-        ...player, rating,
-        value: Math.round(marketValue(rating, player.age, player.potential) * (effect.value ?? 1)),
+        ...player, rating, potential,
+        value: Math.round(marketValue(rating, player.age, potential) * (effect.value ?? 1)),
         morale: clamp(player.morale + (effect.morale ?? 0), 0, 100),
         fitness: clamp(player.fitness + (effect.fitness ?? 0), 0, 100),
         reputation: clamp(player.reputation + (effect.reputation ?? 0), 0, 100),
         roleBoost: clamp(player.roleBoost + (effect.roleBoost ?? 0), -2, 2),
+        developmentTrend: clamp((player.developmentTrend ?? 0) + (effect.development ?? 0), -3, 3),
         agent: effect.agent ?? player.agent,
         seenScenarios: [...player.seenScenarios, scenario.id],
       },
@@ -341,7 +430,7 @@ export function createCareerEngine(random = Math.random) {
     return list;
   }
 
-  return { createCareer, simulateSeason, ordinaryDecision, nextBeat, resolveScenario, achievements };
+  return { createCareer, simulateSeason, ordinaryDecision, nextBeat, resolveScenario, achievements, marketOffers: externalOffers };
 }
 
 export const careerEngine = createCareerEngine();

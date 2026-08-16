@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { agentProfile } from "../agents";
 import { clubByName, country } from "../catalog";
 import type { AnnualHonours, ContinentalCompetition, Offer, Player, PlayoffBracket, SavedGame, Scenario, ScenarioOption, StandingGroup } from "../domain";
 import { ClubBadge } from "./ClubBadge";
@@ -178,7 +179,7 @@ export function CareerScreen({
         <span><i style={{ width: `${player.morale}%` }} /><small>Morale</small><strong>{player.morale}</strong></span>
         <span><i style={{ width: `${player.reputation}%` }} /><small>Reputation</small><strong>{player.reputation}</strong></span>
         <span className="contract-pill"><small>Contract</small><strong>{player.currentClub === "Free agent" ? "None" : player.contractYears ? `${player.contractYears}Y left` : "Expired"}</strong></span>
-        <span className="agent-pill"><small>Representation</small><strong>{player.agent}</strong></span>
+        <span className="agent-pill" title={agentProfile(player.agent).description} aria-label={`Representation: ${player.agent}. ${agentProfile(player.agent).description}`}><small>Representation</small><strong>{player.agent}</strong></span>
       </div>
 
       <div className="decision-dock" ref={decisionDockRef} aria-live="polite">
@@ -306,7 +307,7 @@ export function CareerScreen({
 
         {game.phase === "scenario-result" && game.outcome && (
           <div className={game.outcome.positive ? "outcome-stage positive" : "outcome-stage negative"}>
-            <div className="fate-coin">{game.outcome.positive ? "✓" : "×"}</div><span className="story-kicker">Fate has decided</span><h3>{game.outcome.label}</h3><p>Your rating, value, fitness and status have been updated. The club still expects you at training.</p><button className="primary-button story-continue" onClick={onContinueScenario}>Continue career <span>→</span></button>
+            <div className="fate-coin">{game.outcome.positive ? "✓" : "×"}</div><span className="story-kicker">Fate has decided</span><h3>{game.outcome.label}</h3><p>Your rating, fitness, reputation, representation and career trajectory now reflect that decision.</p><button className="primary-button story-continue" onClick={onContinueScenario}>Continue career <span>→</span></button>
           </div>
         )}
       </div>

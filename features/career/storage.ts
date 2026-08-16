@@ -18,6 +18,7 @@ export function loadCareer(): SavedGame | null {
       ...DEFAULT_SAVE,
       ...parsed,
       careerId: parsed.careerId ?? newCareerId(),
+      player: parsed.player ? { ...parsed.player, developmentTrend: parsed.player.developmentTrend ?? 0 } : null,
       world: parsed.player ? migrateWorldState(parsed.world) : null,
     };
   } catch {

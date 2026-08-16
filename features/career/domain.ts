@@ -125,6 +125,7 @@ export type Player = {
   reputation: number;
   agent: string;
   roleBoost: number;
+  developmentTrend?: number;
   origin: Origin;
   squad: "academy" | "senior";
   contractYears: number;
@@ -176,6 +177,8 @@ export type Effect = {
   fitness?: number;
   reputation?: number;
   roleBoost?: number;
+  development?: number;
+  potential?: number;
   agent?: string;
 };
 export type Outcome = { probability: number; label: string; positive: boolean; effect: Effect };
@@ -188,6 +191,11 @@ export type Scenario = {
   description: string;
   minAge?: number;
   maxAge?: number;
+  minRating?: number;
+  minReputation?: number;
+  maxFitness?: number;
+  requiresAbroad?: boolean;
+  allowedAgents?: string[];
   needsCaps?: boolean;
   options: ScenarioOption[];
 };

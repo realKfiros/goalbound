@@ -173,7 +173,7 @@ export const SCENARIOS: Scenario[] = [
     id: "new-coach", icon: "🆕", category: "Manager", title: "A new coach promises a clean slate",
     description: "He says everyone starts from zero. The club captain nods as if his 412 appearances have also been deleted.",
     options: [
-      { label: "Train like the cameras are always on", hint: "High reward, soft-tissue danger", outcomes: [{ probability: .6, label: "The coach is impressed. You jump up the pecking order.", positive: true, effect: { roleBoost: 1, rating: 1 } }, { probability: .4, label: "Your hamstring files a formal complaint.", positive: false, effect: { fitness: -22, rating: -1 } }] },
+      { label: "Train like the cameras are always on", hint: "High reward, soft-tissue danger", outcomes: [{ probability: .6, label: "The coach is impressed. You jump up the pecking order.", positive: true, effect: { roleBoost: 1, rating: 1, development: 1 } }, { probability: .4, label: "Your hamstring files a formal complaint.", positive: false, effect: { fitness: -22, rating: -1, development: -1, potential: -1 } }] },
       { label: "Trust the CV and train normally", hint: "Professional, not necessarily memorable", outcomes: [{ probability: .4, label: "Calm competence wins him over.", positive: true, effect: { roleBoost: 1 } }, { probability: .6, label: "He prefers a player he already knows from a club you dislike.", positive: false, effect: { roleBoost: -1, morale: -5 } }] },
     ],
   },
@@ -181,7 +181,7 @@ export const SCENARIOS: Scenario[] = [
     id: "team-party", icon: "🪩", category: "Team culture", title: "The squad plans a night out before a cup tie",
     description: "The captain says it is 'important for chemistry.' The fitness coach says nothing, but his left eye begins twitching.", maxAge: 28,
     options: [
-      { label: "Go out with the squad", hint: "Chemistry with a side of jeopardy", outcomes: [{ probability: .72, label: "You become part of the group and somehow make breakfast.", positive: true, effect: { morale: 12, roleBoost: 1 } }, { probability: .28, label: "You injure yourself attempting a dance last popular in 2017.", positive: false, effect: { fitness: -28, rating: -1 } }] },
+      { label: "Go out with the squad", hint: "Chemistry with a side of jeopardy", outcomes: [{ probability: .72, label: "You become part of the group and somehow make breakfast.", positive: true, effect: { morale: 12, roleBoost: 1 } }, { probability: .28, label: "You injure yourself attempting a dance last popular in 2017.", positive: false, effect: { fitness: -28, rating: -1, development: -1 } }] },
       { label: "Sleep at 21:30", hint: "Safe for the body, brutal for the group chat", outcomes: [{ probability: 1, label: "Perfect sleep score. The squad removes you from two group chats.", positive: false, effect: { fitness: 8, morale: -5 } }] },
     ],
   },
@@ -189,15 +189,18 @@ export const SCENARIOS: Scenario[] = [
     id: "teammate-mum", icon: "📺", category: "Media", title: "A teammate's mum destroys you on television",
     description: "A link arrives in the group chat. She is on a popular football show, armed with statistics she has almost understood.", minAge: 18,
     options: [
-      { label: "Call the show and respond live", hint: "Prime-time coin toss", outcomes: [{ probability: .5, label: "She retreats. The dressing room gives you a standing ovation.", positive: true, effect: { rating: 2, reputation: 8 } }, { probability: .5, label: "You lose an argument to someone's mum on national television.", positive: false, effect: { rating: -2, morale: -12 } }] },
+      { label: "Call the show and respond live", hint: "Prime-time coin toss", outcomes: [{ probability: .5, label: "She retreats. The dressing room gives you a standing ovation.", positive: true, effect: { rating: 2, reputation: 8, development: 1 } }, { probability: .5, label: "You lose an argument to someone's mum on national television.", positive: false, effect: { rating: -2, morale: -12, development: -1 } }] },
       { label: "Ignore it with great dignity", hint: "Dignity is not always selected", outcomes: [{ probability: 1, label: "The coach saw the clip. He now wants to 'protect you' on the bench.", positive: false, effect: { roleBoost: -1 } }] },
     ],
   },
   {
     id: "agent-pitch", icon: "🤝", category: "Representation", title: "An ambitious agent slides into your DMs",
-    description: "His profile says 'GLOBAL FOOTBALL CONNECTOR' and features photographs with three players who do not follow him back.", minAge: 20,
+    description: "His profile says 'GLOBAL FOOTBALL CONNECTOR' and features photographs with three players who do not follow him back.", minAge: 20, maxAge: 27,
+    allowedAgents: ["Self-represented", "Family representative", "Optimistic agent"],
     options: [
       { label: "Sign with the ambitious agent", hint: "Better reach, louder phone", outcomes: [{ probability: .75, label: "He genuinely has contacts. Your next market gets wider.", positive: true, effect: { agent: "International agent", reputation: 7, value: 1.08 } }, { probability: .25, label: "His main contact is a group chat called Transfers 2.", positive: false, effect: { agent: "Optimistic agent", value: .94 } }] },
+      { label: "Choose a local specialist", hint: "More domestic calls, fewer airport lounges", outcomes: [{ probability: 1, label: "The local network knows every sporting director within driving distance.", positive: true, effect: { agent: "Local specialist", reputation: 3 } }] },
+      { label: "Join a development agency", hint: "Young-player routes through stepping-stone leagues", outcomes: [{ probability: .82, label: "The agency maps out credible routes through development leagues abroad.", positive: true, effect: { agent: "Development agency", development: 1 } }, { probability: .18, label: "The pathway deck was mostly stock photography and arrows.", positive: false, effect: { agent: "Optimistic agent", value: .95 } }] },
       { label: "Keep the family friend", hint: "Fewer contacts, excellent birthday messages", outcomes: [{ probability: 1, label: "No new doors open, but your aunt remains delighted.", positive: true, effect: { agent: "Family representative", morale: 5 } }] },
     ],
   },
@@ -205,7 +208,7 @@ export const SCENARIOS: Scenario[] = [
     id: "derby-quote", icon: "🎙️", category: "Media", title: "A journalist wants a derby quote",
     description: "He asks whether the rival club's defence scares you. His phone is already recording and his headline is 80% written.",
     options: [
-      { label: "Give him the sharp quote", hint: "Hero or tomorrow's meme", outcomes: [{ probability: .5, label: "You score. The quote becomes a banner behind the goal.", positive: true, effect: { rating: 2, reputation: 8 } }, { probability: .5, label: "You lose. The quote follows you to every airport for six months.", positive: false, effect: { rating: -2, morale: -8 } }] },
+      { label: "Give him the sharp quote", hint: "Hero or tomorrow's meme", outcomes: [{ probability: .5, label: "You score. The quote becomes a banner behind the goal.", positive: true, effect: { rating: 2, reputation: 8, development: 1 } }, { probability: .5, label: "You lose. The quote follows you to every airport for six months.", positive: false, effect: { rating: -2, morale: -8, development: -1 } }] },
       { label: "Say you respect every opponent", hint: "Media training has won", outcomes: [{ probability: 1, label: "Nothing happens. Somewhere, a press officer quietly celebrates.", positive: true, effect: { morale: 2 } }] },
     ],
   },
@@ -213,7 +216,7 @@ export const SCENARIOS: Scenario[] = [
     id: "play-through-pain", icon: "🩹", category: "Fitness", title: "The manager asks you to play through knee pain",
     description: "The medical staff say 'manageable.' They do not specify whose problem it becomes if it stops being manageable.", minAge: 20,
     options: [
-      { label: "Play the match", hint: "Glory or an MRI", outcomes: [{ probability: .52, label: "You deliver and become the manager's favourite emergency contact.", positive: true, effect: { rating: 2, reputation: 5 } }, { probability: .48, label: "The knee gets worse. The medical room learns your coffee order.", positive: false, effect: { rating: -2, fitness: -30 } }] },
+      { label: "Play the match", hint: "Glory or an MRI", outcomes: [{ probability: .52, label: "You deliver and become the manager's favourite emergency contact.", positive: true, effect: { rating: 2, reputation: 5 } }, { probability: .48, label: "The knee gets worse. The medical room learns your coffee order.", positive: false, effect: { rating: -2, fitness: -30, development: -2, potential: -2 } }] },
       { label: "Listen to your body", hint: "Sensible people rarely trend", outcomes: [{ probability: .45, label: "The manager understands. You recover fully.", positive: true, effect: { fitness: 14 } }, { probability: .55, label: "He calls it a 'mentality issue' and starts someone with one functioning ankle.", positive: false, effect: { roleBoost: -1 } }] },
     ],
   },
@@ -230,7 +233,7 @@ export const SCENARIOS: Scenario[] = [
     description: "The producer promises a 'relaxed chat.' The previous guest left wearing a foam crown and apologising to his former manager.", minAge: 20,
     options: [
       { label: "Accept the invitation", hint: "Visibility with studio lighting", outcomes: [{ probability: .68, label: "You are charming, funny and unexpectedly good at the quiz.", positive: true, effect: { reputation: 10, value: 1.08 } }, { probability: .32, label: "A joke about the coach lands like a back-pass in a final.", positive: false, effect: { morale: -8, roleBoost: -1 } }] },
-      { label: "Stay home and prepare", hint: "Very professional, deeply untelevised", outcomes: [{ probability: 1, label: "You play well. Nobody clips tactical discipline for social media.", positive: true, effect: { fitness: 6, rating: 1 } }] },
+      { label: "Stay home and prepare", hint: "Very professional, deeply untelevised", outcomes: [{ probability: 1, label: "You play well. Nobody clips tactical discipline for social media.", positive: true, effect: { fitness: 6, rating: 1, development: 1 } }] },
     ],
   },
   {
@@ -246,14 +249,14 @@ export const SCENARIOS: Scenario[] = [
     description: "He wants a few misplaced passes. He also claims to be in 'sports analytics,' which is not helping his case.", minAge: 19,
     options: [
       { label: "Report him immediately", hint: "Correct and surprisingly valuable", outcomes: [{ probability: 1, label: "The club praises your integrity. Your reputation travels.", positive: true, effect: { reputation: 15, value: 1.1 } }] },
-      { label: "Take the money", hint: "A spectacularly poor life plan", outcomes: [{ probability: .25, label: "Nobody notices. You feel terrible and richer.", positive: false, effect: { value: 1.12, morale: -18 } }, { probability: .75, label: "Everyone notices. The suspension is long and the headlines are longer.", positive: false, effect: { rating: -4, value: .7, reputation: -30 } }] },
+      { label: "Take the money", hint: "A spectacularly poor life plan", outcomes: [{ probability: .25, label: "Nobody notices. You feel terrible and richer.", positive: false, effect: { value: 1.12, morale: -18 } }, { probability: .75, label: "Everyone notices. The suspension is long and the headlines are longer.", positive: false, effect: { rating: -4, value: .7, reputation: -30, development: -2, potential: -2 } }] },
     ],
   },
   {
     id: "language-barrier", icon: "🗣️", category: "Life abroad", title: "The tactical meeting is happening in your fourth language",
-    description: "You understand 'press,' 'inside' and, concerningly, your own name shouted twice.",
+    description: "You understand 'press,' 'inside' and, concerningly, your own name shouted twice.", requiresAbroad: true,
     options: [
-      { label: "Nod with total confidence", hint: "Efficient until kick-off", outcomes: [{ probability: .45, label: "You guessed correctly. Football truly is universal.", positive: true, effect: { rating: 1, morale: 4 } }, { probability: .55, label: "You press the wrong centre-back for 37 minutes.", positive: false, effect: { roleBoost: -1, rating: -1 } }] },
+      { label: "Nod with total confidence", hint: "Efficient until kick-off", outcomes: [{ probability: .45, label: "You guessed correctly. Football truly is universal.", positive: true, effect: { rating: 1, morale: 4 } }, { probability: .55, label: "You press the wrong centre-back for 37 minutes.", positive: false, effect: { roleBoost: -1, rating: -1, development: -1 } }] },
       { label: "Ask the analyst to explain again", hint: "Minor embarrassment, major clarity", outcomes: [{ probability: 1, label: "The analyst helps. The manager respects the honesty.", positive: true, effect: { roleBoost: 1, reputation: 3 } }] },
     ],
   },
@@ -277,15 +280,15 @@ export const SCENARIOS: Scenario[] = [
     id: "rehab-guru", icon: "🔮", category: "Fitness", title: "A recovery guru promises to halve your rehab",
     description: "His method involves magnets, moonlight and a testimonial from a retired winger with a podcast.", minAge: 22,
     options: [
-      { label: "Try the miracle treatment", hint: "The word miracle is doing work", outcomes: [{ probability: .3, label: "Against medical science and common sense, you feel brilliant.", positive: true, effect: { fitness: 25, rating: 1 } }, { probability: .7, label: "The magnets remain undefeated. Your rehab does not.", positive: false, effect: { fitness: -20, rating: -1 } }] },
-      { label: "Stay with the club physio", hint: "Slow, boring, evidence-based", outcomes: [{ probability: 1, label: "Recovery is gradual and successful. Nobody starts a podcast.", positive: true, effect: { fitness: 12 } }] },
+      { label: "Try the miracle treatment", hint: "The word miracle is doing work", outcomes: [{ probability: .3, label: "Against medical science and common sense, you feel brilliant.", positive: true, effect: { fitness: 25, rating: 1 } }, { probability: .7, label: "The magnets remain undefeated. Your rehab does not.", positive: false, effect: { fitness: -20, rating: -1, development: -1, potential: -1 } }] },
+      { label: "Stay with the club physio", hint: "Slow, boring, evidence-based", outcomes: [{ probability: 1, label: "Recovery is gradual and successful. Nobody starts a podcast.", positive: true, effect: { fitness: 12, development: 1 } }] },
     ],
   },
   {
     id: "social-rant", icon: "📱", category: "Social media", title: "You type a furious post after being benched",
     description: "It is 01:14. The draft contains six exclamation marks and the phrase 'people will know the truth.'",
     options: [
-      { label: "Post it", hint: "Fast thumbs, slow consequences", outcomes: [{ probability: .35, label: "The fans back you. The manager absolutely does not.", positive: true, effect: { reputation: 8, morale: 5 } }, { probability: .65, label: "The club fines you before breakfast and benches you before lunch.", positive: false, effect: { roleBoost: -1, value: .9 } }] },
+      { label: "Post it", hint: "Fast thumbs, slow consequences", outcomes: [{ probability: .35, label: "The fans back you. The manager absolutely does not.", positive: true, effect: { reputation: 8, morale: 5 } }, { probability: .65, label: "The club fines you before breakfast and benches you before lunch.", positive: false, effect: { roleBoost: -1, value: .9, development: -1 } }] },
       { label: "Delete the draft", hint: "The rare 01:14 masterclass", outcomes: [{ probability: 1, label: "Nothing happens, which is the best possible social-media outcome.", positive: true, effect: { morale: 3 } }] },
     ],
   },
@@ -295,6 +298,47 @@ export const SCENARIOS: Scenario[] = [
     options: [
       { label: "Demand protection now", hint: "Good finance, risky timing", outcomes: [{ probability: .5, label: "The club agrees. Your accountant sends a heart emoji.", positive: true, effect: { morale: 8, value: 1.05 } }, { probability: .5, label: "The board calls it disloyal and the manager receives a mysterious memo.", positive: false, effect: { roleBoost: -1 } }] },
       { label: "Focus on staying up", hint: "Football first, spreadsheet later", outcomes: [{ probability: .48, label: "The club survives. The clause returns to being boring.", positive: true, effect: { reputation: 6 } }, { probability: .52, label: "Relegated. The wage cut arrives before the apology email.", positive: false, effect: { value: .72, morale: -10 } }] },
+    ],
+  },
+  {
+    id: "career-plateau", icon: "📊", category: "Development", title: "Your progress has flattened out",
+    description: "The analyst calls it a plateau. The coach calls it consistency. Your rating screen is less diplomatic.", minAge: 23,
+    options: [
+      { label: "Hire a specialist coach", hint: "Fresh detail, heavier training load", outcomes: [{ probability: .65, label: "The extra work finds another level in your game.", positive: true, effect: { rating: 1, development: 2, fitness: -5 } }, { probability: .35, label: "The extra sessions become extra fatigue and very little else.", positive: false, effect: { rating: -1, development: -1, fitness: -14 } }] },
+      { label: "Simplify your game", hint: "Lower ceiling, steadier floor", outcomes: [{ probability: 1, label: "You strip out the noise and become reliably effective again.", positive: true, effect: { development: 1, morale: 7, fitness: 5 } }] },
+    ],
+  },
+  {
+    id: "surgery-choice", icon: "🏥", category: "Fitness", title: "The specialist recommends surgery",
+    description: "You can fix the underlying problem now or keep managing it with tape, injections and optimism.", minAge: 22, maxFitness: 65,
+    options: [
+      { label: "Have the operation", hint: "Short-term setback, better long-term outlook", outcomes: [{ probability: 1, label: "Rehab is slow, but the joint finally feels trustworthy again.", positive: true, effect: { rating: -1, fitness: 32, development: 2 } }] },
+      { label: "Play through the season", hint: "Immediate minutes, serious downside", outcomes: [{ probability: .35, label: "The body holds together and you produce a defiant run of form.", positive: true, effect: { rating: 1, reputation: 5 } }, { probability: .65, label: "The problem worsens. Pace, confidence and future ceiling all suffer.", positive: false, effect: { rating: -3, fitness: -22, development: -2, potential: -3 } }] },
+    ],
+  },
+  {
+    id: "ageing-reinvention", icon: "🧠", category: "Late career", title: "The coach wants you to reinvent your game",
+    description: "The first five metres are fading. The coach thinks positioning can replace some of what time has taken.", minAge: 30,
+    options: [
+      { label: "Rebuild around intelligence", hint: "Adapt now to slow the decline", outcomes: [{ probability: .72, label: "You learn to arrive early instead of running late.", positive: true, effect: { development: 2, roleBoost: 1, morale: 5 } }, { probability: .28, label: "The new role exposes habits that pace used to hide.", positive: false, effect: { rating: -1, roleBoost: -1 } }] },
+      { label: "Keep playing your old game", hint: "Familiar, proud and physically expensive", outcomes: [{ probability: .42, label: "Experience buys you another excellent stretch.", positive: true, effect: { rating: 1, reputation: 4 } }, { probability: .58, label: "The old movements are still there. The recovery speed is not.", positive: false, effect: { rating: -2, fitness: -12, development: -1 } }] },
+    ],
+  },
+  {
+    id: "elite-agent", icon: "📞", category: "Representation", title: "A super-agent wants to take over your career",
+    description: "The pitch includes global offices, private jets and a slide titled 'Legacy Architecture.'", minAge: 24, minRating: 78, minReputation: 50,
+    allowedAgents: ["International agent", "Development agency", "Local specialist", "Optimistic agent"],
+    options: [
+      { label: "Join the super-agency", hint: "Elite access, elite expectations", outcomes: [{ probability: .72, label: "The agency's calls are returned immediately. Bigger markets open.", positive: true, effect: { agent: "Elite super-agent", reputation: 6, value: 1.1 } }, { probability: .28, label: "You were recruited for the brochure, not the priority list.", positive: false, effect: { agent: "Optimistic agent", morale: -8, value: .94 } }] },
+      { label: "Keep your current agent", hint: "Known relationship, known network", outcomes: [{ probability: 1, label: "Your agent celebrates the loyalty by forwarding three voice notes.", positive: true, effect: { morale: 5 } }] },
+    ],
+  },
+  {
+    id: "veteran-broker", icon: "🗺️", category: "Representation", title: "A veteran-market broker presents the final chapters",
+    description: "He has contacts in your home country, former clubs and leagues where experience still earns a serious contract.", minAge: 30,
+    options: [
+      { label: "Sign with the veteran broker", hint: "Homecomings and late-career markets", outcomes: [{ probability: 1, label: "The next calls are more realistic—and considerably more specific.", positive: true, effect: { agent: "Veteran broker", value: 1.05 } }] },
+      { label: "Stay with your current representation", hint: "Keep chasing the existing market", outcomes: [{ probability: 1, label: "The plan stays unchanged. Time, less helpfully, does not.", positive: true, effect: { morale: 2 } }] },
     ],
   },
 ];
