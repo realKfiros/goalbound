@@ -54,6 +54,8 @@ button { color: inherit; }
 .save-status i { width: 6px; height: 6px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 12px var(--lime); }
 .quiet-button, .back-link { background: none; border: 0; color: var(--muted); cursor: pointer; padding: 8px; }
 .quiet-button:hover, .back-link:hover { color: var(--ink); }
+.trophy-nav { display: inline-flex; align-items: center; gap: 8px; }
+.trophy-nav b { min-width: 23px; height: 23px; display: grid; place-items: center; color: #090a09; background: var(--lime); border-radius: 50%; font-size: 10px; }
 
 .hero {
   position: relative;
@@ -156,7 +158,7 @@ button { color: inherit; }
 .manifesto h3 { margin: 26px 0 10px; font-size: 20px; }
 .manifesto p { margin: 0; max-width: 340px; color: var(--muted); font-size: 14px; line-height: 1.6; }
 
-.setup-page, .career-page, .summary-page { position: relative; z-index: 1; width: min(1280px, calc(100% - 64px)); margin: 0 auto; padding: 56px 0 110px; }
+.setup-page, .career-page, .summary-page, .trophy-room-page { position: relative; z-index: 1; width: min(1280px, calc(100% - 64px)); margin: 0 auto; padding: 56px 0 110px; }
 .page-enter { animation: pageIn .55s ease both; }
 @keyframes pageIn { from { opacity: 0; transform: translateY(12px); } }
 .page-heading { max-width: 620px; margin-bottom: 46px; }
@@ -315,6 +317,31 @@ legend { margin-bottom: 13px; }
 .season-numbers small { margin-top: 4px; color: var(--muted); font-size: 8px; text-transform: uppercase; letter-spacing: .1em; }
 .season-numbers .up strong { color: var(--lime); }
 .season-numbers .down strong { color: var(--orange); }
+.honours-board { margin-top: 22px; border: 1px solid var(--line); background: rgba(7, 8, 7, .45); }
+.honours-board-heading { padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--line); }
+.honours-board-heading span { color: var(--lime); font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .12em; }
+.honours-board-heading small { color: var(--muted); font-size: 10px; }
+.annual-honours { padding: 18px; }
+.annual-honours + .annual-honours { border-top: 1px solid var(--line); }
+.annual-honours h4 { margin: 0 0 12px; color: #c4c7c0; font: 10px monospace; text-transform: uppercase; letter-spacing: .09em; }
+.honour-results { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.honour-result { min-width: 0; min-height: 98px; padding: 12px; display: flex; flex-direction: column; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07); }
+.honour-result small { color: var(--muted); font-size: 7px; font-weight: 800; text-transform: uppercase; letter-spacing: .09em; }
+.honour-result strong { margin: 10px 0 5px; overflow-wrap: anywhere; font-size: 12px; line-height: 1.2; }
+.honour-result span { margin-top: auto; color: #7e827c; font-size: 8px; line-height: 1.3; }
+.honour-result.won { background: rgba(199,255,53,.1); border-color: rgba(199,255,53,.42); }
+.honour-result.won small, .honour-result.won span { color: var(--lime); }
+.player-honours-earned { margin-top: 9px; padding: 10px 12px; color: #090a09; background: var(--lime); font-size: 10px; font-weight: 900; }
+.world-honours-roll { margin-top: 10px; border: 1px solid var(--line); }
+.world-honours-roll summary { padding: 12px; color: #bfc2bc; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .09em; cursor: pointer; }
+.world-honours-roll[open] summary { color: var(--lime); border-bottom: 1px solid var(--line); }
+.world-honours-columns { padding: 14px; display: grid; grid-template-columns: 1.5fr 1fr; gap: 18px; }
+.world-honours-columns h5 { margin: 0 0 8px; color: var(--muted); font: 8px monospace; text-transform: uppercase; letter-spacing: .1em; }
+.world-honour-row { min-height: 44px; padding: 7px 0; display: grid; grid-template-columns: 24px 1fr; align-items: center; gap: 8px; border-bottom: 1px solid rgba(255,255,255,.06); }
+.world-honour-row > span { font-size: 14px; }
+.world-honour-row > div { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.world-honour-row strong { font-size: 10px; }
+.world-honour-row small { color: var(--muted); font-size: 8px; line-height: 1.35; }
 .story-continue { margin-top: 28px; }
 .scenario-stage { padding-top: 38px; }
 .scenario-icon { width: 66px; height: 66px; margin-bottom: 24px; display: grid; place-items: center; background: rgba(199,255,53,.1); border: 1px solid rgba(199,255,53,.22); border-radius: 50%; font-size: 31px; }
@@ -362,6 +389,40 @@ legend { margin-bottom: 13px; }
 .achievement-list span { width: 24px; height: 24px; display: grid; place-items: center; color: #090a09; background: var(--lime); border-radius: 50%; font-size: 9px; font-weight: 900; }
 .achievement-list strong { font-size: 11px; }
 
+.trophy-room-page { min-height: 760px; }
+.trophy-room-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; margin-bottom: 42px; }
+.trophy-room-heading h2 { margin: 16px 0 12px; font-size: clamp(58px, 7vw, 100px); line-height: .86; letter-spacing: -.07em; text-transform: uppercase; }
+.trophy-room-heading h2 em { color: var(--lime); font-style: normal; }
+.trophy-room-heading p { margin: 0; color: var(--muted); font-size: 15px; }
+.trophy-room-summary { display: grid; grid-template-columns: repeat(4, 1fr); margin-bottom: 16px; border: 1px solid var(--line); background: rgba(255,255,255,.02); }
+.trophy-room-summary > div { min-height: 112px; padding: 20px; display: flex; flex-direction: column; justify-content: center; }
+.trophy-room-summary > div + div { border-left: 1px solid var(--line); }
+.trophy-room-summary strong { color: var(--lime); font-size: 38px; line-height: 1; }
+.trophy-room-summary span { margin-top: 8px; color: var(--muted); font-size: 8px; text-transform: uppercase; letter-spacing: .12em; }
+.trophy-room-empty { min-height: 330px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: var(--panel); border: 1px solid var(--line); }
+.trophy-room-empty > span { font-size: 48px; filter: grayscale(1); opacity: .45; }
+.trophy-room-empty h3 { margin: 18px 0 8px; font-size: 28px; }
+.trophy-room-empty p { max-width: 480px; margin: 0; color: var(--muted); line-height: 1.6; }
+.trophy-careers { display: grid; gap: 14px; }
+.trophy-career-card { padding: 28px; background: linear-gradient(145deg, rgba(28,31,27,.96), rgba(13,15,13,.96)); border: 1px solid var(--line); }
+.trophy-career-head { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.trophy-career-head span { color: var(--lime); font: 9px monospace; text-transform: uppercase; letter-spacing: .12em; }
+.trophy-career-head h3 { margin: 7px 0 5px; font-size: 34px; letter-spacing: -.04em; text-transform: uppercase; }
+.trophy-career-head p { margin: 0; color: var(--muted); font-size: 11px; }
+.trophy-career-head > strong { color: rgba(255,255,255,.12); font-size: 74px; line-height: .8; letter-spacing: -.08em; }
+.career-club-rail { margin: 22px 0; padding: 13px 0; display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.career-club-rail > span { padding: 6px 11px 6px 7px; display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.08); font-size: 10px; }
+.career-club-rail > small { color: var(--muted); }
+.trophy-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.trophy-card { min-height: 100px; padding: 15px; display: flex; gap: 13px; background: rgba(255,255,255,.025); border: 1px solid rgba(255,255,255,.08); }
+.trophy-card.individual { border-color: rgba(243,198,103,.25); background: rgba(243,198,103,.045); }
+.trophy-icon { width: 38px; height: 38px; flex: 0 0 auto; display: grid; place-items: center; background: rgba(199,255,53,.1); border-radius: 50%; font-size: 19px; }
+.trophy-card div { min-width: 0; display: flex; flex-direction: column; }
+.trophy-card small { color: var(--muted); font-size: 7px; text-transform: uppercase; letter-spacing: .08em; }
+.trophy-card strong { margin: 7px 0 4px; font-size: 13px; line-height: 1.25; }
+.trophy-card p, .career-no-honours { margin: auto 0 0; color: var(--muted); font-size: 9px; }
+.career-no-honours { padding: 8px 0; }
+
 .summary-page { min-height: 710px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 .summary-page h2 { margin: 18px 0 22px; font-size: clamp(58px, 8vw, 108px); }
 .summary-lead { max-width: 560px; color: var(--muted); font-size: 16px; line-height: 1.6; }
@@ -392,12 +453,18 @@ footer { position: relative; z-index: 1; width: min(1320px, calc(100% - 64px)); 
   .offers-grid { grid-template-columns: 1fr; }
   .offer-card { min-height: 290px; }
   .career-lower { grid-template-columns: 1fr; }
+  .honour-results { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .world-honours-columns { grid-template-columns: 1fr; }
+  .trophy-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 680px) {
-  .topbar, .hero, .manifesto, .setup-page, .career-page, .summary-page, footer { width: min(100% - 32px, 1320px); }
+  .topbar, .hero, .manifesto, .setup-page, .career-page, .summary-page, .trophy-room-page, footer { width: min(100% - 32px, 1320px); }
   .topbar { height: 70px; }
   .save-status { display: none; }
+  .topbar-right { gap: 4px; }
+  .trophy-nav { font-size: 0; }
+  .trophy-nav::before { content: "Trophies"; font-size: 12px; }
   .hero { min-height: auto; padding: 54px 0 80px; }
   .hero h1 { font-size: clamp(49px, 15vw, 76px); }
   .hero-copy > p { font-size: 15px; }
@@ -449,6 +516,8 @@ footer { position: relative; z-index: 1; width: min(1320px, calc(100% - 64px)); 
   .season-numbers { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .season-numbers span { min-height: 66px; padding: 10px 4px; align-items: center; text-align: center; }
   .season-numbers strong { font-size: 17px; }
+  .honours-board-heading { align-items: flex-start; flex-direction: column; }
+  .honour-results { grid-template-columns: 1fr; }
   .scenario-options > button { padding: 20px 18px 42px 48px; grid-template-columns: 1fr; gap: 16px; }
   .scenario-stage h3, .outcome-stage h3 { font-size: 38px; }
   .career-lower { margin-top: 38px; }
@@ -457,10 +526,18 @@ footer { position: relative; z-index: 1; width: min(1320px, calc(100% - 64px)); 
   .summary-stats { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .summary-stats div { padding: 12px 4px; }
   .summary-stats strong { font-size: 20px; }
+  .trophy-room-page { padding-top: 42px; }
+  .trophy-room-heading { align-items: stretch; flex-direction: column; }
+  .trophy-room-heading h2 { font-size: 54px; }
+  .trophy-room-summary { grid-template-columns: repeat(2, 1fr); }
+  .trophy-room-summary > div:nth-child(3) { border-left: 0; border-top: 1px solid var(--line); }
+  .trophy-room-summary > div:nth-child(4) { border-top: 1px solid var(--line); }
+  .trophy-career-card { padding: 20px 14px; }
+  .trophy-career-head > strong { font-size: 56px; }
+  .trophy-grid { grid-template-columns: 1fr; }
   footer { flex-direction: column; gap: 10px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
-

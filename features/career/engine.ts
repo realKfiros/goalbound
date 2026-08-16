@@ -1,5 +1,6 @@
 import { CLUBS, SCENARIOS, clubByName, country } from "./catalog";
 import { clubDivision, maxSingleFee } from "./finances";
+import { simulateHonours } from "./honours";
 import type {
   CareerBeat,
   CareerDecision,
@@ -149,9 +150,11 @@ export function createCareerEngine(random = Math.random) {
     if (position === "CB") return { goals: .02 + quality * .04, assists: .01 + quality * .03 };
     return { goals: 0, assists: .01 };
   }
-  function seasonNarrative(role: Role, apps: number, movedAbroad: boolean, injured: boolean, trophies: number) {
+  function seasonNarrative(role: Role, apps: number, movedAbroad: boolean, injured: boolean, honourKinds: string[]) {
+    if (honourKinds.includes("ballon-dor")) return "You won the Ballon d'Or. The group chat becomes briefly respectful.";
+    if (honourKinds.includes("player-of-season") || honourKinds.includes("golden-boot")) return "You collected an individual award. Your agent has already made it their profile photo.";
+    if (honourKinds.includes("league-title") || honourKinds.includes("national-cup")) return "You lifted silverware. Nobody remembers the November draw anymore.";
     if (injured) return "The season had momentum. Your hamstring preferred a different narrative.";
-    if (trophies) return "You lifted silverware. Nobody remembers the November draw anymore.";
     if (apps < 15) return "Your most consistent position was next to the assistant coach.";
     if (role === "Star") return "The manager finally built around you. Subtlety was not required.";
     if (movedAbroad) return "You settled abroad and learned the language—especially the useful words referees dislike.";
@@ -201,14 +204,20 @@ export function createCareerEngine(random = Math.random) {
     const minutesBonus = apps / years >= 28 ? 2 : apps / years >= 16 ? 0 : -2;
     const rawGrowth = Math.round((ageBase + positionAgeAdjustment + Math.floor(offer.development / 2) + minutesBonus + player.morale / 50 - (injured ? 2 : 0)) * Math.sqrt(years) / 1.8);
     const nextRating = clamp(Math.min(player.potential, player.rating + rawGrowth), 45, 96);
-    const trophies = offer.level * roleScore + Math.max(0, nextRating - 78) > randomInt(20, 39) ? 1 : 0;
+    const honours = simulateHonours({
+      player, offer, years, apps, goals, assists, rating: nextRating, reputation: player.reputation,
+    }, random);
+    const playerHonours = honours.flatMap((annual) => annual.playerHonours);
+    const trophies = playerHonours.filter((honour) => honour.category === "team").length;
+    const individualAwards = playerHonours.filter((honour) => honour.category === "individual").length;
     const threshold = country(player.nation).threshold;
     const caps = nextRating >= threshold || nextRating >= threshold - 3 && player.reputation >= 55 ? years * randomInt(2, 8) : 0;
     const nationalGoals = Math.round(caps * positionRates(player.position, nextRating).goals * .65);
     const season: Season = {
       fromAge: player.age, toAge: player.age + years, club: offer.name, country: offer.country, league: offer.league,
       role: offer.role, kind: offer.kind, apps, goals, assists, before: player.rating, after: nextRating, trophies,
-      event: seasonNarrative(offer.role, apps, offer.country !== player.nation, injured, trophies),
+      event: seasonNarrative(offer.role, apps, offer.country !== player.nation, injured, playerHonours.map((honour) => honour.kind)),
+      honours,
     };
     const contractAtKickoff = offer.kind === "renewal" ? randomInt(3, 5)
       : offer.kind === "academy" ? randomInt(3, 4)
@@ -220,9 +229,9 @@ export function createCareerEngine(random = Math.random) {
       currentClub: offer.kind === "loan" ? player.currentClub : offer.name, parentClub: null,
       totalApps: player.totalApps + apps, totalGoals: player.totalGoals + goals, totalAssists: player.totalAssists + assists,
       trophies: player.trophies + trophies, caps: player.caps + caps, nationalGoals: player.nationalGoals + nationalGoals,
-      morale: clamp(player.morale + (apps / years >= 25 ? 6 : -8) + (trophies ? 8 : 0), 20, 100),
+      morale: clamp(player.morale + (apps / years >= 25 ? 6 : -8) + trophies * 8 + individualAwards * 4, 20, 100),
       fitness: clamp(player.fitness + (injured ? -22 : 5) - Math.max(0, player.age - 31), 25, 100),
-      reputation: clamp(player.reputation + Math.round(apps / years / 7) + trophies * 6, 0, 100),
+      reputation: clamp(player.reputation + Math.round(apps / years / 7) + trophies * 6 + individualAwards * 5, 0, 100),
       roleBoost: 0, squad: offer.kind === "academy" || offer.kind === "stay" && player.squad === "academy" ? "academy" : "senior",
       contractYears: Math.max(0, contractAtKickoff - years),
       clubSeasons: offer.name === player.currentClub || offer.kind === "loan" ? player.clubSeasons + years : years,
@@ -301,12 +310,15 @@ export function createCareerEngine(random = Math.random) {
 
   function achievements(player: Player) {
     const list: string[] = player.history.length ? ["Professional debut"] : [];
+    const honours = player.history.flatMap((season) => (season.honours ?? []).flatMap((annual) => annual.playerHonours));
     if (new Set(player.history.map((season) => season.country)).size >= 3) list.push("Three-country career");
     if (player.totalApps >= 100) list.push("Century of appearances");
     if (player.totalGoals >= 100) list.push("Hundred-goal club");
     if (player.trophies >= 3) list.push("Serial winner");
     if (player.caps >= 25) list.push("International regular");
     if (player.rating >= 88) list.push("World class");
+    if (honours.some((honour) => honour.kind === "player-of-season")) list.push("Player of the season");
+    if (honours.some((honour) => honour.kind === "ballon-dor")) list.push("Ballon d'Or winner");
     return list;
   }
 

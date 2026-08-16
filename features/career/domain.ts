@@ -1,4 +1,4 @@
-export type Screen = "home" | "setup" | "career" | "summary";
+export type Screen = "home" | "setup" | "career" | "summary" | "trophy-room";
 export type Phase = "origin-reveal" | "decision" | "season-result" | "scenario" | "scenario-result";
 export type Role = "Prospect" | "Rotation" | "Starter" | "Star";
 export type Origin = "academy" | "senior" | "gem";
@@ -20,6 +20,39 @@ export type Club = {
 
 export type OfferKind = "permanent" | "loan" | "academy" | "stay" | "renewal" | "promotion";
 export type Offer = Club & { role: Role; label: string; reason: string; kind: OfferKind };
+export type HonourKind = "league-title" | "national-cup" | "golden-boot" | "player-of-season" | "ballon-dor";
+export type HonourCategory = "team" | "individual";
+export type AwardWinner = { name: string; club: string; isPlayer: boolean; detail?: string };
+export type PlayerHonour = {
+  id: string;
+  kind: HonourKind;
+  category: HonourCategory;
+  name: string;
+  season: string;
+  club: string;
+  country: string;
+  icon: string;
+};
+export type DivisionHonours = {
+  country: string;
+  league: string;
+  champion: string;
+  topScorer: AwardWinner;
+  playerOfSeason: AwardWinner;
+};
+export type CupHonours = { country: string; name: string; winner: string };
+export type AnnualHonours = {
+  season: string;
+  league: string;
+  champion: string;
+  topScorer: AwardWinner;
+  playerOfSeason: AwardWinner;
+  cup: { name: string; winner: string };
+  ballonDor: AwardWinner;
+  playerHonours: PlayerHonour[];
+  divisionRoll?: DivisionHonours[];
+  cupRoll?: CupHonours[];
+};
 export type Season = {
   fromAge: number;
   toAge: number;
@@ -35,6 +68,7 @@ export type Season = {
   after: number;
   trophies: number;
   event: string;
+  honours?: AnnualHonours[];
 };
 
 export type Player = {
@@ -93,6 +127,7 @@ export type Scenario = {
 
 export type ResolvedOutcome = { label: string; positive: boolean };
 export type SavedGame = {
+  careerId: string | null;
   screen: Screen;
   phase: Phase;
   player: Player | null;
@@ -105,6 +140,17 @@ export type SavedGame = {
   decisionTitle: string;
   decisionDescription: string;
 };
+export type TrophyRoomHonour = PlayerHonour & { careerId: string; playerName: string; count: number };
+export type TrophyRoomCareer = {
+  id: string;
+  playerName: string;
+  nation: string;
+  finalAge: number;
+  finalRating: number;
+  clubs: string[];
+  honours: TrophyRoomHonour[];
+};
+export type TrophyRoom = { version: 1; careers: TrophyRoomCareer[] };
 export type Motion = { kind: "origin" | "season" | "fate"; title: string; detail: string };
 
 export type CareerDraft = { name: string; nation: string; position: string; number: number };
@@ -115,6 +161,7 @@ export type SeasonSimulation = { player: Player; season: Season };
 export type ScenarioResolution = { player: Player; outcome: ResolvedOutcome };
 
 export const DEFAULT_SAVE: SavedGame = {
+  careerId: null,
   screen: "home",
   phase: "origin-reveal",
   player: null,

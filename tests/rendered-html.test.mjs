@@ -26,11 +26,12 @@ test("server-renders the Goalbound career simulator", async () => {
   assert.match(html, /429(?:<!-- -->)? real clubs/);
   assert.doesNotMatch(html, /title="(?:Israel|Poland|Cyprus)"/);
   assert.match(html, /Draw my starting route|Start your career/);
+  assert.match(html, /Trophy room/);
   assert.doesNotMatch(html, /Your site is taking shape|react-loading-skeleton/);
 });
 
 test("keeps career rules, content, persistence, and rendering behind clear modules", async () => {
-  const [page, engine, domain, storage, game, layout, packageJson, catalog, leagueCatalog] = await Promise.all([
+  const [page, engine, domain, storage, game, layout, packageJson, catalog, leagueCatalog, honours, trophyRoom] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../features/career/engine.ts", import.meta.url), "utf8"),
     readFile(new URL("../features/career/domain.ts", import.meta.url), "utf8"),
@@ -40,6 +41,8 @@ test("keeps career rules, content, persistence, and rendering behind clear modul
     readFile(new URL("../package.json", import.meta.url), "utf8"),
     readFile(new URL("../features/career/catalog.ts", import.meta.url), "utf8"),
     readFile(new URL("../features/career/leagueCatalog.ts", import.meta.url), "utf8"),
+    readFile(new URL("../features/career/honours.ts", import.meta.url), "utf8"),
+    readFile(new URL("../features/career/trophyRoom.ts", import.meta.url), "utf8"),
   ]);
 
   assert.match(page, /<GoalboundGame \/>/);
@@ -54,6 +57,9 @@ test("keeps career rules, content, persistence, and rendering behind clear modul
   assert.match(engine, /Accepted transfer bid/);
   assert.match(engine, /Renew contract/);
   assert.match(storage, /goalbound-career-v3/);
+  assert.match(storage, /goalbound-trophy-room-v1/);
+  assert.match(honours, /function simulateHonours/);
+  assert.match(trophyRoom, /function mergeCareerSnapshot/);
   assert.match(game, /motion-screen/);
   assert.match(layout, /Goalbound — Your Football Career/);
   assert.match(packageJson, /"build": "WRANGLER_LOG_PATH=/);

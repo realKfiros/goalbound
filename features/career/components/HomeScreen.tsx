@@ -1,7 +1,7 @@
 import { CLUBS, START_COUNTRIES } from "../catalog";
 import type { Player } from "../domain";
 
-export function HomeScreen({ player, onStart, onResume }: { player: Player | null; onStart: () => void; onResume: () => void }) {
+export function HomeScreen({ player, trophyCount, onStart, onResume, onTrophyRoom }: { player: Player | null; trophyCount: number; onStart: () => void; onResume: () => void; onTrophyRoom: () => void }) {
   return (
     <>
       <section className="hero">
@@ -9,7 +9,7 @@ export function HomeScreen({ player, onStart, onResume }: { player: Player | nul
           <div className="eyebrow"><span>Career simulator</span><span>{CLUBS.length} real clubs</span></div>
           <h1>Your talent.<br /><em>Your choices.</em><br />Your legacy.</h1>
           <p>Start in an academy, a smaller senior side or—very rarely—as the gem everyone wants. Stay loyal or survive the day the club makes the choice for you.</p>
-          <div className="hero-actions"><button className="primary-button" onClick={onStart}>Start your career <span>→</span></button>{player && <button className="secondary-button" onClick={onResume}>Resume {player.name}</button>}</div>
+          <div className="hero-actions"><button className="primary-button" onClick={onStart}>Start your career <span>→</span></button>{player && <button className="secondary-button" onClick={onResume}>Resume {player.name}</button>}<button className="secondary-button" onClick={onTrophyRoom}>Trophy room · {trophyCount}</button></div>
           <div className="nation-strip" aria-label="Available nations">{START_COUNTRIES.map((item) => <span key={item.code} title={item.name}>{item.flag}</span>)}</div>
         </div>
         <div className="hero-card-wrap" aria-hidden="true">
