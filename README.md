@@ -50,13 +50,11 @@ through the adapters isolated in `storage.ts`.
 
 ## Development
 
-Requires Node.js `>=22.13.0`.
-
 ```bash
-npm install
-npm run dev
-npm test
-npm run lint
+bun install
+bun run dev
+bun test
+bun run lint
 ```
 
-The production build is generated with `npm run build`.
+The production build is generated with `bun run build`.
