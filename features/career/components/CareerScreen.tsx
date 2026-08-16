@@ -1,0 +1,45 @@
+import { clubByName, country } from "../catalog";
+import type { Offer, Player, SavedGame, Scenario, ScenarioOption } from "../domain";
+import { ClubBadge } from "./ClubBadge";
+
+type CareerScreenProps = {
+  game: SavedGame;
+  player: Player;
+  scenario: Scenario | null;
+  achievements: string[];
+  onSeasonSpanChange: (years: number) => void;
+  onRevealOrigin: () => void;
+  onOffer: (offer: Offer) => void;
+  onContinueSeason: () => void;
+  onScenario: (option: ScenarioOption) => void;
+  onContinueScenario: () => void;
+};
+
+function formatMoney(value: number) {
+  return value >= 1_000_000 ? `€${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1)}m` : `€${Math.round(value / 1_000)}k`;
+}
+
+export function CareerScreen({ game, player, scenario, achievements, onSeasonSpanChange, onRevealOrigin, onOffer, onContinueSeason, onScenario, onContinueScenario }: CareerScreenProps) {
+  const playerCountry = country(player.nation);
+  return (
+    <section className="career-page page-enter">
+      <div className="career-head"><div className="identity-block"><div className="mini-shirt">{player.number}</div><div><span className="eyebrow">{playerCountry.flag} {playerCountry.name} · #{player.number} {player.position}</span><h2>{player.name}</h2><p>{player.currentClub} · Age {player.age}</p></div></div><div className="rating-block"><strong>{player.rating}</strong><span>OVR</span></div></div>
+      <div className="career-stats"><div><small>Market value</small><strong>{formatMoney(player.value)}</strong></div><div><small>Appearances</small><strong>{player.totalApps}</strong></div><div><small>Goals</small><strong>{player.totalGoals}</strong></div><div><small>Assists</small><strong>{player.totalAssists}</strong></div><div><small>Trophies</small><strong>{player.trophies}</strong></div><div><small>National caps</small><strong>{player.caps}</strong></div></div>
+      <div className="career-vitals"><span><i style={{ width: `${player.fitness}%` }} /><small>Fitness</small><strong>{player.fitness}</strong></span><span><i style={{ width: `${player.morale}%` }} /><small>Morale</small><strong>{player.morale}</strong></span><span><i style={{ width: `${player.reputation}%` }} /><small>Reputation</small><strong>{player.reputation}</strong></span><span className="contract-pill"><small>Contract</small><strong>{player.currentClub === "Free agent" ? "None" : player.contractYears ? `${player.contractYears}Y left` : "Expired"}</strong></span><span className="agent-pill"><small>Representation</small><strong>{player.agent}</strong></span></div>
+
+      <div className="decision-dock" aria-live="polite">
+        {game.phase === "origin-reveal" && <div className={`origin-reveal ${player.origin}`}><span className="story-kicker">Starting route · {player.origin === "gem" ? "7% rare" : player.origin === "senior" ? "16% chance" : "Most common"}</span><h3>{game.decisionTitle}</h3><p>{game.decisionDescription}</p><div className="origin-facts"><span><small>STARTING AGE</small><strong>{player.age}</strong></span><span><small>STARTING OVR</small><strong>{player.rating}</strong></span><span><small>FIRST LEVEL</small><strong>{player.origin === "academy" ? "Academy" : "Senior team"}</strong></span></div><button className="primary-button story-continue" onClick={onRevealOrigin}>See who wants you <span>→</span></button></div>}
+
+        {game.phase === "decision" && <div className="club-decision"><div className="dock-heading"><div><span className="story-kicker">{game.decisionKind.replaceAll("-", " ")} · club decision</span><h3>{game.decisionTitle}</h3><p>{game.decisionDescription}</p></div><div className="season-control"><span>Simulate</span>{[1, 2, 3].map((years) => <button key={years} className={game.seasonSpan === years ? "active" : ""} onClick={() => onSeasonSpanChange(years)}>{years}Y</button>)}</div></div><div className="club-options">{game.offers.map((offer, index) => <button key={`${offer.name}-${offer.kind}-${index}`} onClick={() => onOffer(offer)}><span className="option-number">0{index + 1}</span><ClubBadge club={offer} /><div className="club-option-copy"><small>{offer.label}</small><strong>{offer.name}</strong><span>{offer.league} · {country(offer.country).flag} {offer.role}</span><p>{offer.reason}</p></div><em>Choose →</em></button>)}</div></div>}
+
+        {game.phase === "season-result" && game.lastSeason && <div className="season-stage"><div className="story-kicker">Season complete · Age {game.lastSeason.fromAge}–{game.lastSeason.toAge}</div><div className="season-club"><ClubBadge club={clubByName(game.lastSeason.club)} /><div><span>{game.lastSeason.kind === "loan" ? "Loan chapter" : game.lastSeason.kind === "stay" ? "Another chapter at" : "Chapter at"}</span><h3>{game.lastSeason.club}</h3><p>{game.lastSeason.league}</p></div></div><blockquote>{game.lastSeason.event}</blockquote><div className="season-numbers"><span><strong>{game.lastSeason.apps}</strong><small>Apps</small></span><span><strong>{game.lastSeason.goals}</strong><small>Goals</small></span><span><strong>{game.lastSeason.assists}</strong><small>Assists</small></span><span><strong>{game.lastSeason.trophies}</strong><small>Trophies</small></span><span className={game.lastSeason.after >= game.lastSeason.before ? "up" : "down"}><strong>{game.lastSeason.before} → {game.lastSeason.after}</strong><small>OVR</small></span></div><button className="primary-button story-continue" onClick={onContinueSeason}>Continue career <span>→</span></button></div>}
+
+        {game.phase === "scenario" && scenario && <div className="scenario-stage"><div className="scenario-icon">{scenario.icon}</div><span className="story-kicker">{scenario.category} · career decision</span><h3>{scenario.title}</h3><p className="scenario-description">{scenario.description}</p><div className="scenario-options">{scenario.options.map((option, index) => <button key={`${option.label}-${index}`} onClick={() => onScenario(option)}><span className="option-number">0{index + 1}</span><div className="option-copy"><strong>{option.label}</strong><small>{option.hint}</small></div><div className="odds">{option.outcomes.map((item) => <span className={item.positive ? "positive" : "negative"} key={item.label}><b>{Math.round(item.probability * 100)}%</b>{item.label}</span>)}</div><em>Choose →</em></button>)}</div></div>}
+
+        {game.phase === "scenario-result" && game.outcome && <div className={game.outcome.positive ? "outcome-stage positive" : "outcome-stage negative"}><div className="fate-coin">{game.outcome.positive ? "✓" : "×"}</div><span className="story-kicker">Fate has decided</span><h3>{game.outcome.label}</h3><p>Your rating, value, fitness and status have been updated. The club still expects you at training.</p><button className="primary-button story-continue" onClick={onContinueScenario}>Continue career <span>→</span></button></div>}
+      </div>
+
+      <div className="career-lower"><div className="timeline-panel"><div className="panel-heading"><h3>Career path</h3><span>{player.history.length} chapters</span></div>{player.history.length === 0 ? <p className="empty-state">Your first contract will start the timeline.</p> : <div className="timeline">{player.history.map((season, index) => <div className="timeline-row" key={`${season.club}-${season.fromAge}-${index}`}><span className="timeline-age">{season.fromAge}–{season.toAge}</span><ClubBadge club={clubByName(season.club)} small /><div><strong>{season.kind === "loan" ? "↳ " : ""}{season.club}</strong><small>{season.role} · {season.apps} apps · {season.goals} G · {season.assists} A</small></div><span className={season.after >= season.before ? "rating-rise" : "rating-fall"}>{season.before} → {season.after}</span></div>)}</div>}</div><aside className="achievements-panel"><div className="panel-heading"><h3>Legacy</h3><span>{achievements.length}/7</span></div><div className="achievement-list">{achievements.map((item, index) => <div key={item}><span>{index + 1}</span><strong>{item}</strong></div>)}</div></aside></div>
+    </section>
+  );
+}

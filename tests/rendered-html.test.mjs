@@ -27,22 +27,30 @@ test("server-renders the Goalbound career simulator", async () => {
   assert.doesNotMatch(html, /Your site is taking shape|react-loading-skeleton/);
 });
 
-test("keeps the persistent career model and real decision flow in source", async () => {
-  const [page, layout, packageJson] = await Promise.all([
+test("keeps career rules, content, persistence, and rendering behind clear modules", async () => {
+  const [page, engine, domain, storage, game, layout, packageJson] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../features/career/engine.ts", import.meta.url), "utf8"),
+    readFile(new URL("../features/career/domain.ts", import.meta.url), "utf8"),
+    readFile(new URL("../features/career/storage.ts", import.meta.url), "utf8"),
+    readFile(new URL("../features/career/GoalboundGame.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
   ]);
 
-  assert.match(page, /type Origin = "academy" \| "senior" \| "gem"/);
-  assert.match(page, /contractYears: number/);
-  assert.match(page, /forced-sale/);
-  assert.match(page, /Transfer bids have arrived while you are under contract/);
-  assert.match(page, /Accepted transfer bid/);
-  assert.match(page, /Renew contract/);
-  assert.match(page, /goalbound-career-v3/);
-  assert.match(page, /motion-screen/);
+  assert.match(page, /<GoalboundGame \/>/);
+  assert.ok(page.split("\n").length < 10);
+  assert.match(domain, /type Origin = "academy" \| "senior" \| "gem"/);
+  assert.match(domain, /contractYears: number/);
+  assert.match(engine, /function createCareerEngine/);
+  assert.match(engine, /function simulateSeason/);
+  assert.match(engine, /forced-sale/);
+  assert.match(engine, /Transfer bids have arrived while you are under contract/);
+  assert.match(engine, /Accepted transfer bid/);
+  assert.match(engine, /Renew contract/);
+  assert.match(storage, /goalbound-career-v3/);
+  assert.match(game, /motion-screen/);
   assert.match(layout, /Goalbound — Your Football Career/);
   assert.match(packageJson, /"build": "WRANGLER_LOG_PATH=/);
-  assert.doesNotMatch(page, /SkeletonPreview/);
+  assert.doesNotMatch(game, /SkeletonPreview/);
 });
