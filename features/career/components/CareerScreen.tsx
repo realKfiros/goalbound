@@ -46,10 +46,17 @@ function StandingTable({ group, annual, activeClub, activeCountry }: {
           const europeanCompetition = annual.continentalRoll?.find((competition) =>
             competition.entrants.some((entrant) => entrant.club === club && entrant.country === activeCountry),
           );
-          const europeanMarker = europeanCompetition ? EUROPEAN_MARKERS[europeanCompetition.key] : null;
+          const europeanEntrant = europeanCompetition?.entrants.find((entrant) => entrant.club === club && entrant.country === activeCountry);
+          const markerDefinition = europeanCompetition ? EUROPEAN_MARKERS[europeanCompetition.key] : null;
+          const europeanMarker = markerDefinition ? {
+            ...markerDefinition,
+            title: europeanEntrant?.qualifiedVia ? `${markerDefinition.title} · ${europeanEntrant.qualifiedVia}` : markerDefinition.title,
+          } : null;
+          const wonCups = (annual.cupRoll ?? [{ country: activeCountry, ...annual.cup }])
+            .filter((cup) => cup.country === activeCountry && cup.winner === club);
           const markers = [
             isChampion ? { label: "C", title: "League champion", className: "c" } : null,
-            annual.cup.winner === club ? { label: "CW", title: `${annual.cup.name} winner`, className: "cw" } : null,
+            wonCups.length ? { label: "CW", title: wonCups.map((cup) => `${cup.name} winner`).join(" · "), className: "cw" } : null,
             europeanMarker,
             movement?.direction === "promoted" ? { label: "P", title: "Promoted", className: "p" } : null,
             movement?.direction === "relegated" ? { label: "R", title: "Relegated", className: "r" } : null,
@@ -106,7 +113,7 @@ function ContinentalTable({ competition, activeClub, activeCountry }: {
           const route = index < 8 ? "R16" : index < 24 ? "PO" : "OUT";
           const isActive = standing.club === activeClub && standing.country === activeCountry;
           return (
-            <div className={isActive ? "continental-standing-row active" : "continental-standing-row"} key={`${standing.country}:${standing.club}`}>
+            <div className={isActive ? "continental-standing-row active" : "continental-standing-row"} key={`${standing.country}:${standing.club}`} title={standing.qualifiedVia ? `Qualified via: ${standing.qualifiedVia}` : undefined}>
               <span className="standing-position">{index + 1}</span>
               <div className="continental-club"><ClubBadge club={clubByName(standing.club)} small fetchRemote={false} /><strong>{standing.club}</strong><small>{country(standing.country).flag}</small></div>
               <span>{standing.played}</span><span>{standing.won}</span><span>{standing.drawn}</span><span>{standing.lost}</span>
@@ -229,6 +236,9 @@ export function CareerScreen({
                         <div className={title.winner === game.lastSeason?.club ? "honour-result won" : "honour-result"} key={`${title.name}-${title.winner}`}><small>{title.name === "Champion" ? "League winner" : title.name}</small><strong>{title.winner}</strong><span>{annual.league}</span></div>
                       ))}
                       <div className={annual.cup.winner === game.lastSeason?.club ? "honour-result won" : "honour-result"}><small>{annual.cup.name}</small><strong>{annual.cup.winner}</strong><span>Cup winner</span></div>
+                      {annual.additionalCups?.map((cup) => (
+                        <div className={cup.winner === game.lastSeason?.club ? "honour-result won" : "honour-result"} key={`${cup.country}-${cup.name}`}><small>{cup.name}</small><strong>{cup.winner}</strong><span>Cup winner</span></div>
+                      ))}
                       <div className={annual.topScorer.isPlayer ? "honour-result won" : "honour-result"}><small>Golden Boot</small><strong>{annual.topScorer.name}</strong><span>{annual.topScorer.club}{annual.topScorer.detail ? ` · ${annual.topScorer.detail}` : ""}</span></div>
                       <div className={annual.playerOfSeason.isPlayer ? "honour-result won" : "honour-result"}><small>Player of the Season</small><strong>{annual.playerOfSeason.name}</strong><span>{annual.playerOfSeason.club}</span></div>
                       <div className={annual.ballonDor.isPlayer ? "honour-result won" : "honour-result"}><small>Ballon d&apos;Or</small><strong>{annual.ballonDor.name}</strong><span>{annual.ballonDor.club}</span></div>
@@ -271,7 +281,7 @@ export function CareerScreen({
                           </div>
                         ))}</div>
                         <div><h5>National cups</h5>{(annual.cupRoll ?? [{ country: game.lastSeason!.country, ...annual.cup }]).map((cup) => (
-                          <div className="world-honour-row" key={cup.country}>
+                          <div className="world-honour-row" key={`${cup.country}-${cup.name}`}>
                             <span>{country(cup.country).flag}</span><div><strong>{cup.name}</strong><small>{cup.winner}</small></div>
                           </div>
                         ))}</div>

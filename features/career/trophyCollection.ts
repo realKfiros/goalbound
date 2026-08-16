@@ -105,6 +105,16 @@ export function trophyCollection(room: TrophyRoom) {
     }, (honour) => honour.kind === "national-cup" && honour.name === `${cup} winner`));
   });
 
+  team.push(honourEntry(honours, {
+    id: "cup:ENG:efl-cup",
+    name: "EFL Cup",
+    detail: country("ENG").name,
+    country: "ENG",
+    category: "team",
+    kind: "national-cup",
+    icon: "🏆",
+  }, (honour) => honour.kind === "national-cup" && honour.name === "EFL Cup winner"));
+
   UEFA_COMPETITION_DEFINITIONS.forEach((competition) => {
     team.push(honourEntry(honours, {
       id: `continental:${competition.key}`,

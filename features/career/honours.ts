@@ -25,6 +25,9 @@ const CUP_NAMES: Record<string, string> = {
   BRA: "Copa do Brasil", ARG: "Copa Argentina", USA: "U.S. Open Cup",
   BEL: "Belgian Cup", SCO: "Scottish Cup", TUR: "Turkish Cup", CRO: "Croatian Cup",
   GRE: "Greek Cup", SAU: "King's Cup", JPN: "Emperor's Cup", MEX: "Copa MX",
+  AUT: "ÖFB Cup", CZE: "Czech Cup", DEN: "Danish Cup", SUI: "Swiss Cup",
+  NOR: "Norwegian Cup", SWE: "Svenska Cupen", UKR: "Ukrainian Cup",
+  SRB: "Serbian Cup", ROU: "Cupa României", HUN: "Magyar Kupa",
 };
 function randomInt(random: () => number, min: number, max: number) {
   return Math.floor(random() * (max - min + 1)) + min;
@@ -95,6 +98,8 @@ export function simulateHonoursWithWorld(
     const champion = titleWinners[0].winner;
     const wonLeagueTitles = titleWinners.filter((title) => title.winner === input.offer.name);
     const cupWinner = simulated.cupWinners[input.offer.country] ?? input.offer.name;
+    const additionalCups = simulated.additionalCups.filter((cup) => cup.country === input.offer.country);
+    const wonAdditionalCups = additionalCups.filter((cup) => cup.winner === input.offer.name);
     const continentalTitles = simulated.continentalCompetitions.filter((competition) =>
       competition.champion.club === input.offer.name && competition.champion.country === input.offer.country,
     );
@@ -113,7 +118,7 @@ export function simulateHonoursWithWorld(
     const worldClubData = pick(worldClubs, random);
     const worldClub = worldClubData?.name ?? input.offer.name;
     const ballonScore = input.rating + input.reputation * .24 + goals * .85 + assists * .35 +
-      (wonLeagueTitles.length ? 5 : 0) + (cupWinner === input.offer.name ? 3 : 0) + (continentalTitles.length ? 7 : 0);
+      (wonLeagueTitles.length ? 5 : 0) + (cupWinner === input.offer.name || wonAdditionalCups.length ? 3 : 0) + (continentalTitles.length ? 7 : 0);
     const winsBallonDor = seniorEligible && input.rating >= 83 && apps >= 24 && ballonScore >= randomInt(random, 121, 139);
     const ballonDor = winsBallonDor
       ? { name: input.player.name, club: input.offer.name, isPlayer: true }
@@ -126,6 +131,9 @@ export function simulateHonoursWithWorld(
       playerHonours.push(playerHonour(input, season, "league-title", "team", name, "🏆"));
     });
     if (seniorEligible && cupWinner === input.offer.name) playerHonours.push(playerHonour(input, season, "national-cup", "team", `${cupTitle} winner`, "🏆"));
+    if (seniorEligible) wonAdditionalCups.forEach((cup) => {
+      playerHonours.push(playerHonour(input, season, "national-cup", "team", `${cup.name} winner`, "🏆"));
+    });
     if (seniorEligible) continentalTitles.forEach((competition) => {
       playerHonours.push(playerHonour(input, season, "continental-title", "team", `${competition.name} winner`, "🏆"));
     });
@@ -151,11 +159,11 @@ export function simulateHonoursWithWorld(
       country: countryCode,
       name: nationalCupName(countryCode),
       winner,
-    }));
+    })).concat(simulated.additionalCups);
 
     honours.push({
       season, league, champion, titles: titleWinners, topScorer, playerOfSeason,
-      cup: { name: cupTitle, winner: cupWinner }, ballonDor, playerHonours,
+      cup: { name: cupTitle, winner: cupWinner }, additionalCups, ballonDor, playerHonours,
       divisionRoll, cupRoll, continentalRoll: simulated.continentalCompetitions, movements: simulated.movements,
       standingGroups: activeCompetition?.standings,
       playoffBrackets: simulated.playoffBrackets.filter((bracket) => bracket.country === input.offer.country),

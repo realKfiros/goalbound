@@ -69,7 +69,8 @@ test("each simulated year has a complete named honours board", () => {
   const expectedDivisions = new Set(CLUBS.map((club) => `${club.country}:${clubDivision(club)}`));
   const expectedCountries = new Set(CLUBS.map((club) => club.country));
   assert.equal(annual.divisionRoll.length, expectedDivisions.size);
-  assert.equal(annual.cupRoll.length, expectedCountries.size);
+  assert.equal(annual.cupRoll.length, expectedCountries.size + 1);
+  assert.deepEqual(annual.additionalCups.map((cup) => `${cup.country}:${cup.name}`), ["ENG:EFL Cup"]);
   assert.ok(annual.divisionRoll.every((division) => division.champion && division.topScorer.name && division.playerOfSeason.name));
   assert.ok(annual.cupRoll.every((cup) => cup.name && cup.winner));
   assert.equal(annual.continentalRoll.length, 3);
@@ -80,7 +81,7 @@ test("each simulated year has a complete named honours board", () => {
   assert.ok(annual.playoffBrackets.some((bracket) => bracket.name.includes("Promotion Playoff")));
   assert.deepEqual(
     annual.playerHonours.map((honour) => honour.kind).sort(),
-    ["ballon-dor", "golden-boot", "league-title", "national-cup", "player-of-season"],
+    ["ballon-dor", "golden-boot", "league-title", "national-cup", "national-cup", "player-of-season"],
   );
 });
 
@@ -170,7 +171,8 @@ test("the collection exposes every division award, national cup, and club", () =
   const countries = new Set(CLUBS.map((club) => club.country));
   const empty = trophyCollection(EMPTY_TROPHY_ROOM);
 
-  assert.equal(empty.team.length, divisions.size + countries.size + 3);
+  assert.equal(empty.team.length, divisions.size + countries.size + 4);
+  assert.ok(empty.team.some((entry) => entry.name === "EFL Cup"));
   assert.equal(empty.individual.length, divisions.size * 2 + 1);
   assert.deepEqual(
     empty.team.filter((entry) => entry.kind === "continental-title").map((entry) => entry.name),
