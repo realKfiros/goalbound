@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 import ts from "typescript";
 
 const require = createRequire(import.meta.url);
-const projectRoot = resolve(dirname(new URL(import.meta.url).pathname), "..");
+const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const moduleCache = new Map();
 
 function loadTypeScriptModule(relativePath) {
@@ -182,9 +183,26 @@ test("every represented division is a complete catalog league", () => {
     actual.set(key, (actual.get(key) ?? 0) + 1);
   });
 
-  assert.equal(CLUBS.length, 596);
-  assert.equal(COMPLETE_LEAGUE_CLUB_COUNT, 596);
+  assert.equal(CLUBS.length, 738);
+  assert.equal(COMPLETE_LEAGUE_CLUB_COUNT, 738);
   assert.deepEqual(actual, expected);
+
+  const addedTopFlights = new Map([
+    ["AUT:Austrian Bundesliga", 12],
+    ["CZE:Czech First League", 16],
+    ["DEN:Danish Superliga", 12],
+    ["SUI:Swiss Super League", 12],
+    ["NOR:Eliteserien", 16],
+    ["SWE:Allsvenskan", 16],
+    ["UKR:Ukrainian Premier League", 16],
+    ["SRB:Serbian SuperLiga", 14],
+    ["ROU:Romanian SuperLiga", 16],
+    ["HUN:Nemzeti Bajnokság I", 12],
+  ]);
+  addedTopFlights.forEach((clubCount, key) => {
+    const [country, league] = key.split(":");
+    assert.equal(CLUBS.filter((club) => club.country === country && club.league === league).length, clubCount, key);
+  });
 });
 
 test("established contenders dominate league odds until an exceptional player bends them", () => {

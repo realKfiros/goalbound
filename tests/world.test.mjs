@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 import ts from "typescript";
 
 const require = createRequire(import.meta.url);
-const projectRoot = resolve(dirname(new URL(import.meta.url).pathname), "..");
+const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const moduleCache = new Map();
 
 function loadTypeScriptModule(relativePath) {
@@ -53,6 +54,16 @@ test("every catalog division has a versioned competition format", () => {
   assert.equal(competitionFormat("USA", "Major League Soccer").movement, "closed");
   assert.equal(competitionFormat("USA", "Major League Soccer").titleStructure, "playoff");
   assert.equal(competitionFormat("MEX", "Liga MX").titleStructure, "short-season-playoff");
+  [
+    ["AUT", "Austrian Bundesliga"],
+    ["CZE", "Czech First League"],
+    ["DEN", "Danish Superliga"],
+    ["SUI", "Swiss Super League"],
+    ["SRB", "Serbian SuperLiga"],
+    ["ROU", "Romanian SuperLiga"],
+  ].forEach(([country, league]) => {
+    assert.equal(competitionFormat(country, league).titleStructure, "split-table", `${country}:${league}`);
+  });
 });
 
 test("a new save contains every club exactly once", () => {

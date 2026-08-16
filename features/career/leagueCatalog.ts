@@ -266,6 +266,87 @@ export const COMPLETE_LEAGUES: readonly LeagueSeed[] = [
     ],
   },
   {
+    country: "AUT", league: "Austrian Bundesliga", division: 1, expectedClubs: 12,
+    clubs: [
+      "LASK", "Sturm Graz", "Red Bull Salzburg", "Austria Wien", "Rapid Wien", "Hartberg",
+      "SV Ried", "Wolfsberger AC", "Altach", "Grazer AK", "WSG Tirol", "Austria Lustenau",
+    ],
+  },
+  {
+    country: "CZE", league: "Czech First League", division: 1, expectedClubs: 16,
+    clubs: [
+      "Zbrojovka Brno", "Sparta Prague", "FC Zlín", "Mladá Boleslav", "Teplice", "Karviná",
+      "Slavia Prague", "Hradec Králové", "Jablonec", "Sigma Olomouc", "Pardubice",
+      "Baník Ostrava", "Slovácko", "Bohemians 1905", "Viktoria Plzeň", "Slovan Liberec",
+    ],
+  },
+  {
+    country: "DEN", league: "Danish Superliga", division: 1, expectedClubs: 12,
+    clubs: [
+      "AC Horsens", "AGF", "Brøndby IF", "FC Copenhagen", "FC Midtjylland",
+      "FC Nordsjælland", "Lyngby BK", "Odense BK", "Randers FC", "Silkeborg IF",
+      "Sønderjyske", "Viborg FF",
+    ],
+  },
+  {
+    country: "SUI", league: "Swiss Super League", division: 1, expectedClubs: 12,
+    clubs: [
+      "FC Basel 1893", "Grasshopper Club Zürich", "Lausanne-Sport", "FC Lugano", "FC Luzern",
+      "Servette FC", "FC Sion", "FC St. Gallen 1879", "FC Thun", "FC Vaduz",
+      "Young Boys", "FC Zürich",
+    ],
+  },
+  {
+    country: "NOR", league: "Eliteserien", division: 1, expectedClubs: 16,
+    clubs: [
+      "Bodø/Glimt", "Viking FK", "SK Brann", "Tromsø IL", "Molde FK", "Sarpsborg 08",
+      "Rosenborg BK", "Vålerenga", "Lillestrøm SK", "Sandefjord", "Fredrikstad FK", "HamKam",
+      "KFUM Oslo", "Aalesund", "Kristiansund BK", "IK Start",
+    ],
+  },
+  {
+    country: "SWE", league: "Allsvenskan", division: 1, expectedClubs: 16,
+    clubs: [
+      "Hammarby", "Mjällby AIF", "GAIS", "Malmö FF", "Djurgården", "IFK Göteborg",
+      "BK Häcken", "IK Sirius", "AIK", "IF Elfsborg", "IF Brommapojkarna", "Degerfors IF",
+      "Västerås SK", "Halmstads BK", "Kalmar FF", "Örgryte IS",
+    ],
+  },
+  {
+    country: "UKR", league: "Ukrainian Premier League", division: 1, expectedClubs: 16,
+    clubs: [
+      "Bukovyna Chernivtsi", "Veres Rivne", "Dynamo Kyiv", "Epicentr Kamianets-Podilskyi",
+      "Zorya Luhansk", "Karpaty Lviv", "Kolos Kovalivka", "Kryvbas Kryvyi Rih", "Kudrivka",
+      "Livyi Bereh Kyiv", "LNZ Cherkasy", "Obolon Kyiv", "Polissya Zhytomyr", "FC Kharkiv",
+      "Chornomorets Odesa", "Shakhtar Donetsk",
+    ],
+  },
+  {
+    country: "SRB", league: "Serbian SuperLiga", division: 1, expectedClubs: 14,
+    clubs: [
+      "Red Star Belgrade", "IMT", "Partizan Belgrade", "Novi Pazar", "Vojvodina", "Čukarički",
+      "Železničar Pančevo", "Mladost Lučani", "Radnik Surdulica", "OFK Beograd", "Zemun",
+      "Radnički 1923", "Radnički Niš", "Mačva Šabac",
+    ],
+  },
+  {
+    country: "ROU", league: "Romanian SuperLiga", division: 1, expectedClubs: 16,
+    clubs: [
+      "FC Voluntari", "FC Argeș", "FK Csikszereda", "Corvinul Hunedoara", "CFR Cluj",
+      "Oțelul Galați", "Dinamo București", "Rapid București", "Petrolul Ploiești",
+      "FC Botoșani", "Universitatea Cluj", "FCSB", "Universitatea Craiova", "UTA Arad",
+      "Farul Constanța", "Sepsi OSK",
+    ],
+  },
+  {
+    country: "HUN", league: "Nemzeti Bajnokság I", division: 1, expectedClubs: 12,
+    clubs: [
+      "Nyíregyháza Spartacus", "Újpest FC", "Kisvárda", "Budapest Honvéd", "Vasas FC",
+      "ETO FC Győr", "Debrecen", "Puskás Akadémia", "Paks", "Ferencváros",
+      "MTK Budapest", "Zalaegerszeg",
+    ],
+  },
+  {
     country: "SAU", league: "Saudi Pro League", division: 1, expectedClubs: 18,
     clubs: [
       "Abha", "Al Ahli", "Al Ettifaq", "Al Faisaly", "Al Fateh", "Al Fayha", "Al Hazem",
@@ -297,7 +378,8 @@ const PALETTE = ["#c7ff35", "#45b7ff", "#ff5c7a", "#ffc857", "#9b7bff", "#36d399
 const COUNTRY_LEVEL: Record<string, number> = {
   ENG: 4, ESP: 4, GER: 4, ITA: 4, FRA: 4, POR: 3, NED: 3, BRA: 4, ARG: 4,
   USA: 3, BEL: 3, SCO: 3, TUR: 3, SAU: 4, JPN: 3, MEX: 3,
-  ISR: 2, POL: 2, CYP: 2, CRO: 2, GRE: 3,
+  ISR: 2, POL: 2, CYP: 2, CRO: 2, GRE: 3, AUT: 3, CZE: 3, DEN: 3,
+  SUI: 3, NOR: 3, SWE: 3, UKR: 3, SRB: 2, ROU: 2, HUN: 2,
 };
 
 function shortName(name: string) {
@@ -319,7 +401,7 @@ function clubColor(name: string) {
 }
 
 function profile(country: string, division: number) {
-  if (division === 1) return { level: COUNTRY_LEVEL[country] ?? 2, development: ["GER", "FRA", "POR", "NED", "BRA", "ARG", "BEL", "CRO", "JPN"].includes(country) ? 4 : 3 };
+  if (division === 1) return { level: COUNTRY_LEVEL[country] ?? 2, development: ["GER", "FRA", "POR", "NED", "BRA", "ARG", "BEL", "CRO", "JPN", "AUT", "CZE", "DEN", "SUI", "NOR", "SWE", "SRB", "HUN"].includes(country) ? 4 : 3 };
   if (division === 2) return { level: 2, development: 4 };
   if (division === 3) return { level: 2, development: 4 };
   return { level: 1, development: division === 4 ? 4 : 3 };
@@ -348,8 +430,8 @@ export const FULL_LEAGUE_CLUBS: Club[] = COMPLETE_LEAGUES.flatMap((league) =>
 
 export const COMPLETE_LEAGUE_CLUB_COUNT = FULL_LEAGUE_CLUBS.length;
 
-if (COMPLETE_LEAGUE_CLUB_COUNT !== 596) {
-  throw new Error(`Complete catalog has ${COMPLETE_LEAGUE_CLUB_COUNT} clubs; expected 596.`);
+if (COMPLETE_LEAGUE_CLUB_COUNT !== 738) {
+  throw new Error(`Complete catalog has ${COMPLETE_LEAGUE_CLUB_COUNT} clubs; expected 738.`);
 }
 
 const uniqueClubKeys = new Set(FULL_LEAGUE_CLUBS.map((club) => `${club.country}:${club.name}`));

@@ -23,7 +23,7 @@ test("server-renders the Goalbound career simulator", async () => {
   assert.match(html, /<title>Goalbound — Your Football Career<\/title>/i);
   assert.match(html, /A career, not a transfer tour/);
   assert.match(html, /Every represented division is complete/);
-  assert.match(html, /596(?:<!-- -->)? real clubs/);
+  assert.match(html, /738(?:<!-- -->)? real clubs/);
   assert.doesNotMatch(html, /title="(?:Israel|Poland|Cyprus)"/);
   assert.match(html, /Draw my starting route|Start your career/);
   assert.match(html, /Trophy room/);

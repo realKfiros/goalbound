@@ -82,6 +82,36 @@ const TITLE_STRENGTH: Record<string, number> = {
   "GRE:Olympiacos": 92, "GRE:Panathinaikos": 86, "GRE:PAOK": 85,
   "GRE:AEK Athens": 84, "GRE:Aris Thessaloniki": 76,
 
+  "AUT:Red Bull Salzburg": 88, "AUT:Sturm Graz": 84, "AUT:Rapid Wien": 79,
+  "AUT:LASK": 78, "AUT:Austria Wien": 77,
+
+  "CZE:Slavia Prague": 89, "CZE:Sparta Prague": 88, "CZE:Viktoria Plzeň": 84,
+  "CZE:Baník Ostrava": 77,
+
+  "DEN:FC Copenhagen": 89, "DEN:FC Midtjylland": 87, "DEN:Brøndby IF": 81,
+  "DEN:AGF": 79, "DEN:FC Nordsjælland": 78,
+
+  "SUI:Young Boys": 86, "SUI:FC Basel 1893": 85, "SUI:Servette FC": 79,
+  "SUI:FC Lugano": 78, "SUI:FC St. Gallen 1879": 76,
+
+  "NOR:Bodø/Glimt": 88, "NOR:Viking FK": 83, "NOR:Molde FK": 81,
+  "NOR:SK Brann": 80, "NOR:Rosenborg BK": 76,
+
+  "SWE:Malmö FF": 87, "SWE:Hammarby": 82, "SWE:Mjällby AIF": 81,
+  "SWE:Djurgården": 80, "SWE:AIK": 78,
+
+  "UKR:Shakhtar Donetsk": 90, "UKR:Dynamo Kyiv": 88, "UKR:Polissya Zhytomyr": 79,
+  "UKR:Karpaty Lviv": 76,
+
+  "SRB:Red Star Belgrade": 92, "SRB:Partizan Belgrade": 84, "SRB:Vojvodina": 78,
+  "SRB:Čukarički": 75,
+
+  "ROU:FCSB": 85, "ROU:CFR Cluj": 83, "ROU:Universitatea Craiova": 80,
+  "ROU:Rapid București": 78, "ROU:Dinamo București": 75,
+
+  "HUN:Ferencváros": 89, "HUN:Puskás Akadémia": 80, "HUN:Paks": 78,
+  "HUN:ETO FC Győr": 74,
+
   "SAU:Al Hilal": 94, "SAU:Al Nassr": 93, "SAU:Al Ahli": 90,
   "SAU:Al Ittihad": 88, "SAU:Al Qadsiah": 85, "SAU:Al Taawoun": 77,
 
