@@ -49,6 +49,10 @@ export class CareerStore {
     return this.player ? careerEngine.achievements(this.player) : [];
   }
 
+  get canRequestTransfer() {
+    return this.player ? careerEngine.canRequestTransfer(this.player, this.game.world) : false;
+  }
+
   get trophyTotals() {
     return trophyRoomTotals(this.trophyRoom);
   }
@@ -175,6 +179,19 @@ export class CareerStore {
       });
       this.trophyRoom = mergeCareerSnapshot(this.trophyRoom, careerId, result.player);
     }, 1200);
+  }
+
+  requestTransfer() {
+    if (!this.player || !this.canRequestTransfer) return;
+    const result = careerEngine.requestTransfer(this.player, this.game.world);
+    this.showMotion({
+      kind: "fate",
+      title: "Your agent is calling the market",
+      detail: "The club, your contract and the buying teams now have to agree on what wanting out is worth.",
+    }, () => {
+      this.updateGame({ player: result.player });
+      this.applyBeat(result.decision);
+    }, 900);
   }
 
   continueAfterSeason() {

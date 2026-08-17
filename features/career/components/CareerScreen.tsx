@@ -11,9 +11,11 @@ type CareerScreenProps = {
   player: Player;
   scenario: Scenario | null;
   achievements: string[];
+  canRequestTransfer: boolean;
   onSeasonSpanChange: (years: number) => void;
   onRevealOrigin: () => void;
   onOffer: (offer: Offer) => void;
+  onRequestTransfer: () => void;
   onContinueSeason: () => void;
   onScenario: (option: ScenarioOption) => void;
   onContinueScenario: () => void;
@@ -128,8 +130,8 @@ function ContinentalTable({ competition, activeClub, activeCountry }: {
 }
 
 export function CareerScreen({
-  game, player, scenario, achievements, onSeasonSpanChange, onRevealOrigin,
-  onOffer, onContinueSeason, onScenario, onContinueScenario,
+  game, player, scenario, achievements, canRequestTransfer, onSeasonSpanChange, onRevealOrigin,
+  onOffer, onRequestTransfer, onContinueSeason, onScenario, onContinueScenario,
 }: CareerScreenProps) {
   const playerCountry = country(player.nation);
   const decisionDockRef = useRef<HTMLDivElement>(null);
@@ -198,7 +200,7 @@ export function CareerScreen({
         {game.phase === "decision" && (
           <div className="club-decision">
             <div className="dock-heading">
-              <div><span className="story-kicker">{game.decisionKind.replaceAll("-", " ")} · club decision</span><h3>{game.decisionTitle}</h3><p>{game.decisionDescription}</p></div>
+              <div><span className="story-kicker">{game.decisionKind.replaceAll("-", " ")} · {game.decisionKind === "transfer-request" ? "player decision" : "club decision"}</span><h3>{game.decisionTitle}</h3><p>{game.decisionDescription}</p></div>
               <div className="season-control"><span>Simulate</span>{[1, 2, 3].map((years) => <button key={years} className={game.seasonSpan === years ? "active" : ""} onClick={() => onSeasonSpanChange(years)}>{years}Y</button>)}</div>
             </div>
             <div className="club-options">{game.offers.map((offer, index) => (
@@ -207,6 +209,12 @@ export function CareerScreen({
                 <div className="club-option-copy"><small>{offer.label}</small><strong>{offer.name}</strong><span>{offer.league} · {country(offer.country).flag} {offer.role}</span><p>{offer.reason}</p></div><em>Choose →</em>
               </button>
             ))}</div>
+            {canRequestTransfer && game.decisionKind === "continue" && (
+              <div className="player-transfer-action">
+                <div><small>PLAYER POWER</small><strong>Think you have outgrown {player.currentClub}?</strong><p>Ask your agent to find a move. The club may lower its price—but handing in a request will damage morale if the market says no.</p></div>
+                <button onClick={onRequestTransfer}>Request a transfer <span>→</span></button>
+              </div>
+            )}
           </div>
         )}
 

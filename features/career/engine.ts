@@ -23,6 +23,7 @@ import type {
 } from "./domain";
 
 const ROLE_SCORE: Record<Role, number> = { Prospect: 1, Rotation: 2, Starter: 3, Star: 4 };
+type BidContext = "standard" | "forced-sale" | "player-request";
 
 export function createCareerEngine(random = Math.random) {
   function clamp(value: number, min: number, max: number) {
@@ -64,6 +65,19 @@ export function createCareerEngine(random = Math.random) {
   }
   function idealClubLevel(player: Player) {
     return player.rating >= 87 ? 5 : player.rating >= 80 ? 4 : player.rating >= 72 ? 3 : player.rating >= 64 ? 2 : 1;
+  }
+  function hasOutgrownClub(player: Player, world?: WorldState | null) {
+    const current = currentClubFor(player, world);
+    if (!current || player.squad === "academy") return false;
+    const state = clubSeasonState(world, current.name, current.country);
+    const levelGap = idealClubLevel(player) - current.level;
+    const qualityGap = state ? player.rating - state.squadQuality : 0;
+    return player.age >= 19 && (levelGap >= 2 || levelGap >= 1 && qualityGap >= 5);
+  }
+  function canRequestTransfer(player: Player, world?: WorldState | null) {
+    return player.squad === "senior" && player.contractYears > 0 && player.age >= 19
+      && !!currentClubFor(player, world)
+      && (hasOutgrownClub(player, world) || player.morale <= 50 || player.clubSeasons >= 4);
   }
   function marketRoute(club: Club, player: Player, world?: WorldState | null) {
     const current = currentClubFor(player, world);
@@ -153,25 +167,34 @@ export function createCareerEngine(random = Math.random) {
       return makeOffer(club, player, player.origin === "gem" && club.level >= 4 ? "First-team fast track" : "Senior contract", "permanent", role, player.origin === "gem" ? `${role} role · the scouts believe the hype` : `${role} role · senior football immediately`);
     });
   }
+  function acceptedFeeFloor(player: Player, buyer: Club, context: BidContext, world?: WorldState | null) {
+    const current = currentClubFor(player, world);
+    if (current?.country === "ISR" && buyer.country !== "ISR") {
+      const ratio = context === "forced-sale" ? .35 : .45;
+      return Math.min(player.value * ratio, 4_000_000);
+    }
+    if (context === "forced-sale") return player.value * .6;
+    if (context === "player-request") return player.value * (hasOutgrownClub(player, world) ? .65 : .8);
+    return player.value * .92;
+  }
   function externalOffers(
     player: Player,
     count = 2,
     permanentOnly = false,
     requiresTransferFee = false,
     world?: WorldState | null,
-    minimumFeeRatio = .92,
+    bidContext: BidContext = "standard",
   ): Offer[] {
     const ideal = idealClubLevel(player);
     const profile = agentProfile(player.agent);
     const declining = isDeclining(player);
-    const minimumFee = player.value * minimumFeeRatio;
     const market = CLUBS.map((club) => clubInWorld(club, world)).filter((club) => {
       const role = roleFor(player.rating, club.level, player.age, player.roleBoost);
       return club.name !== player.currentClub
         && isPlausibleMarketClub(club, player, world)
         && club.level >= ideal - (declining ? 2 : 1)
         && club.level <= ideal + profile.levelRange
-        && (!requiresTransferFee || maxSingleFee(club, role) >= minimumFee);
+        && (!requiresTransferFee || maxSingleFee(club, role) >= acceptedFeeFloor(player, club, bidContext, world));
     });
     const routeCounts = new Map<string, number>();
     market.forEach((club) => {
@@ -202,20 +225,24 @@ export function createCareerEngine(random = Math.random) {
       return makeOffer(club, player, loan ? "Loan proposal" : label, loan ? "loan" : "permanent", loan ? "Starter" : role, undefined, world);
     });
   }
-  function permanentOffers(player: Player, count = 2, requiresTransferFee = false, world?: WorldState | null, minimumFeeRatio = .92): Offer[] {
-    return externalOffers(player, count, true, requiresTransferFee, world, minimumFeeRatio);
+  function permanentOffers(player: Player, count = 2, requiresTransferFee = false, world?: WorldState | null, bidContext: BidContext = "standard"): Offer[] {
+    return externalOffers(player, count, true, requiresTransferFee, world, bidContext);
   }
-  function contractedBids(player: Player, count = 2, world?: WorldState | null, minimumFeeRatio = .92): Offer[] {
-    return permanentOffers(player, count, true, world, minimumFeeRatio).map((offer) => {
+  function contractedBids(player: Player, count = 2, world?: WorldState | null, bidContext: BidContext = "standard"): Offer[] {
+    return permanentOffers(player, count, true, world, bidContext).map((offer) => {
       const rounding = clubDivision(offer) <= 2 ? 50_000 : 10_000;
-      const proposedFee = Math.round(player.value * (randomInt(92, 128) / 100) / rounding) * rounding;
-      const fee = Math.min(proposedFee, maxSingleFee(offer, offer.role));
+      const floor = acceptedFeeFloor(player, offer, bidContext, world);
+      const discountedMarket = floor < player.value * .85;
+      const proposedFee = discountedMarket
+        ? Math.round(floor * (randomInt(100, 145) / 100) / rounding) * rounding
+        : Math.round(player.value * (randomInt(92, 128) / 100) / rounding) * rounding;
+      const fee = Math.min(Math.max(floor, proposedFee), maxSingleFee(offer, offer.role));
       return makeOffer(offer, player, "Accepted transfer bid", "permanent", offer.role, `${offer.name} agreed ${formatMoney(fee)} with ${player.currentClub} · proposed ${offer.role.toLowerCase()} role`);
     });
   }
   function forcedSaleDecision(player: Player, world?: WorldState | null) {
     const marketRateBids = contractedBids(player, 3, world);
-    const offers = marketRateBids.length ? marketRateBids : contractedBids(player, 3, world, .6);
+    const offers = marketRateBids.length ? marketRateBids : contractedBids(player, 3, world, "forced-sale");
     if (!offers.length) return null;
     const current = currentClubFor(player, world);
     return decision(
@@ -414,7 +441,11 @@ export function createCareerEngine(random = Math.random) {
     const latest = player.history[0];
     const seasons = Math.max(1, (latest?.toAge ?? player.age) - (latest?.fromAge ?? player.age - 1));
     const formBonus = (latest?.apps ?? 0) / seasons >= 25 ? .12 : player.lastRole === "Star" ? .1 : 0;
-    const interestChance = clamp(.18 + player.reputation / 170 + formBonus + agentProfile(player.agent).interestBonus, .12, .82);
+    const current = currentClubFor(player, world);
+    const outgrown = hasOutgrownClub(player, world);
+    const exportPressure = current?.country === "ISR" && outgrown ? .16 : 0;
+    const interestChance = clamp(.18 + player.reputation / 170 + formBonus + agentProfile(player.agent).interestBonus
+      + (outgrown ? .24 : 0) + exportPressure, .12, .94);
     const outsideInterest = player.squad === "academy" || random() >= interestChance ? [] : contractedBids(player, random() < .72 ? 1 : 2, world);
     return decision(
       outsideInterest.length ? "transfer-interest" : "continue",
@@ -422,6 +453,39 @@ export function createCareerEngine(random = Math.random) {
       outsideInterest.length ? `${player.currentClub} has agreed a fee, but your ${player.contractYears}-year contract does not force you to leave. Stay, or accept one of the approaches.` : "No artificial transfer window this time. The club expects you back, and staying is a complete career choice.",
       [...(stay ? [stay] : []), ...outsideInterest],
     );
+  }
+
+  function requestTransfer(player: Player, world?: WorldState | null) {
+    const bids = contractedBids(player, 2, world, "player-request");
+    const current = currentClubFor(player, world);
+    const outgrown = hasOutgrownClub(player, world);
+    const pressuredPlayer = {
+      ...player,
+      morale: clamp(player.morale - (bids.length ? 6 : 12), 0, 100),
+      reputation: clamp(player.reputation - (outgrown ? 0 : 2), 0, 100),
+    };
+    const stay = stayOffer(pressuredPlayer, "stay", world);
+    const withdraw = stay ? {
+      ...stay,
+      label: "Withdraw transfer request",
+      reason: bids.length
+        ? "Back down, repair the relationship and continue at the club"
+        : "The board found no acceptable destination · return to training",
+    } : null;
+    const description = bids.length
+      ? current?.country === "ISR" && bids.some((bid) => bid.country !== "ISR")
+        ? "Your agent pushed for an overseas move. The club knows Israeli-league stars are difficult to keep once a serious foreign offer lands."
+        : "You told the club that you want a new challenge. The request changed the negotiating balance and your agent brought concrete bids."
+      : "You asked to leave, but no credible buyer reached even the reduced asking price. The board refuses to release you for nothing.";
+    return {
+      player: pressuredPlayer,
+      decision: decision(
+        "transfer-request",
+        bids.length ? "Your transfer request has produced offers" : `${player.currentClub} blocks your transfer request`,
+        description,
+        [...(withdraw ? [withdraw] : []), ...bids],
+      ),
+    };
   }
 
   function nextBeat(player: Player, latest: Season | null, world?: WorldState | null): CareerBeat {
@@ -500,7 +564,10 @@ export function createCareerEngine(random = Math.random) {
     return list;
   }
 
-  return { createCareer, simulateSeason, ordinaryDecision, nextBeat, recoverDecision, resolveScenario, achievements, marketOffers: externalOffers };
+  return {
+    createCareer, simulateSeason, ordinaryDecision, nextBeat, recoverDecision, requestTransfer,
+    canRequestTransfer, hasOutgrownClub, resolveScenario, achievements, marketOffers: externalOffers,
+  };
 }
 
 export const careerEngine = createCareerEngine();

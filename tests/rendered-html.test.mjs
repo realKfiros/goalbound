@@ -61,6 +61,8 @@ test("keeps career rules, content, persistence, and rendering behind clear modul
   assert.match(domain, /division\?: number/);
   assert.match(engine, /function createCareerEngine/);
   assert.match(engine, /function simulateSeason/);
+  assert.match(engine, /function requestTransfer/);
+  assert.match(engine, /current\?\.country === "ISR"/);
   assert.match(engine, /forced-sale/);
   assert.match(engine, /Transfer bids have arrived while you are under contract/);
   assert.match(engine, /Accepted transfer bid/);
@@ -72,6 +74,7 @@ test("keeps career rules, content, persistence, and rendering behind clear modul
   assert.match(game, /motion-screen/);
   assert.match(careerScreen, /decisionDockRef\.current\?\.scrollIntoView/);
   assert.match(careerScreen, /prefers-reduced-motion: reduce/);
+  assert.match(careerScreen, /Request a transfer/);
   assert.match(layout, /Goalbound — Your Football Career/);
   assert.match(packageJson, /"build": "WRANGLER_LOG_PATH=/);
   const extraCountries = catalog.slice(catalog.indexOf("EXTRA_COUNTRIES"), catalog.indexOf("export const COUNTRIES"));

@@ -303,6 +303,37 @@ test("a forced sale never opens an empty decision screen", () => {
   assert.ok(recovered.offers.length > 0, "A previously stuck forced-sale save must be repaired on load");
 });
 
+test("an outgrown player can request a move and Israeli clubs accept realistic export fees", () => {
+  const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
+  const engine = createCareerEngine(seededRandom(1948));
+  const player = eliteEnglishProspect("ISR", {
+    currentClub: "Maccabi Haifa", position: "ST", age: 25,
+    rating: 82, potential: 88, value: 12_000_000,
+    reputation: 78, agent: "International agent", contractYears: 3,
+    clubSeasons: 3, lastRole: "Star",
+  });
+
+  assert.equal(engine.hasOutgrownClub(player), true);
+  assert.equal(engine.canRequestTransfer(player), true);
+  const result = engine.requestTransfer(player);
+  const bids = result.decision.offers.filter((offer) => offer.kind === "permanent");
+
+  assert.equal(result.decision.kind, "transfer-request");
+  assert.ok(result.player.morale < player.morale);
+  assert.ok(bids.length > 0);
+  assert.ok(bids.every((offer) => offer.country !== "ISR"));
+  bids.forEach((offer) => {
+    const fee = offer.reason.match(/agreed €([\d.]+)m/)?.[1];
+    assert.ok(fee, offer.reason);
+    assert.ok(Number(fee) >= 4 && Number(fee) <= 5.8, offer.reason);
+  });
+
+  const settledAtEliteClub = { ...player, currentClub: "Manchester City", rating: 90, value: 120_000_000, clubSeasons: 2 };
+  assert.equal(engine.hasOutgrownClub(settledAtEliteClub), false);
+  assert.equal(engine.canRequestTransfer(settledAtEliteClub), false);
+  assert.equal(engine.canRequestTransfer({ ...settledAtEliteClub, clubSeasons: 5 }), true);
+});
+
 test("season development can rise for a young player and fall with age or injury", () => {
   const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
   const southend = club("Southend United");
