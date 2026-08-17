@@ -75,8 +75,11 @@ test("keeps career rules, content, persistence, and rendering behind clear modul
   assert.match(careerScreen, /decisionDockRef\.current\?\.scrollIntoView/);
   assert.match(careerScreen, /prefers-reduced-motion: reduce/);
   assert.match(careerScreen, /Request a transfer/);
-  assert.match(careerScreen, /Review representation/);
+  assert.match(careerScreen, /before the transfer window/);
+  assert.match(careerScreen, /Ask for new representation/);
+  assert.match(careerScreen, /Keep current agent/);
   assert.match(careerScreen, /Available agents/);
+  assert.doesNotMatch(careerScreen, /Review representation/);
   assert.match(layout, /Goalbound — Your Football Career/);
   assert.match(packageJson, /"build": "WRANGLER_LOG_PATH=/);
   const extraCountries = catalog.slice(catalog.indexOf("EXTRA_COUNTRIES"), catalog.indexOf("export const COUNTRIES"));

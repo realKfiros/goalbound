@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { agentProfile, type AgentOption } from "../agents";
 import { clubByName, country } from "../catalog";
 import type { AnnualHonours, ContinentalCompetition, Offer, Player, PlayoffBracket, SavedGame, Scenario, ScenarioOption, StandingGroup } from "../domain";
@@ -12,12 +12,14 @@ type CareerScreenProps = {
   scenario: Scenario | null;
   achievements: string[];
   canRequestTransfer: boolean;
+  canReviewAgent: boolean;
   agentOptions: AgentOption[];
   onSeasonSpanChange: (years: number) => void;
   onRevealOrigin: () => void;
   onOffer: (offer: Offer) => void;
   onRequestTransfer: () => void;
-  onAgentChange: (name: string) => void;
+  onAgentReview: () => void;
+  onAgentChoice: (name: string) => void;
   onContinueSeason: () => void;
   onScenario: (option: ScenarioOption) => void;
   onContinueScenario: () => void;
@@ -132,12 +134,11 @@ function ContinentalTable({ competition, activeClub, activeCountry }: {
 }
 
 export function CareerScreen({
-  game, player, scenario, achievements, canRequestTransfer, agentOptions, onSeasonSpanChange, onRevealOrigin,
-  onOffer, onRequestTransfer, onAgentChange, onContinueSeason, onScenario, onContinueScenario,
+  game, player, scenario, achievements, canRequestTransfer, canReviewAgent, agentOptions, onSeasonSpanChange, onRevealOrigin,
+  onOffer, onRequestTransfer, onAgentReview, onAgentChoice, onContinueSeason, onScenario, onContinueScenario,
 }: CareerScreenProps) {
   const playerCountry = country(player.nation);
   const decisionDockRef = useRef<HTMLDivElement>(null);
-  const [representationOpen, setRepresentationOpen] = useState(false);
   const decisionScrollKey = game.phase === "decision"
     ? `decision:${game.decisionKind}:${game.decisionTitle}`
     : game.phase === "scenario" && scenario
@@ -200,7 +201,29 @@ export function CareerScreen({
           </div>
         )}
 
-        {game.phase === "decision" && (
+        {game.phase === "decision" && game.decisionKind === "agent-review" && (
+          <div className="agent-decision">
+            <div className="dock-heading">
+              <div><span className="story-kicker">Representation · before the transfer window</span><h3>{game.decisionTitle}</h3><p>{game.decisionDescription}</p></div>
+            </div>
+            <div className="agent-decision-current"><small>CURRENT REPRESENTATION</small><strong>{player.agent}</strong><span>{agentProfile(player.agent).description}</span></div>
+            <div className="agent-options" aria-label="Available agents">
+              {agentOptions.map((profile) => {
+                const current = profile.name === player.agent;
+                return (
+                  <button type="button" className={current ? "active" : ""} onClick={() => onAgentChoice(profile.name)} key={profile.name}>
+                    <span><strong>{profile.name}</strong><small>{profile.market === "global" ? "Global network" : profile.market === "development" ? "Development markets" : profile.market === "veteran" ? "Veteran markets" : "Domestic network"}</small></span>
+                    <p className="agent-availability">Why now · {profile.availabilityReason}</p>
+                    <p className="agent-description">{profile.description}</p>
+                    <em>{current ? "Keep current agent →" : "Choose agent →"}</em>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {game.phase === "decision" && game.decisionKind !== "agent-review" && (
           <div className="club-decision">
             <div className="dock-heading">
               <div><span className="story-kicker">{game.decisionKind.replaceAll("-", " ")} · {game.decisionKind === "transfer-request" ? "player decision" : "club decision"}</span><h3>{game.decisionTitle}</h3><p>{game.decisionDescription}</p></div>
@@ -219,27 +242,12 @@ export function CareerScreen({
                   <button onClick={onRequestTransfer}>Request a transfer <span>→</span></button>
                 </div>
               )}
-              <div className="agent-management">
-                <div className="agent-management-heading">
-                  <div><small>REPRESENTATION</small><strong>{player.agent}</strong><p>{agentProfile(player.agent).description}</p></div>
-                  <button type="button" aria-expanded={representationOpen} onClick={() => setRepresentationOpen((open) => !open)}>{representationOpen ? "Close agent list" : "Review representation"}</button>
+              {canReviewAgent && ["continue", "transfer-interest"].includes(game.decisionKind) && (
+                <div className="agent-request-action">
+                  <div><small>NOT CONVINCED?</small><strong>{game.decisionKind === "transfer-interest" ? "None of these approaches feel right?" : "Want somebody else to test the market?"}</strong><p>Pause this window and reconsider your representation. Your chosen agent will generate a fresh market before you decide where to play.</p></div>
+                  <button type="button" onClick={onAgentReview}>Ask for new representation <span>→</span></button>
                 </div>
-                {representationOpen && (
-                  <div className="agent-options" aria-label="Available agents">
-                    {agentOptions.map((profile) => {
-                      const current = profile.name === player.agent;
-                      return (
-                        <button type="button" className={current ? "active" : ""} disabled={current} onClick={() => onAgentChange(profile.name)} key={profile.name}>
-                          <span><strong>{profile.name}</strong><small>{profile.market === "global" ? "Global network" : profile.market === "development" ? "Development markets" : profile.market === "veteran" ? "Veteran markets" : "Domestic network"}</small></span>
-                          <p className="agent-availability">Why now · {profile.availabilityReason}</p>
-                          <p className="agent-description">{profile.description}</p>
-                          <em>{current ? "Current agent" : "Choose"}</em>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+              )}
             </div>
           </div>
         )}

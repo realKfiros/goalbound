@@ -92,6 +92,55 @@ export function createCareerEngine(random = Math.random) {
   function changeAgent(player: Player, name: string, world?: WorldState | null) {
     return canHireAgent(player, agentSituation(player, world), name) ? { ...player, agent: name } : player;
   }
+  function canReviewAgent(player: Player, world?: WorldState | null) {
+    return player.squad === "senior"
+      && player.contractYears > 0
+      && player.lastAgentReviewAge !== player.age
+      && !!currentClubFor(player, world)
+      && availableAgents(player, world).some((profile) => profile.name !== player.agent);
+  }
+  function agentReviewChance(player: Player, world?: WorldState | null) {
+    if (!canReviewAgent(player, world)) return 0;
+    const latest = player.history[0];
+    const outgrown = hasOutgrownClub(player, world);
+    const declining = isDeclining(player);
+    const breakout = !!latest && latest.after - latest.before >= 3;
+    const mismatchedAgent = (player.agent === "Self-represented" && (player.reputation >= 25 || outgrown))
+      || (player.agent === "Development agency" && player.age >= 25)
+      || (player.agent === "Local specialist" && outgrown)
+      || (player.agent === "Elite super-agent" && declining)
+      || (player.agent === "Veteran broker" && player.age < 29);
+    return clamp(.08
+      + (outgrown ? .18 : 0)
+      + (breakout ? .13 : 0)
+      + (player.morale <= 50 ? .1 : 0)
+      + (player.contractYears <= 1 ? .08 : 0)
+      + (mismatchedAgent ? .18 : 0), .08, .55);
+  }
+  function shouldStartAgentReview(player: Player, world?: WorldState | null) {
+    return random() < agentReviewChance(player, world);
+  }
+  function agentReviewDecision(player: Player, world?: WorldState | null, requested = false): CareerDecision {
+    const outgrown = hasOutgrownClub(player, world);
+    const latest = player.history[0];
+    const breakout = !!latest && latest.after - latest.before >= 3;
+    const title = requested
+      ? "You have asked to reconsider your representation"
+      : outgrown
+        ? "Your career may have outgrown your current representation"
+        : breakout
+          ? "Agents noticed your breakout season"
+          : "A representation decision arrives before the window";
+    const description = requested
+      ? "The existing approaches are put aside. Choose who will take your career back to the market—or keep your current representative and ask them to try again."
+      : "This decision comes before clubs make their approaches. Choose the network that fits your situation, or keep the person already representing you.";
+    return decision("agent-review", title, description, []);
+  }
+  function resolveAgentReview(player: Player, name: string, world?: WorldState | null) {
+    const represented = changeAgent(player, name, world);
+    const reviewed = { ...represented, lastAgentReviewAge: player.age };
+    return { player: reviewed, decision: ordinaryDecision(reviewed, world) };
+  }
   function marketRoute(club: Club, player: Player, world?: WorldState | null) {
     const current = currentClubFor(player, world);
     const formerClub = player.history.some((season) => season.club === club.name && season.country === club.country);
@@ -532,11 +581,13 @@ export function createCareerEngine(random = Math.random) {
     if ((latest?.apps ?? 99) / seasons < 12 && player.age >= 20 && random() < .42) {
       return decision("released", `${player.currentClub} no longer sees a role for you`, "The manager says this is purely professional, which is football language for ‘please choose one of these exits’.", permanentOffers(player, 3, false, world));
     }
+    if (shouldStartAgentReview(player, world)) return agentReviewDecision(player, world);
     return random() < .54 ? { type: "scenario", scenario: eligibleScenario(player, world) } : ordinaryDecision(player, world);
   }
 
   function recoverDecision(player: Player, kind: CareerDecision["kind"], world?: WorldState | null): CareerDecision {
     if (kind === "forced-sale") return forcedSaleDecision(player, world) ?? ordinaryDecision(player, world);
+    if (kind === "agent-review") return agentReviewDecision(player, world);
     return ordinaryDecision(player, world);
   }
 
@@ -579,7 +630,8 @@ export function createCareerEngine(random = Math.random) {
 
   return {
     createCareer, simulateSeason, ordinaryDecision, nextBeat, recoverDecision, requestTransfer,
-    canRequestTransfer, hasOutgrownClub, availableAgents, changeAgent,
+    canRequestTransfer, hasOutgrownClub, availableAgents, canReviewAgent, agentReviewChance,
+    agentReviewDecision, resolveAgentReview, changeAgent,
     resolveScenario, achievements, marketOffers: externalOffers,
   };
 }

@@ -57,6 +57,10 @@ export class CareerStore {
     return this.player ? careerEngine.availableAgents(this.player, this.game.world) : [];
   }
 
+  get canReviewAgent() {
+    return this.player ? careerEngine.canReviewAgent(this.player, this.game.world) : false;
+  }
+
   get trophyTotals() {
     return trophyRoomTotals(this.trophyRoom);
   }
@@ -198,9 +202,23 @@ export class CareerStore {
     }, 900);
   }
 
-  changeAgent(name: string) {
-    if (!this.player) return;
-    this.updateGame({ player: careerEngine.changeAgent(this.player, name, this.game.world) });
+  startAgentReview() {
+    if (!this.player || !this.canReviewAgent || !["continue", "transfer-interest"].includes(this.game.decisionKind)) return;
+    this.applyBeat(careerEngine.agentReviewDecision(this.player, this.game.world, true));
+  }
+
+  chooseAgent(name: string) {
+    if (!this.player || this.game.decisionKind !== "agent-review") return;
+    const previousAgent = this.player.agent;
+    const result = careerEngine.resolveAgentReview(this.player, name, this.game.world);
+    this.showMotion({
+      kind: "fate",
+      title: result.player.agent === previousAgent ? `Keeping ${previousAgent}` : `${result.player.agent} takes the job`,
+      detail: "Representation is settled. Clubs can now make their approaches for this window.",
+    }, () => {
+      this.updateGame({ player: result.player });
+      this.applyBeat(result.decision);
+    }, 750);
   }
 
   continueAfterSeason() {

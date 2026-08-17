@@ -2,7 +2,7 @@ export type Screen = "home" | "setup" | "career" | "summary" | "trophy-room";
 export type Phase = "origin-reveal" | "decision" | "season-result" | "scenario" | "scenario-result";
 export type Role = "Prospect" | "Rotation" | "Starter" | "Star";
 export type Origin = "academy" | "senior" | "gem";
-export type DecisionKind = "first-club" | "continue" | "transfer-interest" | "transfer-request" | "graduation" | "contract" | "forced-sale" | "released" | "loan-return";
+export type DecisionKind = "first-club" | "continue" | "transfer-interest" | "transfer-request" | "agent-review" | "graduation" | "contract" | "forced-sale" | "released" | "loan-return";
 
 export type Country = { code: string; name: string; flag: string; threshold: number };
 export type Club = {
@@ -132,6 +132,7 @@ export type Player = {
   fitness: number;
   reputation: number;
   agent: string;
+  lastAgentReviewAge?: number;
   roleBoost: number;
   developmentTrend?: number;
   origin: Origin;

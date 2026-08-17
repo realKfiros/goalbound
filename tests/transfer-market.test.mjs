@@ -334,7 +334,7 @@ test("any contracted senior player can request a move and Israeli clubs accept r
   assert.equal(engine.canRequestTransfer({ ...settledAtEliteClub, clubSeasons: 5 }), true);
 });
 
-test("players can review eligible agents and change representation without waiting for a scenario", () => {
+test("an agent decision resolves before that representative generates the transfer window", () => {
   const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
   const engine = createCareerEngine(() => .5);
   const player = eliteEnglishProspect("ISR", {
@@ -346,8 +346,38 @@ test("players can review eligible agents and change representation without waiti
   assert.ok(options.length >= 4);
   assert.ok(options.some((agent) => agent.name === "Local specialist"));
   assert.ok(options.some((agent) => agent.name === "International agent"));
-  assert.equal(engine.changeAgent(player, "International agent").agent, "International agent");
-  assert.equal(engine.changeAgent(player, "Elite super-agent").agent, "Self-represented");
+  const review = engine.agentReviewDecision(player);
+  assert.equal(review.kind, "agent-review");
+  assert.equal(review.offers.length, 0);
+
+  const result = engine.resolveAgentReview(player, "International agent");
+  assert.equal(result.player.agent, "International agent");
+  assert.equal(result.player.lastAgentReviewAge, player.age);
+  assert.ok(["continue", "transfer-interest"].includes(result.decision.kind));
+  assert.equal(engine.canReviewAgent(result.player), false);
+
+  const rejectedElite = engine.resolveAgentReview(player, "Elite super-agent");
+  assert.equal(rejectedElite.player.agent, "Self-represented");
+});
+
+test("automatic agent reviews are occasional and respond to career context", () => {
+  const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
+  const engine = createCareerEngine(() => .99);
+  const settled = eliteEnglishProspect("ENG", {
+    currentClub: "Manchester City", age: 26, rating: 82, reputation: 65,
+    morale: 72, contractYears: 3, clubSeasons: 2, agent: "International agent",
+    history: [{ fromAge: 25, toAge: 26, club: "Manchester City", country: "ENG", league: "Premier League", role: "Starter", kind: "stay", apps: 31, goals: 4, assists: 7, before: 81, after: 82, trophies: 0, event: "Solid season" }],
+  });
+  const outgrownBreakout = eliteEnglishProspect("ISR", {
+    currentClub: "Maccabi Haifa", age: 23, rating: 82, reputation: 72,
+    morale: 68, contractYears: 2, clubSeasons: 3, agent: "Local specialist",
+    history: [{ fromAge: 22, toAge: 23, club: "Maccabi Haifa", country: "ISR", league: "Israeli Premier League", role: "Star", kind: "stay", apps: 35, goals: 12, assists: 11, before: 76, after: 82, trophies: 1, event: "Breakout season" }],
+  });
+
+  assert.ok(engine.agentReviewChance(settled) < .2);
+  assert.ok(engine.agentReviewChance(outgrownBreakout) > engine.agentReviewChance(settled));
+  assert.equal(engine.canReviewAgent({ ...outgrownBreakout, lastAgentReviewAge: 23 }), false);
+  assert.notEqual(engine.nextBeat(settled, settled.history[0]).kind, "agent-review");
 });
 
 test("agent shortlists follow the player's current career situation", () => {
