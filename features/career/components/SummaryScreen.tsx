@@ -16,7 +16,6 @@ export function SummaryScreen({ player, onReset, onTrophyRoom }: SummaryScreenPr
   const summary = useMemo(() => careerSummary(player), [player]);
   const [shareBlob, setShareBlob] = useState<Blob | null>(null);
   const [nativeShare, setNativeShare] = useState(false);
-  const [shareStatus, setShareStatus] = useState("Creating your career image…");
   const [shareBusy, setShareBusy] = useState(true);
 
   useEffect(() => {
@@ -28,11 +27,9 @@ export function SummaryScreen({ player, onReset, onTrophyRoom }: SummaryScreenPr
       setNativeShare(Boolean(navigator.share && navigator.canShare?.({
         files: [new File([blob], "goalbound-career.png", { type: "image/png" })],
       })));
-      setShareStatus("Your share card is ready.");
       setShareBusy(false);
     }).catch(() => {
       if (!active) return;
-      setShareStatus("The image could not be created in this browser. The full career above is unaffected.");
       setShareBusy(false);
     });
 
@@ -45,11 +42,9 @@ export function SummaryScreen({ player, onReset, onTrophyRoom }: SummaryScreenPr
     if (!shareBlob) return;
     setShareBusy(true);
     try {
-      const result = await shareCareerImage(shareBlob, player);
-      setShareStatus(result === "shared" ? "Career card shared." : "Career card downloaded. Attach it anywhere you like.");
+      await shareCareerImage(shareBlob, player);
     } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") setShareStatus("Sharing cancelled.");
-      else setShareStatus("Sharing did not work. You can still download the image.");
+      if (!(error instanceof DOMException && error.name === "AbortError")) downloadCareerShareImage(shareBlob, player);
     } finally {
       setShareBusy(false);
     }
@@ -58,7 +53,6 @@ export function SummaryScreen({ player, onReset, onTrophyRoom }: SummaryScreenPr
   const handleDownload = () => {
     if (!shareBlob) return;
     downloadCareerShareImage(shareBlob, player);
-    setShareStatus("Career card downloaded.");
   };
 
   const bestSeason = summary.bestSeason;
@@ -172,28 +166,17 @@ export function SummaryScreen({ player, onReset, onTrophyRoom }: SummaryScreenPr
         </section>
       </div>
 
-      <section className="summary-share">
-        <div className="summary-share-copy">
-          <span className="eyebrow">Share the career</span>
-          <h3>Your career card</h3>
-          <p>A high-resolution image that grows to fit every club spell and every honour. On supported phones, Share to apps opens the native share sheet.</p>
-          <div className="summary-share-actions">
-            {nativeShare && (
-              <button className="primary-button" onClick={handleShare} disabled={!shareBlob || shareBusy}>
-                Share to apps <span>↗</span>
-              </button>
-            )}
-            <button className={nativeShare ? "secondary-button" : "primary-button"} onClick={handleDownload} disabled={!shareBlob || shareBusy}>
-              Download full career PNG <span>↓</span>
-            </button>
-          </div>
-          <small className="summary-share-status" role="status" aria-live="polite">{shareStatus}</small>
-        </div>
-      </section>
-
       <div className="summary-actions summary-final-actions">
-        <button className="primary-button" onClick={onReset}>Start another career <span>↻</span></button>
+        {nativeShare && (
+            <button className="secondary-button" onClick={handleShare} disabled={!shareBlob || shareBusy}>
+              Share to apps <span>↗</span>
+            </button>
+        )}
+        <button className={nativeShare ? "secondary-button" : "primary-button"} onClick={handleDownload} disabled={!shareBlob || shareBusy}>
+          Download full career PNG <span>↓</span>
+        </button>
         <button className="secondary-button" onClick={onTrophyRoom}>Open trophy room</button>
+        <button className="primary-button" onClick={onReset}>Start another career <span>↻</span></button>
       </div>
     </section>
   );
