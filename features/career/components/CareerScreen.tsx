@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { agentProfile, type AgentProfile } from "../agents";
+import { agentProfile, type AgentOption } from "../agents";
 import { clubByName, country } from "../catalog";
 import type { AnnualHonours, ContinentalCompetition, Offer, Player, PlayoffBracket, SavedGame, Scenario, ScenarioOption, StandingGroup } from "../domain";
 import { ClubBadge } from "./ClubBadge";
@@ -12,7 +12,7 @@ type CareerScreenProps = {
   scenario: Scenario | null;
   achievements: string[];
   canRequestTransfer: boolean;
-  agentOptions: AgentProfile[];
+  agentOptions: AgentOption[];
   onSeasonSpanChange: (years: number) => void;
   onRevealOrigin: () => void;
   onOffer: (offer: Offer) => void;
@@ -231,7 +231,8 @@ export function CareerScreen({
                       return (
                         <button type="button" className={current ? "active" : ""} disabled={current} onClick={() => onAgentChange(profile.name)} key={profile.name}>
                           <span><strong>{profile.name}</strong><small>{profile.market === "global" ? "Global network" : profile.market === "development" ? "Development markets" : profile.market === "veteran" ? "Veteran markets" : "Domestic network"}</small></span>
-                          <p>{profile.description}</p>
+                          <p className="agent-availability">Why now · {profile.availabilityReason}</p>
+                          <p className="agent-description">{profile.description}</p>
                           <em>{current ? "Current agent" : "Choose"}</em>
                         </button>
                       );

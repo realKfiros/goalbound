@@ -350,6 +350,45 @@ test("players can review eligible agents and change representation without waiti
   assert.equal(engine.changeAgent(player, "Elite super-agent").agent, "Self-represented");
 });
 
+test("agent shortlists follow the player's current career situation", () => {
+  const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
+  const engine = createCareerEngine(() => .5);
+  const namesFor = (player) => engine.availableAgents(player).map((agent) => agent.name);
+
+  const academyProspect = eliteEnglishProspect("ENG", {
+    currentClub: "Manchester City", squad: "academy", age: 17,
+    rating: 58, reputation: 12, contractYears: 2, agent: "Self-represented",
+  });
+  const prospectAgents = namesFor(academyProspect);
+  assert.ok(prospectAgents.includes("Development agency"));
+  assert.ok(!prospectAgents.includes("International agent"));
+  assert.ok(!prospectAgents.includes("Elite super-agent"));
+  assert.ok(!prospectAgents.includes("Veteran broker"));
+
+  const elitePlayer = eliteEnglishProspect("ENG", {
+    currentClub: "Manchester City", age: 27, rating: 90,
+    reputation: 94, morale: 82, contractYears: 3, agent: "International agent",
+  });
+  const eliteAgents = namesFor(elitePlayer);
+  assert.ok(eliteAgents.includes("International agent"));
+  assert.ok(eliteAgents.includes("Elite super-agent"));
+  assert.ok(!eliteAgents.includes("Development agency"));
+  assert.ok(!eliteAgents.includes("Optimistic agent"));
+
+  const decliningVeteran = eliteEnglishProspect("ENG", {
+    currentClub: "Manchester City", age: 33, rating: 77,
+    reputation: 69, morale: 72, contractYears: 1,
+  });
+  assert.ok(namesFor(decliningVeteran).includes("Veteran broker"));
+
+  const unsettledPlayer = eliteEnglishProspect("ENG", {
+    currentClub: "Bristol City", age: 27, rating: 65,
+    reputation: 25, morale: 38, contractYears: 1,
+  });
+  assert.ok(namesFor(unsettledPlayer).includes("Optimistic agent"));
+  assert.ok(engine.availableAgents(unsettledPlayer).every((agent) => agent.availabilityReason.length > 20));
+});
+
 test("season development can rise for a young player and fall with age or injury", () => {
   const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
   const southend = club("Southend United");

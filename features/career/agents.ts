@@ -14,6 +14,10 @@ export type AgentProfile = {
   interestBonus: number;
 };
 
+export type AgentOption = AgentProfile & {
+  availabilityReason: string;
+};
+
 export const DEVELOPMENT_MARKETS = new Set(["POR", "NED", "BEL", "GER", "FRA", "AUT", "DEN"]);
 export const VETERAN_MARKETS = new Set(["USA", "SAU", "JPN", "MEX", "BRA", "ARG", "TUR", "GRE", "CYP"]);
 
@@ -96,21 +100,58 @@ type AgentCandidate = {
   rating: number;
   reputation: number;
   agent?: string;
+  squad?: "academy" | "senior";
+  morale?: number;
+  contractYears?: number;
 };
 
-export function availableAgentProfiles(player: AgentCandidate): AgentProfile[] {
+type AgentSituation = {
+  hasClub: boolean;
+  isHomeCountry: boolean;
+  outgrownClub: boolean;
+  declining: boolean;
+};
+
+function availabilityReason(name: string, player: AgentCandidate, situation: AgentSituation) {
+  if (name === player.agent) return "Your current representative remains available while you decide whether the relationship still fits.";
+  if (name === "Self-represented") return "You can always take negotiations back into your own hands.";
+  if (name === "Family representative") return player.age <= 23
+    ? "Your inner circle offers a low-pressure option while your career is still taking shape."
+    : "A familiar voice is willing to rebuild your career around trust and known relationships.";
+  if (name === "Local specialist") return situation.isHomeCountry
+    ? "Your strongest contacts are still in your home market and current domestic pyramid."
+    : "Your performances have created a useful network inside your current league.";
+  if (name === "Development agency") return player.squad === "academy"
+    ? "You need a clear first-team pathway more than a glamorous client list."
+    : "Your age and remaining potential make development-focused moves realistic.";
+  if (name === "International agent") return situation.outgrownClub
+    ? "Your level is beginning to exceed your present club, so foreign recruitment teams are paying attention."
+    : "Your performances and reputation are now strong enough to justify a wider market.";
+  if (name === "Elite super-agent") return "Your ability and reputation make you valuable enough for an elite global agency.";
+  if (name === "Veteran broker") return situation.declining
+    ? "Your career is entering the stage where the right final contract matters more than another speculative move."
+    : "Your experience gives a late-career specialist enough leverage to find a tailored move.";
+  return (player.morale ?? 100) <= 50
+    ? "You look unsettled, and an ambitious agent believes a fresh move can revive the story."
+    : "Your uncertain market position attracts an agent willing to promise more than the established firms.";
+}
+
+export function availableAgentProfiles(player: AgentCandidate, situation: AgentSituation): AgentOption[] {
   return AGENT_ORDER
     .filter((name) => {
       if (name === player.agent) return true;
-      if (name === "Development agency") return player.age <= 25;
-      if (name === "International agent") return player.rating >= 68 || player.reputation >= 35;
+      if (name === "Family representative") return player.age <= 23 || player.reputation < 55;
+      if (name === "Local specialist") return situation.hasClub && (situation.isHomeCountry || player.reputation < 75);
+      if (name === "Development agency") return player.age <= 24 && (player.squad === "academy" || player.rating < 80);
+      if (name === "International agent") return situation.outgrownClub || player.rating >= 70 || player.reputation >= 40;
       if (name === "Elite super-agent") return player.rating >= 84 && player.reputation >= 75;
-      if (name === "Veteran broker") return player.age >= 29;
-      return true;
+      if (name === "Veteran broker") return player.age >= 29 && (situation.declining || player.rating >= 70);
+      if (name === "Optimistic agent") return player.rating < 70 || (player.morale ?? 100) <= 50 || (player.contractYears ?? 3) <= 1;
+      return name === "Self-represented";
     })
-    .map((name) => AGENT_PROFILES[name]);
+    .map((name) => ({ ...AGENT_PROFILES[name], availabilityReason: availabilityReason(name, player, situation) }));
 }
 
-export function canHireAgent(player: AgentCandidate, name: string): boolean {
-  return availableAgentProfiles(player).some((profile) => profile.name === name);
+export function canHireAgent(player: AgentCandidate, situation: AgentSituation, name: string): boolean {
+  return availableAgentProfiles(player, situation).some((profile) => profile.name === name);
 }

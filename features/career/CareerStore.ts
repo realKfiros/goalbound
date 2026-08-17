@@ -54,7 +54,7 @@ export class CareerStore {
   }
 
   get availableAgents() {
-    return this.player ? careerEngine.availableAgents(this.player) : [];
+    return this.player ? careerEngine.availableAgents(this.player, this.game.world) : [];
   }
 
   get trophyTotals() {
@@ -200,7 +200,7 @@ export class CareerStore {
 
   changeAgent(name: string) {
     if (!this.player) return;
-    this.updateGame({ player: careerEngine.changeAgent(this.player, name) });
+    this.updateGame({ player: careerEngine.changeAgent(this.player, name, this.game.world) });
   }
 
   continueAfterSeason() {

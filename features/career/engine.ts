@@ -77,11 +77,20 @@ export function createCareerEngine(random = Math.random) {
   function canRequestTransfer(player: Player, world?: WorldState | null) {
     return player.squad === "senior" && player.contractYears > 0 && !!currentClubFor(player, world);
   }
-  function availableAgents(player: Player) {
-    return availableAgentProfiles(player);
+  function agentSituation(player: Player, world?: WorldState | null) {
+    const current = currentClubFor(player, world);
+    return {
+      hasClub: !!current,
+      isHomeCountry: current?.country === player.nation,
+      outgrownClub: hasOutgrownClub(player, world),
+      declining: isDeclining(player),
+    };
   }
-  function changeAgent(player: Player, name: string) {
-    return canHireAgent(player, name) ? { ...player, agent: name } : player;
+  function availableAgents(player: Player, world?: WorldState | null) {
+    return availableAgentProfiles(player, agentSituation(player, world));
+  }
+  function changeAgent(player: Player, name: string, world?: WorldState | null) {
+    return canHireAgent(player, agentSituation(player, world), name) ? { ...player, agent: name } : player;
   }
   function marketRoute(club: Club, player: Player, world?: WorldState | null) {
     const current = currentClubFor(player, world);

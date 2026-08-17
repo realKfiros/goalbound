@@ -294,13 +294,15 @@ legend { margin-bottom: 13px; }
 .agent-management-heading > button { flex: 0 0 auto; padding: 12px 15px; background: transparent; border: 1px solid rgba(243,198,103,.5); border-radius: 3px; color: #f3c667; font-size: 9px; font-weight: 850; text-transform: uppercase; letter-spacing: .06em; cursor: pointer; }
 .agent-management-heading > button:hover { background: rgba(243,198,103,.08); border-color: #f3c667; }
 .agent-options { margin-top: 16px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
-.agent-options > button { min-height: 105px; padding: 14px; display: grid; grid-template-columns: 1fr auto; gap: 8px 14px; text-align: left; background: rgba(255,255,255,.025); border: 1px solid var(--line); cursor: pointer; }
+.agent-options > button { min-height: 132px; padding: 14px; display: grid; grid-template-columns: 1fr auto; gap: 7px 14px; text-align: left; background: rgba(255,255,255,.025); border: 1px solid var(--line); cursor: pointer; }
 .agent-options > button:hover:not(:disabled) { background: rgba(243,198,103,.06); border-color: rgba(243,198,103,.55); }
 .agent-options > button.active { background: rgba(199,255,53,.055); border-color: rgba(199,255,53,.4); cursor: default; }
 .agent-options span { display: flex; flex-direction: column; gap: 4px; }
 .agent-options strong { font-size: 14px; }
 .agent-options small { color: #f3c667; font-size: 8px; text-transform: uppercase; letter-spacing: .08em; }
-.agent-options p { grid-column: 1 / -1; margin: 0; color: #aeb2ab; font-size: 10px; line-height: 1.45; }
+.agent-options p { grid-column: 1 / -1; margin: 0; font-size: 10px; line-height: 1.45; }
+.agent-options .agent-availability { color: #d9dcd6; }
+.agent-options .agent-description { color: #8f948c; }
 .agent-options em { color: var(--lime); font-size: 8px; font-style: normal; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
 .decision-dock .season-stage { min-height: 420px; }
 .decision-dock .season-club { margin-top: 24px; }
