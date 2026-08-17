@@ -87,12 +87,31 @@ test("career summary uses the actual peak and named honours", () => {
   assert.equal(summary.breakouts, 2);
 });
 
-test("the share canvas grows to include every route and honour row", () => {
+test("the share canvas keeps the full route and lays honours out as a gallery", () => {
   const { careerShareCanvasLayout } = loadTypeScriptModule("features/career/careerShare.ts");
   const layout = careerShareCanvasLayout(player);
   assert.equal(layout.width, 1400);
   assert.equal(layout.routeRows, 3);
-  assert.equal(layout.honourRows, 2);
+  assert.equal(layout.galleryItems, 2);
+  assert.equal(layout.honourColumns, 3);
+  assert.equal(layout.honourRows, 1);
   assert.equal(layout.legacyTrophies, 8);
   assert.equal(layout.height, layout.footer + 72);
+});
+
+test("the share gallery groups repeated trophies behind a count badge", () => {
+  const { careerHonourGallery } = loadTypeScriptModule("features/career/careerShare.ts");
+  const repeated = structuredClone(player);
+  const firstHonour = repeated.history[0].honours[0].playerHonours[0];
+  repeated.history[0].honours[0].playerHonours.push(
+    { ...firstHonour, id: "title-2044", season: "2043/44" },
+    { ...firstHonour, id: "title-2045", season: "2044/45" },
+  );
+
+  const gallery = careerHonourGallery(repeated);
+  const leagueTitles = gallery.find((honour) => honour.name === "Israeli Premier League");
+  assert.equal(leagueTitles.count, 3);
+  assert.deepEqual(leagueTitles.seasons, ["2042/43", "2043/44", "2044/45"]);
+  assert.equal(gallery.find((honour) => honour.legacy)?.count, 6);
+  assert.equal(gallery.length, 2);
 });

@@ -31,6 +31,17 @@ export type CareerSummary = {
   biggestRise: Season | null;
 };
 
+export type CareerHonourGalleryItem = {
+  key: string;
+  icon: string;
+  name: string;
+  category: PlayerHonour["category"];
+  count: number;
+  seasons: string[];
+  clubs: string[];
+  legacy?: boolean;
+};
+
 function legacyLabel(rating: number, peakRating: number, apps: number) {
   if (peakRating >= 92 || rating >= 90) return "WORLD ICON";
   if (peakRating >= 86 || rating >= 82) return "ELITE CAREER";
@@ -118,6 +129,48 @@ export function careerSummary(player: Player): CareerSummary {
   };
 }
 
+function groupedCareerHonours(player: Player, summary: CareerSummary) {
+  const groups = new Map<string, CareerHonourGalleryItem>();
+  summary.honours.forEach((honour) => {
+    const key = `${honour.kind}:${honour.name}`;
+    const existing = groups.get(key);
+    if (existing) {
+      existing.count += 1;
+      if (!existing.seasons.includes(honour.season)) existing.seasons.push(honour.season);
+      if (!existing.clubs.includes(honour.club)) existing.clubs.push(honour.club);
+      return;
+    }
+    groups.set(key, {
+      key,
+      icon: honour.icon,
+      name: honour.name,
+      category: honour.category,
+      count: 1,
+      seasons: [honour.season],
+      clubs: [honour.club],
+    });
+  });
+
+  const namedTeamTrophies = summary.honours.filter((honour) => honour.category === "team").length;
+  const legacyTrophies = Math.max(0, player.trophies - namedTeamTrophies);
+  const gallery = [...groups.values()];
+  if (legacyTrophies > 0) gallery.push({
+    key: "legacy-team-silverware",
+    icon: "🏆",
+    name: "Earlier team silverware",
+    category: "team",
+    count: legacyTrophies,
+    seasons: [],
+    clubs: [],
+    legacy: true,
+  });
+  return { gallery, legacyTrophies };
+}
+
+export function careerHonourGallery(player: Player) {
+  return groupedCareerHonours(player, careerSummary(player)).gallery;
+}
+
 function roundedRect(context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
   context.beginPath();
   context.roundRect(x, y, width, height, radius);
@@ -125,12 +178,19 @@ function roundedRect(context: CanvasRenderingContext2D, x: number, y: number, wi
   context.stroke();
 }
 
-function fitText(context: CanvasRenderingContext2D, text: string, maxWidth: number, startSize: number, minSize: number) {
+function fitText(
+  context: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+  startSize: number,
+  minSize: number,
+  weight = 900,
+) {
   let size = startSize;
-  context.font = `900 ${size}px Arial, sans-serif`;
+  context.font = `${weight} ${size}px Arial, sans-serif`;
   while (size > minSize && context.measureText(text).width > maxWidth) {
     size -= 2;
-    context.font = `900 ${size}px Arial, sans-serif`;
+    context.font = `${weight} ${size}px Arial, sans-serif`;
   }
   return size;
 }
@@ -147,27 +207,32 @@ function drawStat(context: CanvasRenderingContext2D, x: number, y: number, value
 
 export function careerShareCanvasLayout(player: Player) {
   const summary = careerSummary(player);
-  const namedTeamTrophies = summary.honours.filter((honour) => honour.category === "team").length;
-  const legacyTrophies = Math.max(0, player.trophies - namedTeamTrophies);
+  const { gallery, legacyTrophies } = groupedCareerHonours(player, summary);
   const routeRows = Math.max(1, summary.spells.length);
-  const honourRows = Math.max(1, summary.honours.length + (legacyTrophies > 0 ? 1 : 0));
+  const honourColumns = 3;
+  const galleryItems = Math.max(1, gallery.length);
+  const honourRows = Math.ceil(galleryItems / honourColumns);
   const routeStart = 615;
   const routeRowHeight = 86;
   const honoursHeading = routeStart + routeRows * routeRowHeight + 60;
   const honoursStart = honoursHeading + 48;
-  const honourRowHeight = 78;
-  const footer = honoursStart + honourRows * honourRowHeight + 66;
+  const honourCardHeight = 112;
+  const honourGap = 16;
+  const footer = honoursStart + honourRows * honourCardHeight + Math.max(0, honourRows - 1) * honourGap + 66;
 
   return {
     width: 1400,
     height: Math.max(980, footer + 72),
     routeRows,
     honourRows,
+    honourColumns,
+    galleryItems,
     routeStart,
     routeRowHeight,
     honoursHeading,
     honoursStart,
-    honourRowHeight,
+    honourCardHeight,
+    honourGap,
     footer,
     legacyTrophies,
   };
@@ -181,6 +246,7 @@ function canvasBlob(canvas: HTMLCanvasElement) {
 
 export async function createCareerShareImage(player: Player) {
   const summary = careerSummary(player);
+  const { gallery } = groupedCareerHonours(player, summary);
   const layout = careerShareCanvasLayout(player);
   const canvas = document.createElement("canvas");
   canvas.width = layout.width;
@@ -284,41 +350,59 @@ export async function createCareerShareImage(player: Player) {
   context.font = "700 13px Arial, sans-serif";
   context.fillText("HONOURS WON", 72, layout.honoursHeading);
   context.textAlign = "right";
-  context.fillText(`${summary.honours.length} NAMED HONOURS  ·  ${player.trophies} TEAM TROPHIES`, 1328, layout.honoursHeading);
+  context.fillText(`${summary.honours.length} NAMED HONOURS  ·  ${gallery.length} TROPHY GROUPS`, 1328, layout.honoursHeading);
 
-  const honourRows: Array<{ icon: string; name: string; detail: string; category: string }> = summary.honours.map((honour) => ({
-    icon: honour.icon,
-    name: honour.name,
-    detail: `${honour.season}  ·  ${honour.club}`,
-    category: honour.category,
-  }));
-  if (layout.legacyTrophies > 0) honourRows.push({
-    icon: "🏆", name: `Earlier team silverware ×${layout.legacyTrophies}`,
-    detail: "Trophies recorded before named honours", category: "team",
-  });
-  if (!honourRows.length) honourRows.push({
-    icon: "—", name: "No honours recorded", detail: "A career measured in more than medals", category: "career",
-  });
-
-  honourRows.forEach((honour, index) => {
-    const top = layout.honoursStart + index * layout.honourRowHeight;
-    context.fillStyle = index % 2 ? "rgba(199,255,53,.035)" : "rgba(199,255,53,.06)";
+  const honourGallery = gallery.length ? gallery : [{
+    key: "no-honours",
+    icon: "—",
+    name: "No honours recorded",
+    category: "career" as const,
+    count: 1,
+    seasons: [],
+    clubs: [],
+    legacy: false,
+  }];
+  const galleryWidth = 1256;
+  const cardWidth = (galleryWidth - layout.honourGap * (layout.honourColumns - 1)) / layout.honourColumns;
+  honourGallery.forEach((honour, index) => {
+    const column = index % layout.honourColumns;
+    const row = Math.floor(index / layout.honourColumns);
+    const left = 72 + column * (cardWidth + layout.honourGap);
+    const top = layout.honoursStart + row * (layout.honourCardHeight + layout.honourGap);
+    context.fillStyle = row % 2 ? "rgba(199,255,53,.035)" : "rgba(199,255,53,.06)";
     context.strokeStyle = "rgba(199,255,53,.11)";
-    roundedRect(context, 72, top, 1256, 66, 8);
+    roundedRect(context, left, top, cardWidth, layout.honourCardHeight, 10);
     context.textAlign = "left";
     context.fillStyle = "#f4f5f1";
-    context.font = "24px Arial, sans-serif";
-    context.fillText(honour.icon, 94, top + 41);
+    context.font = "29px Arial, sans-serif";
+    context.fillText(honour.icon, left + 22, top + 52);
     context.fillStyle = "#f4f5f1";
-    fitText(context, honour.name, 850, 21, 13);
-    context.fillText(honour.name, 140, top + 29);
+    fitText(context, honour.name, cardWidth - (honour.count > 1 ? 150 : 98), 18, 10);
+    context.fillText(honour.name, left + 70, top + 34);
+    const seasonLabel = honour.seasons.length > 1
+      ? `${honour.seasons[0]}–${honour.seasons.at(-1)}`
+      : honour.seasons[0] ?? "Career archive";
+    const detail = honour.legacy
+      ? "Recorded before named honours"
+      : honour.clubs.length
+        ? `${seasonLabel}  ·  ${honour.clubs.join(", ")}`
+        : "A career measured in more than medals";
     context.fillStyle = "#9fa49b";
-    context.font = "600 12px Arial, sans-serif";
-    context.fillText(honour.detail, 140, top + 51);
+    fitText(context, detail, cardWidth - 94, 11, 7, 600);
+    context.fillText(detail, left + 70, top + 60);
     context.fillStyle = "#c7ff35";
-    context.textAlign = "right";
-    context.font = "800 12px Arial, sans-serif";
-    context.fillText(honour.category.toUpperCase(), 1304, top + 38);
+    context.textAlign = "left";
+    context.font = "800 10px Arial, sans-serif";
+    context.fillText(honour.category.toUpperCase(), left + 70, top + 89);
+    if (honour.count > 1) {
+      context.fillStyle = "#c7ff35";
+      context.strokeStyle = "#c7ff35";
+      roundedRect(context, left + cardWidth - 62, top + 14, 44, 28, 14);
+      context.fillStyle = "#090b09";
+      context.textAlign = "center";
+      context.font = "900 12px Arial, sans-serif";
+      context.fillText(`×${honour.count}`, left + cardWidth - 40, top + 33);
+    }
   });
 
   context.fillStyle = "#c7ff35";
