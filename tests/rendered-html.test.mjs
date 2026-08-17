@@ -88,6 +88,8 @@ test("keeps career rules, content, persistence, and rendering behind clear modul
   assert.match(careerScreen, /Your honours/);
   assert.match(careerScreen, /Full season report/);
   assert.match(careerScreen, /role="dialog"/);
+  assert.match(careerScreen, /import \{ createPortal \} from "react-dom"/);
+  assert.match(careerScreen, /createPortal\([\s\S]*season-detail-backdrop[\s\S]*document\.body/);
   assert.match(careerScreen, /View table →/);
   assert.match(careerScreen, /View campaign →/);
   assert.match(careerScreen, /Your qualifying route/);

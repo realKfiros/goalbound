@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { agentProfile, type AgentOption } from "../agents";
 import { clubByName, country } from "../catalog";
 import type { AnnualHonours, ContinentalCompetition, Offer, Player, PlayoffBracket, SavedGame, Scenario, ScenarioOption, StandingGroup } from "../domain";
@@ -174,7 +175,7 @@ function SeasonDetailDialog({ kind, annual, activeClub, activeCountry, onClose }
     };
   }, [onClose]);
 
-  return (
+  return createPortal((
     <div className="season-detail-backdrop">
       <section className="season-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="season-detail-title">
         <header><div><span>{annual.season} · {activeClub}</span><h3 id="season-detail-title">{kind === "league" ? "League season" : "European campaign"}</h3></div><button type="button" ref={closeButtonRef} onClick={onClose} aria-label="Close season details">×</button></header>
@@ -206,7 +207,7 @@ function SeasonDetailDialog({ kind, annual, activeClub, activeCountry, onClose }
         </div>
       </section>
     </div>
-  );
+  ), document.body);
 }
 
 function SeasonAtAGlance({ annual, activeClub, activeCountry, onOpen }: {
