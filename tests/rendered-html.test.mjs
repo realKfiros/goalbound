@@ -81,6 +81,14 @@ test("keeps career rules, content, persistence, and rendering behind clear modul
   assert.match(careerScreen, /Available agents/);
   assert.match(careerScreen, /Breakout season/);
   assert.match(careerScreen, /fitness and development affected/);
+  assert.match(careerScreen, /Your season at a glance/);
+  assert.match(careerScreen, /League position/);
+  assert.match(careerScreen, /European performance/);
+  assert.match(careerScreen, /Your honours/);
+  assert.match(careerScreen, /Full season report/);
+  const seasonResultStart = careerScreen.indexOf('game.phase === "season-result"');
+  const seasonResultSource = careerScreen.slice(seasonResultStart, careerScreen.indexOf('game.phase === "scenario"', seasonResultStart));
+  assert.ok(seasonResultSource.indexOf("Continue career") < seasonResultSource.indexOf("Full season report"));
   assert.doesNotMatch(careerScreen, /Review representation/);
   assert.match(layout, /Goalbound — Your Football Career/);
   assert.match(packageJson, /"build": "WRANGLER_LOG_PATH=/);

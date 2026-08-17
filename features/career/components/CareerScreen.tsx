@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { agentProfile, type AgentOption } from "../agents";
 import { clubByName, country } from "../catalog";
 import type { AnnualHonours, ContinentalCompetition, Offer, Player, PlayoffBracket, SavedGame, Scenario, ScenarioOption, StandingGroup } from "../domain";
+import { europeanSeasonFocus, leagueSeasonFocus } from "../seasonSummary";
 import { ClubBadge } from "./ClubBadge";
 
 type CareerScreenProps = {
@@ -130,6 +131,43 @@ function ContinentalTable({ competition, activeClub, activeCountry }: {
         })}
       </div>
     </div>
+  );
+}
+
+function SeasonAtAGlance({ annual, activeClub, activeCountry }: {
+  annual: AnnualHonours;
+  activeClub: string;
+  activeCountry: string;
+}) {
+  const league = leagueSeasonFocus(annual, activeClub);
+  const europeanCampaigns = europeanSeasonFocus(annual, activeClub, activeCountry);
+
+  return (
+    <article className="season-focus-year">
+      <h4>{annual.season} · {annual.league}</h4>
+      <div className="season-focus-grid">
+        <div className="season-focus-card league-focus">
+          <small>League position</small>
+          <strong>{league.result}</strong>
+          <span>{league.detail}</span>
+        </div>
+        <div className="season-focus-card european-focus">
+          <small>European performance</small>
+          {europeanCampaigns.length ? europeanCampaigns.map((campaign) => (
+            <div className="european-focus-line" key={`${campaign.competition}-${campaign.result}`}>
+              <strong>{campaign.result}</strong>
+              <span>{campaign.competition} · {campaign.detail}</span>
+            </div>
+          )) : <><strong>No campaign</strong><span>{activeClub} did not play in Europe</span></>}
+        </div>
+        <div className={annual.playerHonours.length ? "season-focus-card honours-focus won" : "season-focus-card honours-focus"}>
+          <small>Your honours</small>
+          {annual.playerHonours.length ? (
+            <div className="season-focus-honours">{annual.playerHonours.map((honour) => <span key={honour.id}>{honour.icon} {honour.name}</span>)}</div>
+          ) : <><strong>None this season</strong><span>The cabinet remains available for future appointments.</span></>}
+        </div>
+      </div>
+    </article>
   );
 }
 
@@ -274,7 +312,16 @@ export function CareerScreen({
               <span className={game.lastSeason.after >= game.lastSeason.before ? "up" : "down"}><strong>{game.lastSeason.before} → {game.lastSeason.after}</strong><small>OVR</small></span>
             </div>
             {!!game.lastSeason.honours?.length && (
-              <div className="honours-board">
+              <section className="season-focus">
+                <div className="season-focus-heading"><span>Your season at a glance</span><small>The results that affect your career.</small></div>
+                {game.lastSeason.honours.map((annual) => <SeasonAtAGlance annual={annual} activeClub={game.lastSeason!.club} activeCountry={game.lastSeason!.country} key={annual.season} />)}
+              </section>
+            )}
+            <button className="primary-button story-continue" onClick={onContinueSeason}>Continue career <span>→</span></button>
+            {!!game.lastSeason.honours?.length && (
+              <details className="season-report">
+                <summary><span>Full season report</span><small>All winners, tables, brackets and world movements</small></summary>
+                <div className="honours-board">
                 <div className="honours-board-heading"><span>Season honours board</span><small>Every simulated year receives a complete roll of honour.</small></div>
                 {game.lastSeason.honours.map((annual) => (
                   <div className="annual-honours" key={annual.season}>
@@ -342,9 +389,9 @@ export function CareerScreen({
                     </details>
                   </div>
                 ))}
-              </div>
+                </div>
+              </details>
             )}
-            <button className="primary-button story-continue" onClick={onContinueSeason}>Continue career <span>→</span></button>
           </div>
         )}
 

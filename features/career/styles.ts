@@ -360,6 +360,35 @@ legend { margin-bottom: 13px; }
 .season-numbers small { margin-top: 4px; color: var(--muted); font-size: 8px; text-transform: uppercase; letter-spacing: .1em; }
 .season-numbers .up strong { color: var(--lime); }
 .season-numbers .down strong { color: var(--orange); }
+.season-focus { margin-top: 22px; background: rgba(7,8,7,.45); border: 1px solid rgba(199,255,53,.24); }
+.season-focus-heading { min-height: 58px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--line); }
+.season-focus-heading span { color: var(--lime); font-size: 10px; font-weight: 900; letter-spacing: .11em; text-transform: uppercase; }
+.season-focus-heading small { color: var(--muted); font-size: 9px; }
+.season-focus-year { padding: 14px; }
+.season-focus-year + .season-focus-year { border-top: 1px solid var(--line); }
+.season-focus-year > h4 { margin: 0 0 10px; color: #9fa39c; font: 9px monospace; letter-spacing: .09em; text-transform: uppercase; }
+.season-focus-grid { display: grid; grid-template-columns: .72fr 1.28fr; gap: 7px; }
+.season-focus-card { min-height: 104px; padding: 14px; display: flex; flex-direction: column; background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.075); }
+.season-focus-card > small { color: var(--muted); font-size: 7px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.season-focus-card > strong, .european-focus-line strong { margin: 12px 0 5px; font-size: 18px; letter-spacing: -.03em; }
+.season-focus-card > span, .european-focus-line span { color: #92978e; font-size: 8px; line-height: 1.4; }
+.european-focus { gap: 7px; }
+.european-focus-line { display: flex; flex-direction: column; }
+.european-focus-line + .european-focus-line { margin-top: 4px; padding-top: 9px; border-top: 1px solid rgba(255,255,255,.08); }
+.european-focus-line strong { margin: 3px 0; font-size: 13px; }
+.honours-focus { grid-column: 1 / -1; min-height: auto; }
+.honours-focus.won { background: rgba(199,255,53,.08); border-color: rgba(199,255,53,.34); }
+.season-focus-honours { margin-top: 11px; display: flex; flex-wrap: wrap; gap: 6px; }
+.season-focus-honours span { padding: 7px 9px; color: #0a0b0a; background: var(--lime); border-radius: 2px; font-size: 8px; font-weight: 900; }
+.season-report { margin-top: 18px; border: 1px solid var(--line); background: rgba(7,8,7,.3); }
+.season-report > summary { min-height: 64px; padding: 15px 17px; display: flex; align-items: center; justify-content: space-between; gap: 18px; cursor: pointer; list-style: none; }
+.season-report > summary::-webkit-details-marker { display: none; }
+.season-report > summary::after { content: "+"; color: var(--lime); font-size: 21px; }
+.season-report[open] > summary::after { content: "−"; }
+.season-report > summary > span { margin-right: auto; font-size: 10px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.season-report > summary > small { color: var(--muted); font-size: 8px; }
+.season-report[open] > summary { color: var(--lime); border-bottom: 1px solid var(--line); }
+.season-report > .honours-board { margin-top: 0; border: 0; }
 .honours-board { margin-top: 22px; border: 1px solid var(--line); background: rgba(7, 8, 7, .45); }
 .honours-board-heading { padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--line); }
 .honours-board-heading span { color: var(--lime); font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .12em; }
@@ -742,6 +771,14 @@ footer { position: relative; z-index: 1; width: min(1320px, calc(100% - 64px)); 
   .season-numbers { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .season-numbers span { min-height: 66px; padding: 10px 4px; align-items: center; text-align: center; }
   .season-numbers strong { font-size: 17px; }
+  .season-focus-heading { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .season-focus-grid { grid-template-columns: 1fr; }
+  .honours-focus { grid-column: auto; }
+  .season-focus-card { min-height: 92px; }
+  .season-stage > .story-continue { width: 100%; justify-content: space-between; }
+  .season-report > summary { align-items: flex-start; flex-wrap: wrap; }
+  .season-report > summary > small { width: calc(100% - 30px); order: 3; line-height: 1.4; }
+  .season-report > summary::after { order: 2; }
   .honours-board-heading { align-items: flex-start; flex-direction: column; }
   .honour-results { grid-template-columns: 1fr; }
   .scenario-options > button { padding: 20px 18px 42px 48px; grid-template-columns: 1fr; gap: 16px; }

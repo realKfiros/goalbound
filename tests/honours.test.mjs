@@ -95,6 +95,31 @@ test("multi-year simulations produce one honours board per year", () => {
   assert.equal(new Set(annual.map((item) => item.season)).size, 3);
 });
 
+test("season focus surfaces the player's league finish and European exit", () => {
+  const { leagueSeasonFocus, europeanSeasonFocus } = loadTypeScriptModule("features/career/seasonSummary.ts");
+  const annual = {
+    league: "Premier League", champion: "Arsenal", titles: [{ name: "Champion", winner: "Arsenal" }],
+    standingGroups: [{ name: "Premier League", clubs: ["Arsenal", "Manchester City", "Liverpool"] }],
+    continentalRoll: [{
+      key: "champions-league", name: "Champions League", shortName: "Champions League", leagueMatches: 8,
+      entrants: [{ club: "Manchester City", country: "ENG" }],
+      table: [{ club: "Manchester City", country: "ENG", played: 8, won: 6, drawn: 1, lost: 1, goalsFor: 18, goalsAgainst: 7, goalDifference: 11, points: 19 }],
+      champion: { club: "Real Madrid", country: "ESP" }, qualifyingBrackets: [],
+      bracket: { name: "Knockout phase", country: "EUROPE", competition: "Champions League", ties: [
+        { round: "Round of 16", home: "Manchester City", away: "Inter Milan", winner: "Manchester City" },
+        { round: "Quarter-final", home: "Manchester City", away: "Real Madrid", winner: "Real Madrid" },
+      ] },
+    }],
+  };
+
+  const league = leagueSeasonFocus(annual, "Manchester City");
+  const [europe] = europeanSeasonFocus(annual, "Manchester City", "ENG");
+  assert.equal(league.result, "2nd");
+  assert.equal(league.detail, "Premier League · 2 of 3");
+  assert.equal(europe.result, "Quarter-final");
+  assert.equal(europe.detail, "Eliminated by Real Madrid");
+});
+
 test("academy players appear in the world but cannot win senior honours", () => {
   const { simulateHonours } = loadTypeScriptModule("features/career/honours.ts");
   const [annual] = simulateHonours({
