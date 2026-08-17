@@ -102,7 +102,7 @@ export const GoalboundGame = observer(function GoalboundGame() {
         )}
 
         <footer>
-          <span>GOALBOUND © 2026</span>
+          <span>Made with ❤️ by Kfir Nevo</span>
           <span>Real clubs · Original scenarios · No real player likenesses</span>
         </footer>
       </main>
