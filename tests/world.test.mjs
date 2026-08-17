@@ -151,6 +151,121 @@ test("loaded pyramids move clubs atomically and preserve every division size", (
   });
 });
 
+test("the 2026/27 UEFA access list covers every active association and entry round", () => {
+  const {
+    UEFA_ACCESS_LIST_2026_27,
+    UEFA_ASSOCIATION_RANKING,
+    UEFA_ASSOCIATIONS,
+  } = loadTypeScriptModule("features/career/uefaAccessList.ts");
+  const { championsLeague, europaLeague, conferenceLeague } = UEFA_ACCESS_LIST_2026_27;
+
+  assert.equal(UEFA_ASSOCIATION_RANKING.length, 55);
+  assert.equal(UEFA_ASSOCIATIONS.length, 54);
+  assert.ok(UEFA_ASSOCIATIONS.includes("LIE"));
+  assert.equal(UEFA_ASSOCIATIONS.includes("RUS"), false);
+  assert.deepEqual({
+    direct: championsLeague.direct.length,
+    championsPlayoff: championsLeague.championsPlayoff.length,
+    championsSecond: championsLeague.championsSecond.length,
+    championsFirst: championsLeague.championsFirst.length,
+    leagueThird: championsLeague.leagueThird.length,
+    leagueSecond: championsLeague.leagueSecond.length,
+  }, { direct: 25, championsPlayoff: 4, championsSecond: 9, championsFirst: 30, leagueThird: 5, leagueSecond: 6 });
+  assert.deepEqual({
+    direct: europaLeague.direct.length,
+    playoff: europaLeague.playoff.length,
+    third: europaLeague.third.length,
+    second: europaLeague.second.length,
+    first: europaLeague.first.length,
+  }, { direct: 12, playoff: 5, third: 3, second: 8, first: 16 });
+  assert.deepEqual({
+    playoff: conferenceLeague.playoff.length,
+    second: conferenceLeague.second.length,
+    first: conferenceLeague.first.length,
+  }, { playoff: 5, second: 54, first: 52 });
+
+  const uclRoutes = Object.values(championsLeague).flat();
+  const uelRoutes = Object.values(europaLeague).flat();
+  const allRoutes = [...uclRoutes, ...uelRoutes, ...Object.values(conferenceLeague).flat()];
+  assert.equal(new Set(allRoutes.map((route) => route.slotId)).size, allRoutes.length);
+  const routesFor = (country) => ({
+    ucl: uclRoutes.filter((route) => route.association === country),
+    uel: uelRoutes.filter((route) => route.association === country),
+    uecl: Object.values(conferenceLeague).flat().filter((route) => route.association === country),
+  });
+  assert.deepEqual(Object.fromEntries(Object.entries(routesFor("ENG")).map(([key, routes]) => [key, routes.length])),
+    { ucl: 4, uel: 2, uecl: 1 });
+  assert.deepEqual(Object.fromEntries(Object.entries(routesFor("ISR")).map(([key, routes]) => [key, routes.length])),
+    { ucl: 1, uel: 1, uecl: 2 });
+  assert.deepEqual(Object.fromEntries(Object.entries(routesFor("BIH")).map(([key, routes]) => [key, routes.length])),
+    { ucl: 1, uel: 0, uecl: 3 });
+  assert.deepEqual(Object.fromEntries(Object.entries(routesFor("LIE")).map(([key, routes]) => [key, routes.length])),
+    { ucl: 0, uel: 0, uecl: 1 });
+  assert.deepEqual(Object.fromEntries(Object.entries(routesFor("MKD")).map(([key, routes]) => [key, routes.length])),
+    { ucl: 1, uel: 0, uecl: 2 });
+});
+
+test("the published 2026/27 adaptation moves the exact access-list slots", () => {
+  const { createWorldState } = loadTypeScriptModule("features/career/world.ts");
+  const { projectNextUefaQualification, UEFA_ASSOCIATIONS } = loadTypeScriptModule("features/career/uefaSeason.ts");
+  const world = createWorldState();
+  const associationSet = new Set(UEFA_ASSOCIATIONS);
+  const tables = new Map();
+  Object.values(world.clubs)
+    .filter((club) => club.division === 1 && associationSet.has(club.country))
+    .forEach((club) => tables.set(club.country, [...(tables.get(club.country) ?? []), club]));
+  tables.forEach((table) => table.sort((left, right) =>
+    right.squadQuality - left.squadQuality || right.reputation - left.reputation || left.club.localeCompare(right.club)));
+  const domestic = [...tables].map(([country, table]) => ({
+    country, division: 1, table: table.map((club) => club.club),
+  }));
+  const cupWinners = Object.fromEntries([...tables].map(([country, table]) => [country, table[0].club]));
+  const places = projectNextUefaQualification(world.clubs, domestic, cupWinners, {
+    additionalCups: [{ country: "ENG", name: "EFL Cup", winner: tables.get("ENG")[0].club }],
+    performanceSpots: ["ENG", "ESP"],
+    publishedAccessList: true,
+    previousChampions: { "conference-league": { country: "ENG", club: "Crystal Palace" } },
+  });
+  const slot = (slotId) => places.find((place) => place.slotId === slotId);
+
+  [
+    ["UKR:N1:UCL", "League phase"],
+    ["SVK:N1:UCL", "Second qualifying round"],
+    ["SVN:N1:UCL", "Second qualifying round"],
+    ["POR:N2:UCL", "League phase"],
+    ["NOR:N2:UCL", "Third qualifying round"],
+    ["GRE:N2:UCL", "Third qualifying round"],
+  ].forEach(([slotId, entryRound]) => assert.equal(slot(slotId)?.entryRound, entryRound, slotId));
+  ["DEN", "SUI", "ISR", "CYP", "SWE"].forEach((country) =>
+    assert.equal(slot(`${country}:CW:europa-league`)?.entryRound, "Second qualifying round", country));
+  assert.equal(slot("CRO:CW:europa-league")?.entryRound, "First qualifying round");
+  ["KAZ", "FRO", "MLT", "NIR", "LTU", "LIE"].forEach((country) =>
+    assert.equal(slot(`${country}:CW:conference-league`)?.entryRound, "Second qualifying round", country));
+
+  const count = (competition, entryRound, path) => places.filter((place) =>
+    place.competition === competition && place.entryRound === entryRound && place.path === path).length;
+  assert.deepEqual({
+    direct: count("champions-league", "League phase", "Direct"),
+    championsFirst: count("champions-league", "First qualifying round", "Champions path"),
+    championsSecond: count("champions-league", "Second qualifying round", "Champions path"),
+    championsPlayoff: count("champions-league", "Play-off round", "Champions path"),
+    leagueSecond: count("champions-league", "Second qualifying round", "League path"),
+    leagueThird: count("champions-league", "Third qualifying round", "League path"),
+  }, { direct: 29, championsFirst: 28, championsSecond: 10, championsPlayoff: 4, leagueSecond: 4, leagueThird: 6 });
+  assert.deepEqual({
+    direct: count("europa-league", "League phase", "Direct"),
+    playoff: count("europa-league", "Play-off round", "Main path"),
+    third: count("europa-league", "Third qualifying round", "Main path"),
+    second: count("europa-league", "Second qualifying round", "Main path"),
+    first: count("europa-league", "First qualifying round", "Main path"),
+  }, { direct: 13, playoff: 5, third: 3, second: 12, first: 12 });
+  assert.deepEqual({
+    playoff: count("conference-league", "Play-off round", "Main path"),
+    second: count("conference-league", "Second qualifying round", "Main path"),
+    first: count("conference-league", "First qualifying round", "Main path"),
+  }, { playoff: 5, second: 54, first: 52 });
+});
+
 test("European competitions qualify exclusive fields and play the current league-phase format", () => {
   const { createWorldState, simulateWorldSeason } = loadTypeScriptModule("features/career/world.ts");
   const { UEFA_ASSOCIATIONS } = loadTypeScriptModule("features/career/uefaSeason.ts");
@@ -166,7 +281,8 @@ test("European competitions qualify exclusive fields and play the current league
   const allEntrants = competitions.flatMap((competition) => competition.entrants.map((club) => `${club.country}:${club.club}`));
   assert.equal(allEntrants.length, 108);
   assert.equal(new Set(allEntrants).size, 108);
-  assert.equal(UEFA_ASSOCIATIONS.length, 53);
+  assert.equal(UEFA_ASSOCIATIONS.length, 54);
+  assert.equal(UEFA_ASSOCIATIONS.includes("LIE"), true);
   assert.equal(UEFA_ASSOCIATIONS.includes("RUS"), false);
 
   const expectedQualifyingTies = new Map([
@@ -261,12 +377,12 @@ test("England and Israel preserve domestic UEFA quotas when cup winners qualify 
   }));
   const cupWinners = Object.fromEntries([...tables].map(([country, table]) => [country, table[0].club]));
   const scottishChampion = tables.get("SCO")[0];
-  const greekChampion = tables.get("GRE")[0];
+  const italianChampion = tables.get("ITA")[0];
   const places = projectNextUefaQualification(world.clubs, domestic, cupWinners, {
     additionalCups: [{ country: "ENG", name: "EFL Cup", winner: tables.get("ENG")[0].club }],
     previousChampions: {
       "champions-league": scottishChampion,
-      "europa-league": greekChampion,
+      "europa-league": italianChampion,
       "conference-league": scottishChampion,
     },
     previousPerformance: { ENG: 100, ITA: 90 },
@@ -289,9 +405,16 @@ test("England and Israel preserve domestic UEFA quotas when cup winners qualify 
   const english = tables.get("ENG");
   const englandPlaces = forCountry("ENG");
   assert.equal(englandPlaces.find((place) => place.qualifiedVia === "European Performance Spot")?.club, english[4].club);
+  assert.equal(englandPlaces.find((place) => place.qualifiedVia === "European Performance Spot")?.slotId, "ENG:EPS:UCL");
   assert.equal(englandPlaces.find((place) => place.qualifiedVia === "League position · Europa League")?.club, english[5].club);
+  assert.equal(englandPlaces.find((place) => place.qualifiedVia === "League position · Europa League")?.slotId,
+    "ENG:LQ1:europa-league");
   assert.equal(englandPlaces.find((place) => place.qualifiedVia === "League position · FA Cup place passed down")?.club, english[6].club);
+  assert.equal(englandPlaces.find((place) => place.qualifiedVia === "League position · FA Cup place passed down")?.slotId,
+    "ENG:CW:europa-league");
   assert.equal(englandPlaces.find((place) => place.qualifiedVia === "League position · EFL Cup place passed down")?.club, english[7].club);
+  assert.equal(englandPlaces.find((place) => place.qualifiedVia === "League position · EFL Cup place passed down")?.slotId,
+    "ENG:EFL_CUP:conference-league");
 
   const israel = tables.get("ISR");
   const israelPlaces = forCountry("ISR");
@@ -299,12 +422,14 @@ test("England and Israel preserve domestic UEFA quotas when cup winners qualify 
   assert.equal(israelPlaces.find((place) => place.competition === "europa-league")?.entryRound, "Second qualifying round");
   assert.equal(israelPlaces.find((place) => place.competition === "europa-league")?.qualifiedVia,
     "League position · State Cup place passed down");
+  assert.equal(israelPlaces.find((place) => place.competition === "europa-league")?.slotId, "ISR:CW:europa-league");
   assert.deepEqual(israelPlaces.filter((place) => place.competition === "conference-league").map((place) => place.club),
     [israel[2].club, israel[3].club]);
   assert.ok(israelPlaces.filter((place) => place.competition === "conference-league")
     .every((place) => place.entryRound === "Second qualifying round"));
 
   assert.equal(new Set(places.map((place) => `${place.country}:${place.club}`)).size, places.length);
+  assert.ok(places.every((place) => place.slotId));
 });
 
 test("continental calibration keeps domestic giants realistic in Europe", () => {

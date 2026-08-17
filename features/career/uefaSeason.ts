@@ -9,21 +9,19 @@ import type {
   PlayoffBracket,
   PlayoffTie,
 } from "./domain";
+import {
+  NATIONAL_CUP_NAMES,
+  UEFA_ACCESS_LIST_2026_27,
+  UEFA_ASSOCIATIONS,
+  type AccessRoute,
+} from "./uefaAccessList";
+
+export { UEFA_ASSOCIATIONS } from "./uefaAccessList";
 
 export const UEFA_COMPETITION_DEFINITIONS = [
   { key: "champions-league", name: "Champions League", shortName: "Champions League", leagueMatches: 8, pots: 4 },
   { key: "europa-league", name: "Europa League", shortName: "Europa League", leagueMatches: 8, pots: 4 },
   { key: "conference-league", name: "Conference League", shortName: "Conference League", leagueMatches: 6, pots: 6 },
-] as const;
-
-/** 2026/27 association access order. Russia is excluded; Liechtenstein has no league. */
-export const UEFA_ASSOCIATIONS = [
-  "ENG", "ITA", "ESP", "GER", "FRA", "NED", "POR", "BEL", "CZE", "TUR",
-  "NOR", "AUT", "SCO", "GRE", "DEN", "SUI", "POL", "ISR", "CYP", "SWE",
-  "CRO", "SRB", "UKR", "HUN", "ROU", "BUL", "AZE", "SVK", "SVN", "MDA",
-  "KOS", "KAZ", "FIN", "IRL", "ARM", "LVA", "FRO", "BIH", "ISL", "NIR",
-  "LUX", "LTU", "ALB", "EST", "MLT", "GEO", "BLR", "MNE", "WAL", "GIB",
-  "MKD", "AND", "SMR",
 ] as const;
 
 type Definition = typeof UEFA_COMPETITION_DEFINITIONS[number];
@@ -35,6 +33,8 @@ export type EuropeanAccessContext = {
   additionalCups?: CupHonours[];
   previousChampions?: Partial<Record<EuropeanCompetitionKey, ContinentalClub>>;
   previousPerformance?: Record<string, number>;
+  performanceSpots?: readonly string[];
+  publishedAccessList?: boolean;
 };
 
 type QualifyingResult = {
@@ -63,21 +63,6 @@ const ASSOCIATION_CONTINENTAL_ADJUSTMENT: Record<string, number> = {
   MKD: -25, AND: -29, SMR: -31,
 };
 
-const UCL_DOMESTIC_SLOTS: ReadonlyArray<readonly [string, number]> = [
-  ["ENG", 4], ["ITA", 4], ["ESP", 4], ["GER", 4], ["FRA", 3],
-  ["NED", 2], ["POR", 1], ["BEL", 1], ["CZE", 1], ["TUR", 1],
-];
-
-const EXPLICIT_DOMESTIC_ACCESS = new Set(["ENG", "ISR"]);
-
-const NATIONAL_CUP_NAMES: Record<string, string> = {
-  ENG: "FA Cup", ITA: "Coppa Italia", ESP: "Copa del Rey", GER: "DFB-Pokal", FRA: "Coupe de France",
-  NED: "KNVB Cup", POR: "Taça de Portugal", BEL: "Belgian Cup", CZE: "Czech Cup", TUR: "Turkish Cup",
-  NOR: "Norwegian Cup", AUT: "ÖFB Cup", SCO: "Scottish Cup", GRE: "Greek Cup", DEN: "Danish Cup",
-  SUI: "Swiss Cup", POL: "Polish Cup", ISR: "State Cup", CYP: "Cypriot Cup", SWE: "Svenska Cupen",
-  CRO: "Croatian Cup", SRB: "Serbian Cup", UKR: "Ukrainian Cup", HUN: "Magyar Kupa", ROU: "Cupa României",
-};
-
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
@@ -104,16 +89,23 @@ function rankedCandidates(entries: QualifiedClub[], impact: PlayerImpact, random
     .map(({ entry }) => entry);
 }
 
-function resolveClub(clubs: Record<string, ClubSeasonState>, country: string, club: string | undefined) {
-  return club ? clubs[`${country}:${club}`] : undefined;
-}
+const VIRTUAL_UEFA_CLUBS: Record<string, ClubSeasonState> = {
+  "LIE:FC Vaduz": {
+    club: "FC Vaduz",
+    country: "LIE",
+    league: "Liechtenstein Cup",
+    division: 1,
+    squadQuality: 49,
+    finances: 46,
+    reputation: 48,
+    momentum: 0,
+    previousFinish: null,
+    rollingPerformance: [],
+  },
+};
 
-function ordinal(position: number) {
-  const number = position + 1;
-  if (number === 1) return "1st";
-  if (number === 2) return "2nd";
-  if (number === 3) return "3rd";
-  return `${number}th`;
+function resolveClub(clubs: Record<string, ClubSeasonState>, country: string, club: string | undefined) {
+  return club ? clubs[`${country}:${club}`] ?? VIRTUAL_UEFA_CLUBS[`${country}:${club}`] : undefined;
 }
 
 /**
@@ -131,21 +123,24 @@ export function projectNextUefaQualification(
     .filter((competition) => competition.division === 1 && UEFA_SET.has(competition.country))
     .map((competition) => [competition.country, competition.table]));
   const taken = new Set<string>();
+  const domesticUsed = new Set<string>();
+  const extraTitleholders = new Set<string>();
   const places: EuropeanQualification[] = [];
 
   const tableClub = (country: string, position: number) => resolveClub(clubs, country, tables.get(country)?.[position]);
-  const nextAvailable = (country: string) => (tables.get(country) ?? [])
+  const nextDomestic = (country: string, used: ReadonlySet<string> = domesticUsed) => (tables.get(country) ?? [])
     .map((club) => resolveClub(clubs, country, club))
-    .find((club): club is ClubSeasonState => !!club && !taken.has(clubKey(club)));
+    .find((club): club is ClubSeasonState => !!club && !used.has(clubKey(club)));
   const add = (
     state: ClubSeasonState | undefined,
     competition: EuropeanCompetitionKey,
     entryRound: EuropeanQualification["entryRound"],
     path: EuropeanQualification["path"],
     qualifiedVia: string,
+    slotId?: string,
   ) => {
     if (!state || taken.has(clubKey(state))) return false;
-    places.push({ club: state.club, country: state.country, competition, entryRound, path, qualifiedVia });
+    places.push({ club: state.club, country: state.country, competition, entryRound, path, qualifiedVia, slotId });
     taken.add(clubKey(state));
     return true;
   };
@@ -155,145 +150,223 @@ export function projectNextUefaQualification(
     path: EuropeanQualification["path"],
   ) => places.filter((place) =>
     place.competition === competition && place.entryRound === entryRound && place.path === path).length;
-  const addUntil = (
-    total: number,
-    countries: readonly string[],
-    competition: EuropeanCompetitionKey,
-    entryRound: EuropeanQualification["entryRound"],
-    path: EuropeanQualification["path"],
-    via: string,
-    excludedCountries: ReadonlySet<string> = new Set(),
-  ) => {
-    const eligibleCountries = countries.filter((country) => !excludedCountries.has(country));
-    if (eligibleCountries.length === 0) throw new Error(`No eligible associations for ${competition} ${entryRound} ${path}.`);
-    let cursor = 0;
-    while (roundPlaceCount(competition, entryRound, path) < total) {
-      const country = eligibleCountries[cursor % eligibleCountries.length];
-      add(nextAvailable(country), competition, entryRound, path, via);
-      cursor += 1;
-      if (cursor > eligibleCountries.length * 20) throw new Error(`Unable to fill ${competition} ${entryRound} ${path}.`);
-    }
-  };
-  const addCountrySequence = (
-    total: number,
-    countries: readonly string[],
-    competition: EuropeanCompetitionKey,
-    entryRound: EuropeanQualification["entryRound"],
-    path: EuropeanQualification["path"],
-    via: string,
-  ) => {
-    const displaced: string[] = [];
-    countries.forEach((country) => {
-      if (roundPlaceCount(competition, entryRound, path) >= total) {
-        displaced.push(country);
-        return;
-      }
-      add(nextAvailable(country), competition, entryRound, path, via);
-    });
-    return displaced;
-  };
-  const addRankSlice = (
-    from: number,
-    to: number,
-    position: number,
-    competition: EuropeanCompetitionKey,
-    entryRound: EuropeanQualification["entryRound"],
-    path: EuropeanQualification["path"],
-    via: string,
-  ) => UEFA_ASSOCIATIONS.slice(from, to).forEach((country) =>
-    add(position === -1 ? nextAvailable(country) : tableClub(country, position), competition, entryRound, path, via));
   const previousChampion = (key: EuropeanCompetitionKey) => {
     const holder = access.previousChampions?.[key];
     return holder ? resolveClub(clubs, holder.country, holder.club) : undefined;
   };
-  const addCupPlace = (
-    country: string,
+  type ResolvedRoute = { state: ClubSeasonState; qualifiedVia: string; consumedByTitleholder: boolean };
+  const resolveCandidate = (state: ClubSeasonState | undefined, qualifiedVia: string): ResolvedRoute | undefined => {
+    if (!state) return undefined;
+    return { state, qualifiedVia, consumedByTitleholder: extraTitleholders.has(clubKey(state)) };
+  };
+  const resolveRoute = (route: AccessRoute, used: ReadonlySet<string> = domesticUsed): ResolvedRoute | undefined => {
+    if (route.source.kind === "table") {
+      const state = tableClub(route.association, route.source.position);
+      return state && !used.has(clubKey(state)) ? resolveCandidate(state, route.qualifiedVia) : undefined;
+    }
+    if (route.source.kind === "next") {
+      return resolveCandidate(nextDomestic(route.association, used), route.qualifiedVia);
+    }
+    if (route.source.kind === "virtual") {
+      const state = resolveClub(clubs, route.association, route.source.club);
+      return state && !used.has(clubKey(state)) ? resolveCandidate(state, route.qualifiedVia) : undefined;
+    }
+    const cupName = route.source.kind === "league-cup"
+      ? route.source.name
+      : NATIONAL_CUP_NAMES[route.association] ?? "National cup";
+    const winner = route.source.kind === "league-cup"
+      ? access.additionalCups?.find((cup) => cup.country === route.association && cup.name === route.source.name)?.winner
+      : cupWinners[route.association];
+    const cupWinner = resolveClub(clubs, route.association, winner);
+    if (cupWinner && !used.has(clubKey(cupWinner))) {
+      return resolveCandidate(cupWinner, `${cupName} winner`);
+    }
+    return resolveCandidate(nextDomestic(route.association, used), `League position · ${cupName} place passed down`);
+  };
+  const addRoute = (
+    route: AccessRoute,
+    override: Partial<Pick<AccessRoute, "competition" | "entryRound" | "path" | "qualifiedVia">> = {},
+  ) => {
+    const resolved = resolveRoute(route);
+    if (!resolved) return false;
+    domesticUsed.add(clubKey(resolved.state));
+    if (resolved.consumedByTitleholder) return false;
+    return add(
+      resolved.state,
+      override.competition ?? route.competition,
+      override.entryRound ?? route.entryRound,
+      override.path ?? route.path,
+      override.qualifiedVia ?? resolved.qualifiedVia,
+      route.slotId,
+    );
+  };
+  const addRoutes = (routes: readonly AccessRoute[]) => routes.forEach((route) => addRoute(route));
+  const takeStrongest = (routes: AccessRoute[], count: number) => {
+    const selected = routes
+      .map((route) => ({ route, resolved: resolveRoute(route) }))
+      .filter((item): item is { route: AccessRoute; resolved: ResolvedRoute } =>
+        !!item.resolved && !item.resolved.consumedByTitleholder)
+      .sort((left, right) => continentalClubStrength(right.resolved.state) - continentalClubStrength(left.resolved.state))
+      .slice(0, count)
+      .map((item) => item.route);
+    const selectedSet = new Set(selected);
+    return { selected, remaining: routes.filter((route) => !selectedSet.has(route)) };
+  };
+  const takePublished = (routes: AccessRoute[], associations: readonly string[]) => {
+    const selected = associations.map((association) => routes.find((route) => route.association === association));
+    if (selected.some((route) => !route)) {
+      throw new Error(`Published UEFA adaptation is missing ${associations.join(", ")}.`);
+    }
+    const published = selected as AccessRoute[];
+    const selectedSet = new Set(published);
+    return { selected: published, remaining: routes.filter((route) => !selectedSet.has(route)) };
+  };
+  const addDomestic = (
+    state: ClubSeasonState | undefined,
     competition: EuropeanCompetitionKey,
     entryRound: EuropeanQualification["entryRound"],
     path: EuropeanQualification["path"],
+    qualifiedVia: string,
+    slotId?: string,
   ) => {
-    const cupName = NATIONAL_CUP_NAMES[country] ?? "National cup";
-    const cupWinner = resolveClub(clubs, country, cupWinners[country]);
-    if (add(cupWinner, competition, entryRound, path, `${cupName} winner`)) return true;
-    add(nextAvailable(country), competition, entryRound, path, `League position · ${cupName} place passed down`);
-    return false;
+    if (!state) return false;
+    domesticUsed.add(clubKey(state));
+    return add(state, competition, entryRound, path, qualifiedVia, slotId);
   };
-
-  add(previousChampion("champions-league"), "champions-league", ROUND.league, "Direct", "Champions League holder");
-  add(previousChampion("europa-league"), "champions-league", ROUND.league, "Direct", "Europa League holder");
-  UCL_DOMESTIC_SLOTS.forEach(([country, count]) => {
-    for (let position = 0; position < count; position += 1) {
-      add(tableClub(country, position), "champions-league", ROUND.league, "Direct", `League position · ${ordinal(position)}`);
+  const assignTitleholder = (key: EuropeanCompetitionKey, competition: EuropeanCompetitionKey, qualifiedVia: string) => {
+    const holder = previousChampion(key);
+    if (!holder) return { holder: undefined, vacancy: true };
+    const existing = places.find((place) => clubKey(place) === clubKey(holder));
+    if (existing) {
+      existing.qualifiedVia = qualifiedVia;
+      return { holder, vacancy: true };
     }
-  });
-  const performanceAssociations = Object.entries(access.previousPerformance ?? {})
+    if (add(holder, competition, ROUND.league, "Direct", qualifiedVia, `${holder.country}:${key}:TH`)) {
+      extraTitleholders.add(clubKey(holder));
+      return { holder, vacancy: false };
+    }
+    return { holder, vacancy: true };
+  };
+  const accessList = UEFA_ACCESS_LIST_2026_27;
+
+  addRoutes(accessList.championsLeague.direct);
+  const performanceAssociations = access.performanceSpots ?? Object.entries(access.previousPerformance ?? {})
     .filter(([country]) => UEFA_SET.has(country))
     .sort((left, right) => right[1] - left[1])
+    .slice(0, 2)
     .map(([country]) => country);
-  [...new Set([...performanceAssociations, ...UEFA_ASSOCIATIONS])].slice(0, 2).forEach((country) =>
-    add(nextAvailable(country), "champions-league", ROUND.league, "Direct", "European Performance Spot"));
-  addUntil(29, UEFA_ASSOCIATIONS, "champions-league", ROUND.league, "Direct", "Access-list rebalancing", EXPLICIT_DOMESTIC_ACCESS);
+  const uniquePerformanceAssociations = [...new Set(performanceAssociations)];
+  if (uniquePerformanceAssociations.length !== 2) {
+    throw new Error("Two European Performance Spot associations are required for the UEFA access list.");
+  }
+  uniquePerformanceAssociations.forEach((country) =>
+    addDomestic(nextDomestic(country), "champions-league", ROUND.league, "Direct", "European Performance Spot", `${country}:EPS:UCL`));
 
-  addRankSlice(25, 53, 0, "champions-league", ROUND.first, "Champions path", "Domestic champion");
-  addUntil(28, UEFA_ASSOCIATIONS.slice(25), "champions-league", ROUND.first, "Champions path", "Access-list rebalancing");
-  addRankSlice(15, 25, 0, "champions-league", ROUND.second, "Champions path", "Domestic champion");
-  addUntil(10, UEFA_ASSOCIATIONS.slice(15, 25), "champions-league", ROUND.second, "Champions path", "Access-list rebalancing");
-  addRankSlice(11, 15, 0, "champions-league", ROUND.playoff, "Champions path", "Domestic champion");
-  addUntil(4, UEFA_ASSOCIATIONS.slice(11, 15), "champions-league", ROUND.playoff, "Champions path", "Access-list rebalancing");
-  addRankSlice(11, 15, -1, "champions-league", ROUND.second, "League path", "League position");
-  addUntil(4, UEFA_ASSOCIATIONS.slice(11, 15), "champions-league", ROUND.second, "League path", "Access-list rebalancing");
-  addRankSlice(5, 11, -1, "champions-league", ROUND.third, "League path", "League position");
-  addUntil(6, UEFA_ASSOCIATIONS.slice(5, 11), "champions-league", ROUND.third, "League path", "Access-list rebalancing");
+  const championsTitleholder = assignTitleholder(
+    "champions-league", "champions-league", "Champions League holder",
+  );
+  const championsHolderVacancy = championsTitleholder.vacancy;
+  const europaTitleholder = assignTitleholder(
+    "europa-league", "champions-league", "Europa League holder",
+  );
+  const europaHolderVacancy = europaTitleholder.vacancy;
 
-  add(previousChampion("conference-league"), "europa-league", ROUND.league, "Direct", "Conference League holder");
-  ["ENG", "ITA", "ESP", "GER", "FRA"].forEach((country) => {
-    const cupName = NATIONAL_CUP_NAMES[country] ?? "National cup";
-    const cupWinner = resolveClub(clubs, country, cupWinners[country]);
-    const cupWinnerAdded = add(cupWinner, "europa-league", ROUND.league, "Direct", `${cupName} winner`);
-    add(nextAvailable(country), "europa-league", ROUND.league, "Direct", "League position · Europa League");
-    if (!cupWinnerAdded) {
-      add(nextAvailable(country), "europa-league", ROUND.league, "Direct", `League position · ${cupName} place passed down`);
-    }
-  });
-  const europaDirectOverflow: string[] = [];
-  ["NED", "POR", "BEL"].forEach((country) => {
-    if (roundPlaceCount("europa-league", ROUND.league, "Direct") >= 13) {
-      europaDirectOverflow.push(country);
-    } else {
-      addCupPlace(country, "europa-league", ROUND.league, "Direct");
-    }
-  });
-  addUntil(13, UEFA_ASSOCIATIONS, "europa-league", ROUND.league, "Direct", "Access-list rebalancing", EXPLICIT_DOMESTIC_ACCESS);
-  let europaOverflow = addCountrySequence(5, [...europaDirectOverflow, ...UEFA_ASSOCIATIONS.slice(18, 23)],
-    "europa-league", ROUND.playoff, "Main path", "Cup or league place");
-  addUntil(5, [...europaDirectOverflow, ...UEFA_ASSOCIATIONS.slice(18, 23)],
-    "europa-league", ROUND.playoff, "Main path", "Cup or league place", EXPLICIT_DOMESTIC_ACCESS);
-  europaOverflow = addCountrySequence(3, [...europaOverflow, ...UEFA_ASSOCIATIONS.slice(24, 27)],
-    "europa-league", ROUND.third, "Main path", "Cup or league place");
-  addUntil(3, [...europaOverflow, ...UEFA_ASSOCIATIONS.slice(24, 27)],
-    "europa-league", ROUND.third, "Main path", "Access-list rebalancing", EXPLICIT_DOMESTIC_ACCESS);
-  addCupPlace("ISR", "europa-league", ROUND.second, "Main path");
-  europaOverflow = addCountrySequence(12, [...europaOverflow, ...UEFA_ASSOCIATIONS.slice(29, 41)],
-    "europa-league", ROUND.second, "Main path", "Cup or league place");
-  addUntil(12, [...europaOverflow, ...UEFA_ASSOCIATIONS.slice(29, 41)],
-    "europa-league", ROUND.second, "Main path", "Access-list rebalancing", EXPLICIT_DOMESTIC_ACCESS);
-  addCountrySequence(12, [...europaOverflow, ...UEFA_ASSOCIATIONS.slice(41)],
-    "europa-league", ROUND.first, "Main path", "Cup or league place");
-  addUntil(12, [...europaOverflow, ...UEFA_ASSOCIATIONS.slice(41)],
-    "europa-league", ROUND.first, "Main path", "Access-list rebalancing", EXPLICIT_DOMESTIC_ACCESS);
+  let championsSecond = [...accessList.championsLeague.championsSecond];
+  let championsFirst = [...accessList.championsLeague.championsFirst];
+  let leagueThird = [...accessList.championsLeague.leagueThird];
+  let leagueSecond = [...accessList.championsLeague.leagueSecond];
+  if (championsHolderVacancy) {
+    const directPromotion = access.publishedAccessList
+      ? takePublished(championsSecond, ["UKR"])
+      : takeStrongest(championsSecond, 1);
+    championsSecond = directPromotion.remaining;
+    directPromotion.selected.forEach((route) => addRoute(route, {
+      entryRound: ROUND.league,
+      path: "Direct",
+      qualifiedVia: "Champions League holder vacancy rebalancing",
+    }));
+    const secondRoundPromotions = access.publishedAccessList
+      ? takePublished(championsFirst, ["SVK", "SVN"])
+      : takeStrongest(championsFirst, 2);
+    championsFirst = secondRoundPromotions.remaining;
+    championsSecond.push(...secondRoundPromotions.selected.map((route) => ({
+      ...route,
+      entryRound: ROUND.second,
+      qualifiedVia: "Champions path · access-list rebalancing",
+    })));
+  }
+  if (europaHolderVacancy) {
+    const directPromotion = access.publishedAccessList
+      ? takePublished(leagueThird, ["POR"])
+      : takeStrongest(leagueThird, 1);
+    leagueThird = directPromotion.remaining;
+    directPromotion.selected.forEach((route) => addRoute(route, {
+      entryRound: ROUND.league,
+      path: "Direct",
+      qualifiedVia: "Europa League holder vacancy rebalancing",
+    }));
+    const thirdRoundPromotions = access.publishedAccessList
+      ? takePublished(leagueSecond, ["NOR", "GRE"])
+      : takeStrongest(leagueSecond, 2);
+    leagueSecond = thirdRoundPromotions.remaining;
+    leagueThird.push(...thirdRoundPromotions.selected.map((route) => ({
+      ...route,
+      entryRound: ROUND.third,
+      qualifiedVia: "League path · access-list rebalancing",
+    })));
+  }
+  if (roundPlaceCount("champions-league", ROUND.league, "Direct") !== 29) {
+    throw new Error("Champions League access-list rebalancing did not produce 29 direct entrants.");
+  }
+  addRoutes(championsFirst);
+  addRoutes(championsSecond);
+  addRoutes(accessList.championsLeague.championsPlayoff);
+  addRoutes(leagueSecond);
+  addRoutes(leagueThird);
 
-  const weakestFirst = [...UEFA_ASSOCIATIONS].reverse();
-  const eflCup = access.additionalCups?.find((cup) => cup.country === "ENG" && cup.name === "EFL Cup");
-  if (eflCup) {
-    if (!add(resolveClub(clubs, "ENG", eflCup.winner), "conference-league", ROUND.playoff, "Main path", "EFL Cup winner")) {
-      add(nextAvailable("ENG"), "conference-league", ROUND.playoff, "Main path", "League position · EFL Cup place passed down");
+  const conferenceHolder = previousChampion("conference-league");
+  if (conferenceHolder && !taken.has(clubKey(conferenceHolder))) {
+    if (add(conferenceHolder, "europa-league", ROUND.league, "Direct", "Conference League holder",
+      `${conferenceHolder.country}:conference-league:TH`)) {
+      extraTitleholders.add(clubKey(conferenceHolder));
     }
   }
-  add(nextAvailable("ISR"), "conference-league", ROUND.second, "Main path", "League position · Conference League");
-  add(nextAvailable("ISR"), "conference-league", ROUND.second, "Main path", "League position · Conference League");
-  addUntil(52, weakestFirst, "conference-league", ROUND.first, "Main path", "Cup or league place", EXPLICIT_DOMESTIC_ACCESS);
-  addUntil(54, weakestFirst, "conference-league", ROUND.second, "Main path", "Cup or league place", EXPLICIT_DOMESTIC_ACCESS);
-  addUntil(5, UEFA_ASSOCIATIONS, "conference-league", ROUND.playoff, "Main path", "Cup or league place", EXPLICIT_DOMESTIC_ACCESS);
+
+  const europaDirect = [...accessList.europaLeague.direct];
+  const europaPlayoff = [...accessList.europaLeague.playoff];
+  const europaThird = [...accessList.europaLeague.third];
+  const europaSecond = [...accessList.europaLeague.second];
+  let europaFirst = [...accessList.europaLeague.first];
+  if (europaHolderVacancy) {
+    const knockOnPromotions = europaFirst.slice(0, 4);
+    europaFirst = europaFirst.slice(4);
+    europaSecond.push(...knockOnPromotions.map((route) => ({
+      ...route,
+      entryRound: ROUND.second,
+      qualifiedVia: `${route.qualifiedVia} · Europa League holder vacancy rebalancing`,
+    })));
+  }
+  addRoutes(europaDirect);
+  addRoutes(europaPlayoff);
+  addRoutes(europaThird);
+  addRoutes(europaSecond);
+  addRoutes(europaFirst);
+
+  while (roundPlaceCount("europa-league", ROUND.league, "Direct") < 13) {
+    const candidate = places
+      .filter((place) => place.competition === "europa-league" && place.entryRound !== ROUND.league)
+      .map((place) => ({ place, state: resolveClub(clubs, place.country, place.club) }))
+      .filter((item): item is { place: EuropeanQualification; state: ClubSeasonState } => !!item.state)
+      .sort((left, right) => continentalClubStrength(right.state) - continentalClubStrength(left.state))[0];
+    if (!candidate) throw new Error("Unable to rebalance the Conference League holder place in the Europa League.");
+    candidate.place.entryRound = ROUND.league;
+    candidate.place.path = "Direct";
+    candidate.place.qualifiedVia = "Conference League holder vacancy rebalancing";
+  }
+
+  addRoutes(accessList.conferenceLeague.playoff);
+  addRoutes(accessList.conferenceLeague.second);
+  addRoutes(accessList.conferenceLeague.first);
 
   return places;
 }
@@ -325,18 +398,23 @@ function qualifierRound(
   round: string,
   path: string,
   entries: QualifiedClub[],
-  expectedWinners: number,
+  expectedWinners: number | undefined,
   impact: PlayerImpact,
   random: () => number,
 ): QualifyingResult {
-  if (entries.length !== expectedWinners * 2) {
-    throw new Error(`${competition} ${round} ${path} has ${entries.length} clubs; expected ${expectedWinners * 2}.`);
+  const winnerCount = expectedWinners ?? Math.ceil(entries.length / 2);
+  if (!Number.isInteger(winnerCount) || entries.length < winnerCount || entries.length > winnerCount * 2) {
+    const expectation = expectedWinners === undefined
+      ? "at least one club"
+      : `${expectedWinners}–${expectedWinners * 2}`;
+    throw new Error(`${competition} ${round} ${path} has ${entries.length} clubs; expected ${expectation}.`);
   }
   const ranked = rankedCandidates(entries, impact, random);
   const winners: QualifiedClub[] = [];
   const losers: QualifiedClub[] = [];
   const ties: PlayoffTie[] = [];
-  for (let index = 0; index < expectedWinners; index += 1) {
+  const tieCount = entries.length - winnerCount;
+  for (let index = 0; index < tieCount; index += 1) {
     const left = ranked[index];
     const right = ranked[ranked.length - 1 - index];
     const winningState = knockoutWinner(left.state, right.state, impact, random);
@@ -346,6 +424,10 @@ function qualifierRound(
     losers.push(loser);
     ties.push({ round, home: left.state.club, away: right.state.club, winner: winner.state.club });
   }
+  ranked.slice(tieCount, winnerCount).forEach((entry) => winners.push({
+    ...entry,
+    qualifiedVia: `${competition} ${round} · ${path} bye`,
+  }));
   return {
     winners,
     losers,
@@ -372,13 +454,13 @@ function simulateQualifiers(
   };
 
   const uclQ1 = record("champions-league", qualifierRound("Champions League", ROUND.first, "Champions path",
-    placeEntries(clubs, places, "champions-league", ROUND.first, "Champions path"), 14, impact, random));
+    placeEntries(clubs, places, "champions-league", ROUND.first, "Champions path"), undefined, impact, random));
   const uclQ2Cp = record("champions-league", qualifierRound("Champions League", ROUND.second, "Champions path", [
     ...uclQ1.winners,
     ...placeEntries(clubs, places, "champions-league", ROUND.second, "Champions path"),
-  ], 12, impact, random));
+  ], undefined, impact, random));
   const uclQ2Lp = record("champions-league", qualifierRound("Champions League", ROUND.second, "League path",
-    placeEntries(clubs, places, "champions-league", ROUND.second, "League path"), 2, impact, random));
+    placeEntries(clubs, places, "champions-league", ROUND.second, "League path"), undefined, impact, random));
   const uclQ3Cp = record("champions-league", qualifierRound("Champions League", ROUND.third, "Champions path",
     uclQ2Cp.winners, 6, impact, random));
   const uclQ3Lp = record("champions-league", qualifierRound("Champions League", ROUND.third, "League path", [
@@ -398,11 +480,11 @@ function simulateQualifiers(
   ];
 
   const uelQ1 = record("europa-league", qualifierRound("Europa League", ROUND.first, "Main path",
-    placeEntries(clubs, places, "europa-league", ROUND.first, "Main path"), 6, impact, random));
+    placeEntries(clubs, places, "europa-league", ROUND.first, "Main path"), undefined, impact, random));
   const uelQ2 = record("europa-league", qualifierRound("Europa League", ROUND.second, "Main path", [
     ...uelQ1.winners,
     ...placeEntries(clubs, places, "europa-league", ROUND.second, "Main path"),
-  ], 9, impact, random));
+  ], undefined, impact, random));
   const uelQ3Cp = record("europa-league", qualifierRound("Europa League", ROUND.third, "Champions path",
     withRoute(uclQ2Cp.losers, "Transferred from Champions League second qualifying round"), 6, impact, random));
   const uelQ3Mp = record("europa-league", qualifierRound("Europa League", ROUND.third, "Main path", [
@@ -414,17 +496,19 @@ function simulateQualifiers(
     ...uelQ3Cp.winners,
     ...withRoute(uclQ3Cp.losers, "Transferred from Champions League third qualifying round"),
   ], 6, impact, random));
-  const uelPoMp = record("europa-league", qualifierRound("Europa League", ROUND.playoff, "Main path", [
-    ...uelQ3Mp.winners,
-    ...placeEntries(clubs, places, "europa-league", ROUND.playoff, "Main path"),
-  ], 6, impact, random));
   const uclTransfers = [
     ...withRoute(uclQ3Lp.losers, "Transferred from Champions League third qualifying round"),
     ...withRoute(uclPoCp.losers, "Transferred from Champions League play-offs"),
     ...withRoute(uclPoLp.losers, "Transferred from Champions League play-offs"),
   ];
+  const uelDirect = placeEntries(clubs, places, "europa-league", ROUND.league, "Direct");
+  const uelMainPathWinnerTarget = 36 - uelDirect.length - uclTransfers.length - uelPoCp.winners.length;
+  const uelPoMp = record("europa-league", qualifierRound("Europa League", ROUND.playoff, "Main path", [
+    ...uelQ3Mp.winners,
+    ...placeEntries(clubs, places, "europa-league", ROUND.playoff, "Main path"),
+  ], uelMainPathWinnerTarget, impact, random));
   const uelLeague = [
-    ...placeEntries(clubs, places, "europa-league", ROUND.league, "Direct"),
+    ...uelDirect,
     ...withRoute(uelPoCp.winners, "Europa League play-off winner"),
     ...withRoute(uelPoMp.winners, "Europa League play-off winner"),
     ...uclTransfers,
@@ -433,16 +517,26 @@ function simulateQualifiers(
   const ueclQ1 = record("conference-league", qualifierRound("Conference League", ROUND.first, "Main path",
     placeEntries(clubs, places, "conference-league", ROUND.first, "Main path"), 26, impact, random));
   const uclQ1ToConference = uclQ1.losers;
+  const uclQ1ConferenceByeCount = 16 - uclQ1ToConference.length;
+  const drawnUclQ1Transfers = [...uclQ1ToConference];
+  for (let index = drawnUclQ1Transfers.length - 1; index > 0; index -= 1) {
+    const drawnIndex = Math.floor(random() * (index + 1));
+    [drawnUclQ1Transfers[index], drawnUclQ1Transfers[drawnIndex]] =
+      [drawnUclQ1Transfers[drawnIndex], drawnUclQ1Transfers[index]];
+  }
+  const uclQ1ConferenceByes = drawnUclQ1Transfers.slice(0, uclQ1ConferenceByeCount);
+  const uclQ1ConferenceQ2 = drawnUclQ1Transfers.slice(uclQ1ConferenceByeCount);
   const ueclQ2Cp = record("conference-league", qualifierRound("Conference League", ROUND.second, "Champions path",
-    withRoute(uclQ1ToConference.slice(0, 12), "Transferred from Champions League first qualifying round"), 6, impact, random));
+    withRoute(uclQ1ConferenceQ2, "Transferred from Champions League first qualifying round"),
+    undefined, impact, random));
   const ueclQ2Mp = record("conference-league", qualifierRound("Conference League", ROUND.second, "Main path", [
     ...ueclQ1.winners,
     ...placeEntries(clubs, places, "conference-league", ROUND.second, "Main path"),
     ...withRoute(uelQ1.losers, "Transferred from Europa League first qualifying round"),
-  ], 43, impact, random));
+  ], undefined, impact, random));
   const ueclQ3Cp = record("conference-league", qualifierRound("Conference League", ROUND.third, "Champions path", [
     ...ueclQ2Cp.winners,
-    ...withRoute(uclQ1ToConference.slice(12, 14), "Champions League balancing bye"),
+    ...withRoute(uclQ1ConferenceByes, "Champions League balancing bye draw"),
   ], 4, impact, random));
   const ueclQ3Mp = record("conference-league", qualifierRound("Conference League", ROUND.third, "Main path", [
     ...ueclQ2Mp.winners,
@@ -452,15 +546,17 @@ function simulateQualifiers(
     ...ueclQ3Cp.winners,
     ...withRoute(uelQ3Cp.losers, "Transferred from Europa League third qualifying round"),
   ], 5, impact, random));
+  const uelPlayoffTransfers = [...uelPoCp.losers, ...uelPoMp.losers];
+  const ueclMainPathWinnerTarget = 36 - ueclPoCp.winners.length - uelPlayoffTransfers.length;
   const ueclPoMp = record("conference-league", qualifierRound("Conference League", ROUND.playoff, "Main path", [
     ...ueclQ3Mp.winners,
     ...placeEntries(clubs, places, "conference-league", ROUND.playoff, "Main path"),
     ...withRoute(uelQ3Mp.losers, "Transferred from Europa League third qualifying round"),
-  ], 19, impact, random));
+  ], ueclMainPathWinnerTarget, impact, random));
   const ueclLeague = [
     ...withRoute(ueclPoCp.winners, "Conference League play-off winner"),
     ...withRoute(ueclPoMp.winners, "Conference League play-off winner"),
-    ...withRoute([...uelPoCp.losers, ...uelPoMp.losers], "Transferred from Europa League play-offs"),
+    ...withRoute(uelPlayoffTransfers, "Transferred from Europa League play-offs"),
   ];
 
   return {

@@ -246,8 +246,9 @@ test("every represented division is a complete catalog league", () => {
   const europeanTopFlights = new Set(CLUBS.filter((club) =>
     UEFA_ASSOCIATIONS.includes(club.country) && clubDivision(club) === 1,
   ).map((club) => club.country));
-  assert.equal(UEFA_ASSOCIATIONS.length, 53);
+  assert.equal(UEFA_ASSOCIATIONS.length, 54);
   assert.equal(europeanTopFlights.size, 53);
+  assert.equal(UEFA_ASSOCIATIONS.includes("LIE"), true);
   assert.equal(CLUBS.some((club) => club.country === "RUS"), false);
 
   const addedTopFlights = new Map([

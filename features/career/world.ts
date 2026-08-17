@@ -444,7 +444,14 @@ export function simulateWorldSeason(
     world.clubs,
     baselineCompetitions,
     baselineCupWinners,
-    { additionalCups },
+    {
+      additionalCups,
+      performanceSpots: ["ENG", "ESP"],
+      publishedAccessList: true,
+      previousChampions: {
+        "conference-league": { club: "Crystal Palace", country: "ENG" },
+      },
+    },
   );
   const continentalCompetitions = simulateUefaCompetitions(world.clubs, currentEuropeanQualification, impact, random);
   const europeanPerformance = calculateEuropeanPerformance(continentalCompetitions);

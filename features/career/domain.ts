@@ -49,6 +49,7 @@ export type PlayoffBracket = { name: string; country: string; competition: strin
 export type ContinentalClub = { club: string; country: string; qualifiedVia?: string };
 export type EuropeanCompetitionKey = "champions-league" | "europa-league" | "conference-league";
 export type EuropeanQualification = ContinentalClub & {
+  slotId?: string;
   competition: EuropeanCompetitionKey;
   entryRound: "League phase" | "First qualifying round" | "Second qualifying round" | "Third qualifying round" | "Play-off round";
   path: "Direct" | "Champions path" | "League path" | "Main path";
