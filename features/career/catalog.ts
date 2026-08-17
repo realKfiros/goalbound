@@ -249,6 +249,24 @@ export const SCENARIOS: Scenario[] = [
     ],
   },
   {
+    id: "return-from-injury", icon: "🧑‍⚕️", category: "Injury", title: "The physio clears you. The injured muscle requests an appeal",
+    description: "Training says available. The scan says improving. Your body has submitted a third opinion in the form of a suspicious twinge.", minAge: 18, maxFitness: 65,
+    options: [
+      { label: "Take the phased return", hint: "Lose a few matches, protect the next few years", outcomes: [{ probability: 1, label: "The comeback is boring, controlled and successful. The medical team frames the word 'boring'.", positive: true, effect: { fitness: 28, development: 1, roleBoost: -1 } }] },
+      { label: "Declare yourself fully fit", hint: "Immediate minutes, meaningful reinjury risk", outcomes: [{ probability: .42, label: "The muscle holds and your fearless return lifts the whole side.", positive: true, effect: { rating: 2, reputation: 6 } }, { probability: .58, label: "You last 23 minutes. The substitute is ready before the stretcher reaches the tunnel.", positive: false, effect: { rating: -3, fitness: -32, development: -2, potential: -1 } }] },
+      { label: "Request an independent scan", hint: "More certainty, less trust from the club doctor", outcomes: [{ probability: .75, label: "The second scan finds the problem. Rehab changes and the pain finally stops negotiating.", positive: true, effect: { fitness: 22, development: 2 } }, { probability: .25, label: "The scan finds nothing except an invoice and three more weeks of doubt.", positive: false, effect: { morale: -7, roleBoost: -1 } }] },
+    ],
+  },
+  {
+    id: "recurring-ankle", icon: "🦶", category: "Injury", title: "Your ankle has started remembering every old tackle",
+    description: "It can be managed, rested or repaired. Everyone agrees—right before recommending a different option.", minAge: 19, maxFitness: 78,
+    options: [
+      { label: "Accept a six-week rehab block", hint: "Short-term absence, safer long-term load", outcomes: [{ probability: 1, label: "You lose your place, then return without needing to tape half the boot room to your leg.", positive: true, effect: { fitness: 24, development: 1, roleBoost: -1 } }] },
+      { label: "Use an injection and keep playing", hint: "Big matches now, ankle consequences later", outcomes: [{ probability: .55, label: "The ankle survives the run-in and you deliver when the club needs you.", positive: true, effect: { rating: 1, reputation: 6, fitness: -5 } }, { probability: .45, label: "The pain disappears. Unfortunately, so does the ankle's remaining patience.", positive: false, effect: { rating: -2, fitness: -30, development: -2, potential: -1 } }] },
+      { label: "Choose surgery now", hint: "Longer road, stronger repair", outcomes: [{ probability: 1, label: "Rehab swallows the calendar, but the joint returns without its collection of alarming noises.", positive: true, effect: { rating: -1, fitness: 35, development: 2 } }] },
+    ],
+  },
+  {
     id: "boot-sponsor", icon: "👟", category: "Commercial", title: "Your boot deal clashes with the club sponsor",
     description: "You signed with one brand. The club signed with its sworn corporate enemy. Both insist this is about values.", minAge: 21,
     options: [

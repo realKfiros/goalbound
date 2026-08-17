@@ -108,6 +108,8 @@ export type Season = {
   after: number;
   trophies: number;
   event: string;
+  breakout?: boolean;
+  injury?: "minor" | "moderate" | "serious";
   honours?: AnnualHonours[];
 };
 

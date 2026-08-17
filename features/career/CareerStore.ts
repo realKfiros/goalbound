@@ -40,9 +40,9 @@ export class CareerStore {
   }
 
   get scenario() {
-    return this.game.scenarioId
-      ? SCENARIOS.find((item) => item.id === this.game.scenarioId) ?? null
-      : null;
+    if (!this.game.scenarioId) return null;
+    const scenario = SCENARIOS.find((item) => item.id === this.game.scenarioId);
+    return scenario && this.player ? careerEngine.materializeScenario(scenario, this.player, this.game.world) : scenario ?? null;
   }
 
   get achievements() {

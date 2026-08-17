@@ -445,6 +445,53 @@ test("season development can rise for a young player and fall with age or injury
   assert.ok(injurySeason.player.rating < injuredPrime.rating, `${injuredPrime.rating} -> ${injurySeason.player.rating}`);
 });
 
+test("a healthy high-potential youngster can have a genuine breakout season", () => {
+  const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
+  const bristol = club("Bristol City");
+  const player = eliteEnglishProspect("ENG", {
+    currentClub: bristol.name, position: "ST", age: 19,
+    rating: 61, potential: 92, value: 1_400_000,
+    reputation: 24, morale: 90, fitness: 100, lastRole: "Starter",
+  });
+  const rolls = [.5, .99, .99, .99, .5, 0, .5];
+  let index = 0;
+  const result = createCareerEngine(() => rolls[index++] ?? .5).simulateSeason(player, {
+    ...bristol, role: "Starter", label: "Stay", reason: "Test breakout", kind: "stay",
+  }, 1);
+
+  assert.equal(result.season.breakout, true);
+  assert.ok(result.player.rating - player.rating >= 7, `${player.rating} -> ${result.player.rating}`);
+  assert.ok(result.player.rating <= player.potential);
+});
+
+test("injuries record severity and can lead to a dedicated recovery decision", () => {
+  const { SCENARIOS } = loadTypeScriptModule("features/career/catalog.ts");
+  const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
+  const bristol = club("Bristol City");
+  const player = eliteEnglishProspect("ENG", {
+    currentClub: bristol.name, age: 28, rating: 72, potential: 80,
+    fitness: 70, morale: 72, contractYears: 3, lastRole: "Starter",
+  });
+  const injuryRolls = [.5, 0, 0];
+  let injuryIndex = 0;
+  const injuredSeason = createCareerEngine(() => injuryRolls[injuryIndex++] ?? .5).simulateSeason(player, {
+    ...bristol, role: "Starter", label: "Stay", reason: "Test injury", kind: "stay",
+  }, 1);
+  assert.equal(injuredSeason.season.injury, "serious");
+  assert.ok(injuredSeason.player.fitness < player.fitness);
+
+  const recoveryPlayer = {
+    ...injuredSeason.player,
+    lastAgentReviewAge: injuredSeason.player.age,
+    seenScenarios: SCENARIOS.filter((scenario) => scenario.id !== "return-from-injury").map((scenario) => scenario.id),
+    history: [{ ...injuredSeason.season, apps: 20 }, ...injuredSeason.player.history.slice(1)],
+  };
+  const recoveryBeat = createCareerEngine(() => .5).nextBeat(recoveryPlayer, recoveryPlayer.history[0]);
+  assert.equal(recoveryBeat.type, "scenario");
+  assert.equal(recoveryBeat.scenario.id, "return-from-injury");
+  assert.ok(recoveryBeat.scenario.options.length >= 3);
+});
+
 test("scenario answers can damage rating, potential and future development", () => {
   const { SCENARIOS } = loadTypeScriptModule("features/career/catalog.ts");
   const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
@@ -471,4 +518,23 @@ test("representation choices change the player's active market profile", () => {
   SCENARIOS.flatMap((item) => item.options).flatMap((option) => option.outcomes)
     .map((outcome) => outcome.effect.agent).filter(Boolean)
     .forEach((agent) => assert.ok(AGENT_PROFILES[agent], agent));
+});
+
+test("saved contextual scenarios do not leak template placeholders into the UI", () => {
+  const { SCENARIOS } = loadTypeScriptModule("features/career/catalog.ts");
+  const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
+  const { CareerStore } = loadTypeScriptModule("features/career/CareerStore.ts");
+  const store = new CareerStore();
+  const player = eliteEnglishProspect("ENG", {
+    currentClub: "Arsenal", age: 27, lastAgentReviewAge: 27,
+    seenScenarios: SCENARIOS.filter((scenario) => scenario.id !== "former-crowd-script").map((scenario) => scenario.id),
+    history: [{ fromAge: 23, toAge: 26, club: "Liverpool", country: "ENG", league: "Premier League", role: "Star", kind: "permanent", apps: 102, goals: 18, assists: 24, before: 76, after: 84, trophies: 2, event: "Former spell" }],
+  });
+  const engineBeat = createCareerEngine(() => .5).nextBeat(player, player.history[0]);
+  assert.equal(engineBeat.type, "scenario");
+  assert.equal(engineBeat.scenario.title, "The away end from Liverpool is singing about you");
+  store.game = { ...store.game, player, scenarioId: "former-crowd-script" };
+
+  assert.equal(store.scenario.title, "The away end from Liverpool is singing about you");
+  assert.doesNotMatch(JSON.stringify(store.scenario), /\{(?:club|league|formerClub)\}/);
 });

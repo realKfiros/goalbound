@@ -311,6 +311,11 @@ legend { margin-bottom: 13px; }
 .decision-dock .season-club { margin-top: 24px; }
 .decision-dock .season-club h3 { font-size: clamp(34px, 4.5vw, 58px); }
 .decision-dock .season-stage blockquote { margin: 24px 0 20px; }
+.season-alerts { margin: -8px 0 18px; display: flex; flex-wrap: wrap; gap: 8px; }
+.season-alerts span { padding: 9px 12px; font-size: 10px; letter-spacing: .02em; border: 1px solid var(--line); }
+.breakout-alert { color: var(--lime); background: rgba(199,255,53,.07); border-color: rgba(199,255,53,.35) !important; }
+.injury-alert { color: #f3c667; background: rgba(243,198,103,.06); border-color: rgba(243,198,103,.3) !important; text-transform: capitalize; }
+.injury-alert.serious { color: #ff8d80; background: rgba(255,82,65,.06); border-color: rgba(255,82,65,.34) !important; }
 .decision-dock .scenario-stage { padding: 34px; }
 .decision-dock .scenario-icon { width: 54px; height: 54px; margin-bottom: 16px; font-size: 26px; }
 .decision-dock .scenario-stage h3 { font-size: clamp(34px, 4.5vw, 58px); }

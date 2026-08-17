@@ -260,6 +260,12 @@ export function CareerScreen({
               <div><span>{game.lastSeason.kind === "loan" ? "Loan chapter" : game.lastSeason.kind === "stay" ? "Another chapter at" : "Chapter at"}</span><h3>{game.lastSeason.club}</h3><p>{game.lastSeason.league}</p></div>
             </div>
             <blockquote>{game.lastSeason.event}</blockquote>
+            {(game.lastSeason.breakout || game.lastSeason.injury) && (
+              <div className="season-alerts">
+                {game.lastSeason.breakout && <span className="breakout-alert">🚀 <b>Breakout season</b> · +{game.lastSeason.after - game.lastSeason.before} OVR</span>}
+                {game.lastSeason.injury && <span className={`injury-alert ${game.lastSeason.injury}`}>🏥 <b>{game.lastSeason.injury} injury</b> · fitness and development affected</span>}
+              </div>
+            )}
             <div className="season-numbers">
               <span><strong>{game.lastSeason.apps}</strong><small>Apps</small></span>
               <span><strong>{game.lastSeason.goals}</strong><small>Goals</small></span>
