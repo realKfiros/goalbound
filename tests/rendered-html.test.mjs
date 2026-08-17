@@ -96,3 +96,20 @@ test("keeps career rules, content, persistence, and rendering behind clear modul
   assert.match(leagueCatalog, /APOEL/);
   assert.doesNotMatch(game, /SkeletonPreview/);
 });
+
+test("the career finale creates a downloadable image and uses the native share sheet when available", async () => {
+  const [summaryScreen, careerShare] = await Promise.all([
+    readFile(new URL("../features/career/components/SummaryScreen.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../features/career/careerShare.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(summaryScreen, /Club journey/);
+  assert.match(summaryScreen, /Honours won/);
+  assert.match(summaryScreen, /Share to apps/);
+  assert.match(summaryScreen, /Download PNG/);
+  assert.match(summaryScreen, /Returning to a former club earns its own chapter/);
+  assert.match(careerShare, /canvas\.toBlob/);
+  assert.match(careerShare, /navigator\.canShare/);
+  assert.match(careerShare, /navigator\.share/);
+  assert.match(careerShare, /goalbound\.kfiros\.com/);
+});
