@@ -128,9 +128,51 @@ const NAME_POOLS: Record<string, NamePool> = {
     given: ["Santiago", "Emiliano", "Diego", "Sebastián", "Mateo", "Javier", "Gael", "Rodrigo"],
     family: ["Hernández", "García", "Martínez", "López", "González", "Ramírez", "Torres", "Flores"],
   },
+  ALB: {
+    given: ["Ardit", "Erion", "Klejdi", "Ledion", "Lorik", "Rei", "Taulant", "Ylber"],
+    family: ["Hoxha", "Krasniqi", "Kola", "Dervishi", "Gashi", "Leka", "Mema", "Shehu"],
+  },
+  ARM: {
+    given: ["Aram", "Davit", "Gor", "Hayk", "Narek", "Sargis", "Tigran", "Vahan"],
+    family: ["Grigoryan", "Harutyunyan", "Hovhannisyan", "Karapetyan", "Manukyan", "Mkrtchyan", "Petrosyan", "Sargsyan"],
+  },
+  BUL: {
+    given: ["Aleksandar", "Bozhidar", "Dimitar", "Georgi", "Ivan", "Martin", "Nikolay", "Petar"],
+    family: ["Dimitrov", "Georgiev", "Ivanov", "Kolev", "Nikolov", "Petrov", "Stoyanov", "Vasilev"],
+  },
+  FIN: {
+    given: ["Eero", "Elias", "Joona", "Lauri", "Mikael", "Onni", "Rasmus", "Tuomas"],
+    family: ["Heikkinen", "Järvinen", "Koskinen", "Laine", "Lehtonen", "Mäkinen", "Nieminen", "Virtanen"],
+  },
+  GEO: {
+    given: ["Giorgi", "Irakli", "Lasha", "Levan", "Luka", "Nika", "Saba", "Zurab"],
+    family: ["Beridze", "Davitashvili", "Gelashvili", "Kapanadze", "Kvaratskhelia", "Lomidze", "Maisuradze", "Tsiklauri"],
+  },
+  KAZ: {
+    given: ["Abat", "Alibek", "Askhat", "Bauyrzhan", "Daniyar", "Nuraly", "Serik", "Timur"],
+    family: ["Akhmetov", "Baltabayev", "Dosmanov", "Kassymov", "Nurgaliyev", "Sadykov", "Serikov", "Zhaksybayev"],
+  },
+  LVA: {
+    given: ["Artūrs", "Daniels", "Edgars", "Jānis", "Kristaps", "Mārtiņš", "Rihards", "Roberts"],
+    family: ["Bērziņš", "Jansons", "Kalniņš", "Liepiņš", "Ozoliņš", "Petrovs", "Siliņš", "Vītols"],
+  },
+  IRL: {
+    given: ["Adam", "Cian", "Conor", "Darragh", "Eoin", "Jack", "Oisín", "Ronan"],
+    family: ["Byrne", "Doyle", "Kelly", "Murphy", "O'Brien", "O'Connor", "Ryan", "Walsh"],
+  },
 };
 
 const DEFAULT_POOL = NAME_POOLS.ENG;
+const NAME_POOL_ALIASES: Record<string, string> = {
+  AND: "ESP", AZE: "TUR", BLR: "UKR", BIH: "CRO", EST: "FIN", FRO: "DEN",
+  GIB: "ENG", ISL: "NOR", KOS: "ALB", LTU: "LVA", LUX: "FRA", MLT: "ITA",
+  MDA: "ROU", MNE: "SRB", MKD: "SRB", NIR: "IRL", SMR: "ITA", SVK: "CZE",
+  SVN: "CRO", WAL: "ENG",
+};
+
+function namePool(countryCode: string) {
+  return NAME_POOLS[countryCode] ?? NAME_POOLS[NAME_POOL_ALIASES[countryCode]] ?? DEFAULT_POOL;
+}
 
 function pick(items: readonly string[], random: () => number) {
   const roll = Math.max(0, Math.min(.999999, random()));
@@ -138,7 +180,7 @@ function pick(items: readonly string[], random: () => number) {
 }
 
 export function generateName(countryCode: string, random: () => number = Math.random, avoid?: string) {
-  const pool = NAME_POOLS[countryCode] ?? DEFAULT_POOL;
+  const pool = namePool(countryCode);
   const given = pick(pool.given, random);
   let family = pick(pool.family, random);
   if (`${given} ${family}` === avoid) {
@@ -148,11 +190,11 @@ export function generateName(countryCode: string, random: () => number = Math.ra
 }
 
 export function availableNameCount(countryCode: string) {
-  const pool = NAME_POOLS[countryCode] ?? DEFAULT_POOL;
+  const pool = namePool(countryCode);
   return pool.given.length * pool.family.length;
 }
 
 export function isGeneratedName(countryCode: string, name: string) {
-  const pool = NAME_POOLS[countryCode] ?? DEFAULT_POOL;
+  const pool = namePool(countryCode);
   return pool.given.some((given) => pool.family.some((family) => `${given} ${family}` === name));
 }

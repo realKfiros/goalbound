@@ -2,7 +2,7 @@ import { CLUBS, country } from "./catalog";
 import type { Club, HonourCategory, HonourKind, TrophyRoom, TrophyRoomHonour } from "./domain";
 import { clubDivision } from "./finances";
 import { nationalCupName } from "./honours";
-import { UEFA_COMPETITION_DEFINITIONS } from "./uefaCompetitions";
+import { UEFA_COMPETITION_DEFINITIONS } from "./uefaSeason";
 
 export type TrophyCollectionEntry = {
   id: string;

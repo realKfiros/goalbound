@@ -47,6 +47,12 @@ export type StandingGroup = { name: string; clubs: string[] };
 export type PlayoffTie = { round: string; home: string; away: string; winner: string };
 export type PlayoffBracket = { name: string; country: string; competition: string; ties: PlayoffTie[] };
 export type ContinentalClub = { club: string; country: string; qualifiedVia?: string };
+export type EuropeanCompetitionKey = "champions-league" | "europa-league" | "conference-league";
+export type EuropeanQualification = ContinentalClub & {
+  competition: EuropeanCompetitionKey;
+  entryRound: "League phase" | "First qualifying round" | "Second qualifying round" | "Third qualifying round" | "Play-off round";
+  path: "Direct" | "Champions path" | "League path" | "Main path";
+};
 export type ContinentalStanding = ContinentalClub & {
   played: number;
   won: number;
@@ -58,13 +64,14 @@ export type ContinentalStanding = ContinentalClub & {
   points: number;
 };
 export type ContinentalCompetition = {
-  key: "champions-league" | "europa-league" | "conference-league";
+  key: EuropeanCompetitionKey;
   name: string;
   shortName: string;
   leagueMatches: number;
   entrants: ContinentalClub[];
   table: ContinentalStanding[];
   champion: ContinentalClub;
+  qualifyingBrackets: PlayoffBracket[];
   bracket: PlayoffBracket;
 };
 export type AnnualHonours = {
@@ -81,6 +88,7 @@ export type AnnualHonours = {
   divisionRoll?: DivisionHonours[];
   cupRoll?: CupHonours[];
   continentalRoll?: ContinentalCompetition[];
+  nextSeasonEuropeanQualification?: EuropeanQualification[];
   movements?: WorldMovement[];
   standingGroups?: StandingGroup[];
   playoffBrackets?: PlayoffBracket[];
@@ -161,6 +169,7 @@ export type WorldSeasonRecord = {
   movements: WorldMovement[];
   continentalChampions?: Partial<Record<ContinentalCompetition["key"], ContinentalClub>>;
   europeanPerformance?: Record<string, number>;
+  nextEuropeanQualification?: EuropeanQualification[];
 };
 export type WorldState = {
   version: 1;
@@ -195,6 +204,16 @@ export type Scenario = {
   minReputation?: number;
   maxFitness?: number;
   requiresAbroad?: boolean;
+  countryTags?: string[];
+  allowedPositions?: string[];
+  minClubLevel?: number;
+  maxClubLevel?: number;
+  minClubSeasons?: number;
+  minPreviousFinish?: number;
+  maxPreviousFinish?: number;
+  maxMorale?: number;
+  requiresEuropeanPlace?: boolean;
+  requiresFormerClub?: boolean;
   allowedAgents?: string[];
   needsCaps?: boolean;
   options: ScenarioOption[];

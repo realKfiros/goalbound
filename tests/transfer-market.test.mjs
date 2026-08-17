@@ -270,12 +270,14 @@ test("former clubs return only when the sporting and financial level is realisti
   const declinedVeteran = {
     ...liverpoolPrime, age: 33, rating: 74, potential: 90, value: 4_000_000,
     history: [{
-      fromAge: 32, toAge: 33, club: "Liverpool", country: "ENG", league: "Premier League",
-      role: "Rotation", kind: "stay", apps: 12, goals: 1, assists: 1,
-      before: 81, after: 74, trophies: 0, event: "A difficult year",
+      fromAge: 27, toAge: 32, club: "Liverpool", country: "ENG", league: "Premier League",
+      role: "Star", kind: "stay", apps: 168, goals: 54, assists: 39,
+      before: 90, after: 81, trophies: 6, event: "Reached the highest level",
     }, maccabiSeason],
   };
-  const returnOffer = sampledDirectMarket(declinedVeteran).find((offer) => offer.name === "Maccabi Haifa");
+  const veteranMarket = sampledDirectMarket(declinedVeteran, 1400);
+  assert.equal(veteranMarket.some((offer) => offer.name === "Liverpool"), false);
+  const returnOffer = veteranMarket.find((offer) => offer.name === "Maccabi Haifa");
   assert.ok(returnOffer);
   assert.equal(returnOffer.label, "Former-club return");
 });

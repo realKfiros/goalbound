@@ -153,7 +153,7 @@ test("loaded pyramids move clubs atomically and preserve every division size", (
 
 test("European competitions qualify exclusive fields and play the current league-phase format", () => {
   const { createWorldState, simulateWorldSeason } = loadTypeScriptModule("features/career/world.ts");
-  const { UEFA_ASSOCIATIONS } = loadTypeScriptModule("features/career/uefaCompetitions.ts");
+  const { UEFA_ASSOCIATIONS } = loadTypeScriptModule("features/career/uefaSeason.ts");
   const simulation = simulateWorldSeason(createWorldState(), { club: "", boost: 0 }, seededRandom(202627));
   const competitions = simulation.continentalCompetitions;
 
@@ -166,6 +166,14 @@ test("European competitions qualify exclusive fields and play the current league
   const allEntrants = competitions.flatMap((competition) => competition.entrants.map((club) => `${club.country}:${club.club}`));
   assert.equal(allEntrants.length, 108);
   assert.equal(new Set(allEntrants).size, 108);
+  assert.equal(UEFA_ASSOCIATIONS.length, 53);
+  assert.equal(UEFA_ASSOCIATIONS.includes("RUS"), false);
+
+  const expectedQualifyingTies = new Map([
+    ["Champions League", 45],
+    ["Europa League", 40],
+    ["Conference League", 129],
+  ]);
 
   competitions.forEach((competition) => {
     assert.equal(competition.entrants.length, 36, competition.name);
@@ -176,6 +184,11 @@ test("European competitions qualify exclusive fields and play the current league
     assert.ok(competition.table.every((club) => club.won + club.drawn + club.lost === club.played), competition.name);
     assert.ok(competition.table.every((club) => club.points === club.won * 3 + club.drawn), competition.name);
     assert.ok(competition.table.every((club, index, table) => index === 0 || table[index - 1].points >= club.points), competition.name);
+    assert.equal(
+      competition.qualifyingBrackets.reduce((total, bracket) => total + bracket.ties.length, 0),
+      expectedQualifyingTies.get(competition.name),
+      `${competition.name} qualifying ties`,
+    );
     assert.deepEqual(
       Object.fromEntries(["Knockout phase play-off", "Round of 16", "Quarter-final", "Semi-final", "Final"]
         .map((round) => [round, competition.bracket.ties.filter((tie) => tie.round === round).length])),
@@ -212,13 +225,21 @@ test("European access routes carry titleholders and performance spots into the n
   const performanceAssociations = Object.entries(first.world.history.at(-1).europeanPerformance)
     .sort((left, right) => right[1] - left[1]).slice(0, 2).map(([country]) => country);
   performanceAssociations.forEach((country) => {
-    assert.ok(championsEntrants.some((club) => club.country === country && club.qualifiedVia === "European performance spot"), country);
+    assert.ok(championsEntrants.some((club) => club.country === country && club.qualifiedVia === "European Performance Spot"), country);
   });
+
+  const projectedDirectPlaces = first.nextSeasonEuropeanQualification.filter((place) => place.entryRound === "League phase");
+  projectedDirectPlaces.forEach((place) => {
+    const currentField = secondByKey.get(place.competition).entrants;
+    assert.ok(currentField.some((club) => club.country === place.country && club.club === place.club),
+      `${place.country}:${place.club} should enter the following season`);
+  });
+  assert.deepEqual(first.world.history.at(-1).nextEuropeanQualification, first.nextSeasonEuropeanQualification);
 });
 
 test("continental calibration keeps domestic giants realistic in Europe", () => {
   const { createWorldState, simulateWorldSeason } = loadTypeScriptModule("features/career/world.ts");
-  const { continentalClubStrength } = loadTypeScriptModule("features/career/uefaCompetitions.ts");
+  const { continentalClubStrength } = loadTypeScriptModule("features/career/uefaSeason.ts");
   const world = createWorldState();
   assert.ok(continentalClubStrength(world.clubs["ESP:Real Madrid"]) - continentalClubStrength(world.clubs["CRO:Dinamo Zagreb"]) >= 20);
   assert.ok(continentalClubStrength(world.clubs["ENG:Liverpool"]) - continentalClubStrength(world.clubs["SCO:Celtic"]) >= 12);

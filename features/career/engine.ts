@@ -3,7 +3,7 @@ import { DEVELOPMENT_MARKETS, VETERAN_MARKETS, agentProfile } from "./agents";
 import { clubDivision, maxSingleFee } from "./finances";
 import { simulateHonoursWithWorld } from "./honours";
 import { generateName } from "./names";
-import { clubInWorld, createWorldState } from "./world";
+import { clubInWorld, clubSeasonState, createWorldState } from "./world";
 import type {
   CareerBeat,
   CareerDecision,
@@ -75,6 +75,19 @@ export function createCareerEngine(random = Math.random) {
     if (familiarCountry) return "familiar-country" as const;
     return "new-foreign" as const;
   }
+  function formerClubReturnFits(club: Club, player: Player) {
+    const spells = player.history.filter((season) => season.club === club.name && season.country === club.country);
+    if (!spells.length) return false;
+    const seasonsPlayed = spells.reduce((total, season) => total + Math.max(1, season.toAge - season.fromAge), 0);
+    const appearances = spells.reduce((total, season) => total + season.apps, 0);
+    if (seasonsPlayed < 2 && appearances < 35) return false;
+    const peakAtClub = Math.max(...spells.flatMap((season) => [season.before, season.after]));
+    const minimumRating = ({ 5: 82, 4: 74, 3: 68, 2: 61, 1: 54 } as Record<number, number>)[club.level] ?? 54;
+    if (player.rating < minimumRating || player.rating < peakAtClub - 12) return false;
+    const yearsAway = Math.max(0, player.age - Math.max(...spells.map((season) => season.toAge)));
+    if (!isDeclining(player) && yearsAway < 2) return false;
+    return club.level <= idealClubLevel(player) + (isDeclining(player) ? 1 : 0);
+  }
   function agentCanReach(club: Club, player: Player, world?: WorldState | null) {
     const route = marketRoute(club, player, world);
     if (route !== "new-foreign") return true;
@@ -87,6 +100,7 @@ export function createCareerEngine(random = Math.random) {
   function isPlausibleMarketClub(club: Club, player: Player, world?: WorldState | null) {
     const route = marketRoute(club, player, world);
     const current = currentClubFor(player, world);
+    if (route === "former-club" && !formerClubReturnFits(club, player)) return false;
     if (clubDivision(club) > 1 && !["former-club", "current-country", "home-country", "familiar-country"].includes(route)) return false;
     if (player.age < 18 && club.country !== player.nation && club.country !== current?.country) return false;
     if (!agentCanReach(club, player, world)) return false;
@@ -159,7 +173,7 @@ export function createCareerEngine(random = Math.random) {
     });
     const routeWeight = (club: Club) => {
       const route = marketRoute(club, player, world);
-      const base = route === "former-club" ? profile.formerClubWeight * (declining ? 1.8 : .55)
+      const base = route === "former-club" ? profile.formerClubWeight * (declining ? .18 : .06)
         : route === "current-country" ? profile.domesticWeight
           : route === "home-country" ? profile.homeWeight * (declining ? 1.45 : 1)
             : route === "familiar-country" ? profile.familiarCountryWeight * (declining ? 1.35 : 1)
@@ -204,19 +218,48 @@ export function createCareerEngine(random = Math.random) {
         : { label: `Stay at ${club.name}`, reason: role === "Prospect" ? "Fight for a place without uprooting your life" : "Continuity, trust and unfinished business" };
     return makeOffer(club, player, copy.label, kind, role, copy.reason);
   }
-  function eligibleScenario(player: Player) {
-    const current = currentClubFor(player);
+  function eligibleScenario(player: Player, world?: WorldState | null) {
+    const current = currentClubFor(player, world);
+    const currentState = current ? clubSeasonState(world, current.name, current.country) : undefined;
+    const hasEuropeanPlace = !!world?.history.at(-1)?.nextEuropeanQualification?.some((place) =>
+      place.club === player.currentClub && place.country === current?.country);
+    const formerClub = player.history.find((season) => season.club !== player.currentClub)?.club ?? "your former club";
     const fits = (item: Scenario) => (!item.minAge || player.age >= item.minAge)
       && (!item.maxAge || player.age <= item.maxAge)
       && (!item.minRating || player.rating >= item.minRating)
       && (!item.minReputation || player.reputation >= item.minReputation)
       && (!item.maxFitness || player.fitness <= item.maxFitness)
+      && (!item.maxMorale || player.morale <= item.maxMorale)
       && (!item.requiresAbroad || !!current && current.country !== player.nation)
+      && (!item.countryTags || !!current && item.countryTags.includes(current.country))
+      && (!item.allowedPositions || item.allowedPositions.includes(player.position))
+      && (!item.minClubLevel || !!current && current.level >= item.minClubLevel)
+      && (!item.maxClubLevel || !!current && current.level <= item.maxClubLevel)
+      && (!item.minClubSeasons || player.clubSeasons >= item.minClubSeasons)
+      && (!item.minPreviousFinish || !!currentState?.previousFinish && currentState.previousFinish >= item.minPreviousFinish)
+      && (!item.maxPreviousFinish || !!currentState?.previousFinish && currentState.previousFinish <= item.maxPreviousFinish)
+      && (!item.requiresEuropeanPlace || hasEuropeanPlace)
+      && (!item.requiresFormerClub || player.history.some((season) => season.club !== player.currentClub))
       && (!item.allowedAgents || item.allowedAgents.includes(player.agent))
       && (!item.needsCaps || player.caps > 0);
     const available = SCENARIOS.filter((item) => !player.seenScenarios.includes(item.id) && fits(item));
     const fallback = SCENARIOS.filter(fits);
-    return shuffle(available.length ? available : fallback)[0];
+    const selected = shuffle(available.length ? available : fallback)[0];
+    const replace = (value: string) => value
+      .replaceAll("{club}", player.currentClub)
+      .replaceAll("{league}", current?.league ?? "the league")
+      .replaceAll("{formerClub}", formerClub);
+    return {
+      ...selected,
+      title: replace(selected.title),
+      description: replace(selected.description),
+      options: selected.options.map((option) => ({
+        ...option,
+        label: replace(option.label),
+        hint: replace(option.hint),
+        outcomes: option.outcomes.map((outcome) => ({ ...outcome, label: replace(outcome.label) })),
+      })),
+    };
   }
   function positionRates(position: string, rating: number) {
     const quality = clamp((rating - 55) / 45, 0, 1);
@@ -370,7 +413,7 @@ export function createCareerEngine(random = Math.random) {
       const offers = [...(!notRetained && promotion ? [promotion] : []), ...(notRetained ? permanentOffers(player, 3, false, world) : externalOffers(player, 2, false, false, world))];
       return decision(notRetained ? "released" : "graduation", notRetained ? `${player.currentClub} will not offer senior terms` : "Academy graduation day has arrived", notRetained ? "The development report uses the phrase ‘different pathway’. Your access card stops working on Monday." : "The youth-team shirt is finished. You can join the senior queue, take a loan, or leave before becoming training-cone furniture.", offers);
     }
-    if (player.squad === "academy") return random() < .46 ? { type: "scenario", scenario: eligibleScenario(player) } : ordinaryDecision(player, world);
+    if (player.squad === "academy") return random() < .46 ? { type: "scenario", scenario: eligibleScenario(player, world) } : ordinaryDecision(player, world);
     if (latest?.kind === "loan") {
       const returning = stayOffer(player, "stay", world);
       return decision("loan-return", `The loan is over. ${player.currentClub} wants an answer.`, "The parent club says it watched every minute. Your agent says that sentence was delivered while someone searched for your name.", [...(returning ? [returning] : []), ...externalOffers(player, 2, false, false, world)]);
@@ -390,7 +433,7 @@ export function createCareerEngine(random = Math.random) {
     if ((latest?.apps ?? 99) / seasons < 12 && player.age >= 20 && random() < .42) {
       return decision("released", `${player.currentClub} no longer sees a role for you`, "The manager says this is purely professional, which is football language for ‘please choose one of these exits’.", permanentOffers(player, 3, false, world));
     }
-    return random() < .54 ? { type: "scenario", scenario: eligibleScenario(player) } : ordinaryDecision(player, world);
+    return random() < .54 ? { type: "scenario", scenario: eligibleScenario(player, world) } : ordinaryDecision(player, world);
   }
 
   function resolveScenario(player: Player, scenario: Scenario, option: ScenarioOption): ScenarioResolution {

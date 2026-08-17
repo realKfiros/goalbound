@@ -16,6 +16,11 @@ features/career/
   domain.ts                  Shared career types and default save state
   catalog.ts                 Countries, featured club details, and scenarios
   leagueCatalog.ts           Complete researched league membership
+  europeanTopFlights.ts      Remaining UEFA top-flight memberships
+  competitionFormats.ts      Domestic title, playoff, and pyramid rules
+  uefaSeason.ts              UEFA access lists, qualifiers, and league phases
+  world.ts                   Persistent club strength and competition simulation
+  honours.ts                 Domestic, continental, and individual awards
   engine.ts                  Career simulation and decision rules
   storage.ts                 Device-local save adapter
   styles.ts                  Goalbound styled-components global styles
@@ -28,6 +33,8 @@ features/career/
 tests/
   rendered-html.test.mjs     Render and module-shape checks
   transfer-market.test.mjs   Deterministic offer-realism regression checks
+  world.test.mjs             Competition, pyramid, and UEFA format checks
+  honours.test.mjs           Awards and trophy-room checks
 ```
 
 ## Module seams
@@ -41,9 +48,11 @@ The career engine is the main behavioural module. Its interface exposes:
 - `resolveScenario`
 - `achievements`
 
-Football content can be edited in `catalog.ts` and `leagueCatalog.ts` without
-touching the rules. Complete league membership is kept apart from hand-tuned
-club identities so season updates do not disturb the career engine.
+Football content can be edited in `catalog.ts`, `leagueCatalog.ts`, and
+`europeanTopFlights.ts` without touching the rules. Complete league membership
+is kept apart from hand-tuned club identities so season updates do not disturb
+the career engine. Domestic rules live in `competitionFormats.ts`; UEFA access
+and tournament formats live in `uefaSeason.ts`.
 Rendering can change inside `components/` without touching the simulation.
 `CareerStore.ts` owns application state and coordinates browser persistence
 through the adapters isolated in `storage.ts`.

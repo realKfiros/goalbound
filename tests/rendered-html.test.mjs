@@ -23,12 +23,14 @@ test("server-renders the Goalbound career simulator", async () => {
   assert.match(html, /<title>Goalbound — Your Football Career<\/title>/i);
   assert.match(html, /A career, not a transfer tour/);
   assert.match(html, /Every represented division is complete/);
-  assert.match(html, /738(?:<!-- -->)? real clubs/);
-  assert.match(html, /aria-label="31 playable nations"/);
+  assert.match(html, /1061(?:<!-- -->)? real clubs/);
+  assert.match(html, /aria-label="59 playable nations"/);
   assert.match(html, /title="Israel"/);
   assert.match(html, /title="Poland"/);
   assert.match(html, /title="Cyprus"/);
   assert.match(html, /title="Hungary"/);
+  assert.match(html, /title="Albania"/);
+  assert.match(html, /title="San Marino"/);
   assert.match(html, /Draw my starting route|Start your career/);
   assert.match(html, /Trophy room/);
   assert.match(html, /data-styled(?:-version)?=/);

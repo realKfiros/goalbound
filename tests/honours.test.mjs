@@ -213,9 +213,17 @@ test("every represented division is a complete catalog league", () => {
     actual.set(key, (actual.get(key) ?? 0) + 1);
   });
 
-  assert.equal(CLUBS.length, 738);
-  assert.equal(COMPLETE_LEAGUE_CLUB_COUNT, 738);
+  assert.equal(CLUBS.length, 1061);
+  assert.equal(COMPLETE_LEAGUE_CLUB_COUNT, 1061);
   assert.deepEqual(actual, expected);
+
+  const { UEFA_ASSOCIATIONS } = loadTypeScriptModule("features/career/uefaSeason.ts");
+  const europeanTopFlights = new Set(CLUBS.filter((club) =>
+    UEFA_ASSOCIATIONS.includes(club.country) && clubDivision(club) === 1,
+  ).map((club) => club.country));
+  assert.equal(UEFA_ASSOCIATIONS.length, 53);
+  assert.equal(europeanTopFlights.size, 53);
+  assert.equal(CLUBS.some((club) => club.country === "RUS"), false);
 
   const addedTopFlights = new Map([
     ["AUT:Austrian Bundesliga", 12],

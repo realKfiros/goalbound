@@ -401,6 +401,7 @@ function simulateCompetition(definition: Definition, entrants: QualifiedClub[], 
     entrants: entrants.map(({ state, qualifiedVia }) => ({ club: state.club, country: state.country, qualifiedVia })),
     table,
     champion: { club: champion.club, country: champion.country },
+    qualifyingBrackets: [],
     bracket: { name: `${definition.shortName} knockout phase`, country: "EUROPE", competition: definition.name, ties },
   };
 }

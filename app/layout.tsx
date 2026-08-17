@@ -8,7 +8,7 @@ const geist = Geist({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://goalbound-career.realkfiros.chatgpt.site"),
+  metadataBase: new URL("https://goalbound.kfiros.com"),
   title: "Goalbound — Your Football Career",
   description: "Begin in an academy, a smaller senior side or as a rare gem, then build a football career across real clubs and consequential decisions.",
   openGraph: {

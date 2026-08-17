@@ -36,6 +36,34 @@ const EXTRA_COUNTRIES: Country[] = [
   { code: "SAU", name: "Saudi Arabia", flag: "🇸🇦", threshold: 72 },
   { code: "JPN", name: "Japan", flag: "🇯🇵", threshold: 75 },
   { code: "MEX", name: "Mexico", flag: "🇲🇽", threshold: 76 },
+  { code: "ALB", name: "Albania", flag: "🇦🇱", threshold: 75 },
+  { code: "AND", name: "Andorra", flag: "🇦🇩", threshold: 68 },
+  { code: "ARM", name: "Armenia", flag: "🇦🇲", threshold: 73 },
+  { code: "AZE", name: "Azerbaijan", flag: "🇦🇿", threshold: 73 },
+  { code: "BLR", name: "Belarus", flag: "🇧🇾", threshold: 74 },
+  { code: "BIH", name: "Bosnia and Herzegovina", flag: "🇧🇦", threshold: 77 },
+  { code: "BUL", name: "Bulgaria", flag: "🇧🇬", threshold: 76 },
+  { code: "EST", name: "Estonia", flag: "🇪🇪", threshold: 70 },
+  { code: "FRO", name: "Faroe Islands", flag: "🇫🇴", threshold: 70 },
+  { code: "FIN", name: "Finland", flag: "🇫🇮", threshold: 75 },
+  { code: "GEO", name: "Georgia", flag: "🇬🇪", threshold: 78 },
+  { code: "GIB", name: "Gibraltar", flag: "🇬🇮", threshold: 67 },
+  { code: "ISL", name: "Iceland", flag: "🇮🇸", threshold: 75 },
+  { code: "KAZ", name: "Kazakhstan", flag: "🇰🇿", threshold: 73 },
+  { code: "KOS", name: "Kosovo", flag: "🇽🇰", threshold: 74 },
+  { code: "LVA", name: "Latvia", flag: "🇱🇻", threshold: 71 },
+  { code: "LTU", name: "Lithuania", flag: "🇱🇹", threshold: 71 },
+  { code: "LUX", name: "Luxembourg", flag: "🇱🇺", threshold: 75 },
+  { code: "MLT", name: "Malta", flag: "🇲🇹", threshold: 70 },
+  { code: "MDA", name: "Moldova", flag: "🇲🇩", threshold: 71 },
+  { code: "MNE", name: "Montenegro", flag: "🇲🇪", threshold: 75 },
+  { code: "MKD", name: "North Macedonia", flag: "🇲🇰", threshold: 75 },
+  { code: "NIR", name: "Northern Ireland", flag: "🇬🇧", threshold: 74 },
+  { code: "IRL", name: "Republic of Ireland", flag: "🇮🇪", threshold: 75 },
+  { code: "SMR", name: "San Marino", flag: "🇸🇲", threshold: 64 },
+  { code: "SVK", name: "Slovakia", flag: "🇸🇰", threshold: 78 },
+  { code: "SVN", name: "Slovenia", flag: "🇸🇮", threshold: 79 },
+  { code: "WAL", name: "Wales", flag: "🏴", threshold: 77 },
 ];
 
 export const COUNTRIES = [...ORIGINAL_START_COUNTRIES, ...EXTRA_COUNTRIES];
@@ -339,6 +367,103 @@ export const SCENARIOS: Scenario[] = [
     options: [
       { label: "Sign with the veteran broker", hint: "Homecomings and late-career markets", outcomes: [{ probability: 1, label: "The next calls are more realistic—and considerably more specific.", positive: true, effect: { agent: "Veteran broker", value: 1.05 } }] },
       { label: "Stay with your current representation", hint: "Keep chasing the existing market", outcomes: [{ probability: 1, label: "The plan stays unchanged. Time, less helpfully, does not.", positive: true, effect: { morale: 2 } }] },
+    ],
+  },
+  {
+    id: "emergency-goalkeeper", icon: "🧤", category: "Matchday", title: "The substitute goalkeeper has pulled something during the warm-up",
+    description: "The coach scans the dressing room for volunteers. Every outfield player suddenly becomes fascinated by their own boots.", minAge: 18,
+    allowedPositions: ["LW", "ST", "RW", "CAM", "CM", "CDM", "LB", "CB", "RB"],
+    options: [
+      { label: "Take the gloves", hint: "Heroism with unfamiliar handwear", outcomes: [{ probability: .38, label: "You save a penalty and spend the next month requesting goalkeeper bonuses.", positive: true, effect: { reputation: 12, morale: 10, development: 1 } }, { probability: .62, label: "Your first dive begins after the ball reaches the net. The gloves are returned quietly.", positive: false, effect: { morale: -8, reputation: -2 } }] },
+      { label: "Nominate the tallest centre-back", hint: "Leadership through delegation", outcomes: [{ probability: 1, label: "He agrees, then adds your name to a private list titled 'people to remember.'", positive: true, effect: { morale: 3 } }] },
+    ],
+  },
+  {
+    id: "public-half-time", icon: "📢", category: "Touchline theatre", title: "The manager starts the half-time talk on the pitch",
+    description: "{club} are losing badly and the tunnel remains unused. The television director has never been happier.", countryTags: ["ENG", "NIR", "SCO", "WAL"], minPreviousFinish: 8, maxMorale: 75,
+    options: [
+      { label: "Stand beside him", hint: "Public solidarity, public volume", outcomes: [{ probability: .46, label: "The spectacle becomes a rally and {club} rescue the match.", positive: true, effect: { morale: 12, reputation: 6, development: 1 } }, { probability: .54, label: "The lecture continues long enough for the opponents to finish their tea.", positive: false, effect: { morale: -10 } }] },
+      { label: "Walk into the dressing room", hint: "There are still chairs in there", outcomes: [{ probability: 1, label: "Three teammates follow. The manager calls it a tactical subgroup.", positive: true, effect: { fitness: 4 } }] },
+    ],
+  },
+  {
+    id: "living-mascot", icon: "🐐", category: "Club tradition", title: "The living mascot has selected your boots for lunch",
+    description: "The animal is a beloved club institution. Your limited-edition boots are apparently a beloved source of fibre.", countryTags: ["GER"], minClubSeasons: 1,
+    options: [
+      { label: "Accept ceremonial feeding duty", hint: "Tradition outranks footwear", outcomes: [{ probability: 1, label: "Supporters adore the photographs. The boot sponsor requests a meeting without the mascot.", positive: true, effect: { reputation: 7, morale: 5 } }] },
+      { label: "Rescue the boots", hint: "Fast feet finally prove commercially useful", outcomes: [{ probability: .7, label: "Boots saved, dignity mostly intact.", positive: true, effect: { morale: 4 } }, { probability: .3, label: "The mascot wins possession and refuses to release it.", positive: false, effect: { value: .97 } }] },
+    ],
+  },
+  {
+    id: "qualifier-kit-bag", icon: "👕", category: "European qualifier", title: "The kit bag has reached the wrong country",
+    description: "{club} have a European tie tonight. The shirts are enjoying a completely different capital city.", requiresEuropeanPlace: true, maxClubLevel: 3,
+    options: [
+      { label: "Wear the emergency shirts", hint: "Names added with optimism and tape", outcomes: [{ probability: .72, label: "The improvised kit becomes a collector's item after {club} advance.", positive: true, effect: { reputation: 6, morale: 8 } }, { probability: .28, label: "Your taped number leaves at half-time. You finish the match as a punctuation mark.", positive: false, effect: { morale: -4 } }] },
+      { label: "Delay kick-off for the courier", hint: "Trust logistics in extra time", outcomes: [{ probability: .5, label: "The bag arrives with six minutes to spare and the courier receives a standing ovation.", positive: true, effect: { fitness: 3 } }, { probability: .5, label: "The courier reaches the stadium tomorrow, extremely prepared.", positive: false, effect: { reputation: -3 } }] },
+    ],
+  },
+  {
+    id: "broken-goalpost", icon: "🥅", category: "Ground trouble", title: "One goal is visibly shorter than the other",
+    description: "The referee has found a tape measure. The groundskeeper has found a saw. Nobody has found confidence.", maxClubLevel: 2,
+    options: [
+      { label: "Help the ground staff", hint: "Unexpected practical leadership", outcomes: [{ probability: 1, label: "The goal is repaired. Your technique with a spirit level earns louder applause than warm-up.", positive: true, effect: { reputation: 5, morale: 5 } }] },
+      { label: "Keep warming up", hint: "Professional distance from carpentry", outcomes: [{ probability: .65, label: "The match starts late and normally.", positive: true, effect: { fitness: 3 } }, { probability: .35, label: "You over-warm up and begin the match feeling 47 years old.", positive: false, effect: { fitness: -8 } }] },
+    ],
+  },
+  {
+    id: "pitch-cup-pause", icon: "🥤", category: "Crowd control", title: "One plastic cup has stopped the entire match",
+    description: "The object lands near the pitch. The officials apply the rule with the solemnity of a constitutional crisis.", countryTags: ["NED"], minAge: 18,
+    options: [
+      { label: "Ask the crowd to calm down", hint: "Diplomacy under beverage pressure", outcomes: [{ probability: .78, label: "The message works and the restart arrives before everyone forgets the score.", positive: true, effect: { reputation: 7 } }, { probability: .22, label: "Your appeal inspires a second cup and a much longer meeting.", positive: false, effect: { morale: -5 } }] },
+      { label: "Stay completely out of it", hint: "Hydration without intervention", outcomes: [{ probability: 1, label: "You complete another warm-up. Fitness coaches call this a data opportunity.", positive: true, effect: { fitness: 2 } }] },
+    ],
+  },
+  {
+    id: "former-crowd-script", icon: "🫶", category: "Former club", title: "The away end from {formerClub} is singing about you",
+    description: "The relationship survived your departure, although the exact lyrics suggest several unresolved footnotes.", requiresFormerClub: true, minAge: 21, minClubSeasons: 1,
+    options: [
+      { label: "Promise not to celebrate", hint: "Respect, unless muscle memory intervenes", outcomes: [{ probability: .58, label: "You score and keep the promise. Both sets of supporters briefly approve of the same person.", positive: true, effect: { reputation: 10, morale: 6 } }, { probability: .42, label: "You score, slide on your knees, and remember the promise halfway through the slide.", positive: false, effect: { reputation: -5, morale: -4 } }] },
+      { label: "Say the past is the past", hint: "Clean quote, noisy reception", outcomes: [{ probability: 1, label: "The headline is efficient. The reunion is considerably less so.", positive: false, effect: { morale: 2 } }] },
+    ],
+  },
+  {
+    id: "president-bonus", icon: "🎁", category: "Boardroom", title: "The club president promises an unusual title bonus",
+    description: "{club} are near the top and the president has offered every player a reward that is memorable, expensive and difficult to park.", maxPreviousFinish: 3, minClubSeasons: 1,
+    options: [
+      { label: "Accept the mystery prize", hint: "Motivation with paperwork", outcomes: [{ probability: .55, label: "The bonus arrives. Your accountant asks whether livestock can be depreciated.", positive: true, effect: { morale: 12, value: 1.03 } }, { probability: .45, label: "The promise quietly becomes a commemorative keyring.", positive: false, effect: { morale: -7 } }] },
+      { label: "Ask for a staff bonus instead", hint: "Popular with everyone except accounting", outcomes: [{ probability: 1, label: "The kit staff and analysts receive a reward. Your dressing-room standing rises.", positive: true, effect: { reputation: 8, morale: 8 } }] },
+    ],
+  },
+  {
+    id: "open-training-crisis", icon: "🚪", category: "Relegation fight", title: "Supporters have arrived for an unscheduled open training session",
+    description: "{club} are struggling. Several hundred fans would like to explain pressing triggers in person.", minPreviousFinish: 10, maxMorale: 70, minAge: 20,
+    options: [
+      { label: "Speak to them", hint: "Leadership without a media officer", outcomes: [{ probability: .62, label: "The conversation is blunt but useful. Training ends with applause instead of furniture movement.", positive: true, effect: { morale: 10, reputation: 8, development: 1 } }, { probability: .38, label: "Your promise to 'fight for every ball' is immediately reviewed frame by frame.", positive: false, effect: { morale: -8 } }] },
+      { label: "Let the captain handle it", hint: "Delegation under pressure", outcomes: [{ probability: 1, label: "The captain speaks. You stand nearby with a face suggesting full strategic involvement.", positive: true, effect: { morale: 3 } }] },
+    ],
+  },
+  {
+    id: "passport-qualifier", icon: "🛂", category: "European travel", title: "Your passport is still in the kitchen drawer",
+    description: "The {club} team bus is at the airport. Your passport is not. The European away leg has become a personal time trial.", requiresAbroad: true, requiresEuropeanPlace: true,
+    options: [
+      { label: "Race home for it", hint: "High-speed document recovery", outcomes: [{ probability: .7, label: "You make the flight as the gate closes. The club liaison ages visibly.", positive: true, effect: { reputation: 4, morale: 5 } }, { probability: .3, label: "You reach the gate in time to watch the aircraft demonstrate excellent acceleration.", positive: false, effect: { reputation: -7, roleBoost: -1 } }] },
+      { label: "Ask the liaison to solve it", hint: "The professional choice, eventually", outcomes: [{ probability: 1, label: "Emergency arrangements work. You buy the liaison dinner for the rest of the season.", positive: true, effect: { morale: 4 } }] },
+    ],
+  },
+  {
+    id: "sponsor-after-defeat", icon: "🎬", category: "Commercial timing", title: "The sponsor needs a cheerful video immediately after a heavy defeat",
+    description: "The script begins, 'What an unbelievable week at {club}!' Nobody in the room is willing to identify the unbelievable part.", minClubLevel: 4, maxMorale: 65,
+    options: [
+      { label: "Perform it enthusiastically", hint: "Professionalism at maximum brightness", outcomes: [{ probability: .55, label: "The clip becomes unintentionally hilarious and the fans forgive it.", positive: true, effect: { reputation: 6, value: 1.05 } }, { probability: .45, label: "Your smile becomes the reaction image for the defeat.", positive: false, effect: { morale: -6 } }] },
+      { label: "Ask to postpone filming", hint: "Emotionally sensible, contractually adventurous", outcomes: [{ probability: .65, label: "The sponsor agrees. Humanity survives a calendar invitation.", positive: true, effect: { morale: 7 } }, { probability: .35, label: "The commercial director says 'brand obligations' eleven times.", positive: false, effect: { reputation: -3 } }] },
+    ],
+  },
+  {
+    id: "winter-pitch-adventure", icon: "❄️", category: "Calendar football", title: "The pitch has become a weather documentary",
+    description: "The lines are visible in places, the ball is orange, and the grounds crew are receiving tactical instructions.", countryTags: ["NOR", "SWE", "FIN", "ISL", "FRO", "EST", "LVA", "LTU", "KAZ"],
+    options: [
+      { label: "Embrace the conditions", hint: "First touch optional, layers mandatory", outcomes: [{ probability: .68, label: "You adapt first and produce the least elegant excellent performance of your career.", positive: true, effect: { rating: 1, reputation: 5, fitness: -4 } }, { probability: .32, label: "Your first touch travels farther than several domestic flights.", positive: false, effect: { morale: -5 } }] },
+      { label: "Lobby for postponement", hint: "Safety meeting with frozen eyebrows", outcomes: [{ probability: .5, label: "The referee agrees and everyone rediscovers circulation indoors.", positive: true, effect: { fitness: 6 } }, { probability: .5, label: "The referee says the surface is playable. The surface declines to comment.", positive: false, effect: { fitness: -6 } }] },
     ],
   },
 ];

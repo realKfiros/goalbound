@@ -1,8 +1,9 @@
 import type { Club } from "./domain";
+import { ADDITIONAL_EUROPEAN_TOP_FLIGHTS } from "./europeanTopFlights";
 
 export const CATALOG_SEASON = "2026–27";
 
-type LeagueSeed = {
+export type LeagueSeed = {
   country: string;
   league: string;
   division: number;
@@ -10,7 +11,7 @@ type LeagueSeed = {
   clubs: readonly string[];
 };
 
-export const COMPLETE_LEAGUES: readonly LeagueSeed[] = [
+const EXISTING_COMPLETE_LEAGUES: readonly LeagueSeed[] = [
   {
     country: "ENG", league: "Premier League", division: 1, expectedClubs: 20,
     clubs: [
@@ -374,12 +375,21 @@ export const COMPLETE_LEAGUES: readonly LeagueSeed[] = [
   },
 ] as const;
 
+export const COMPLETE_LEAGUES: readonly LeagueSeed[] = [
+  ...EXISTING_COMPLETE_LEAGUES,
+  ...ADDITIONAL_EUROPEAN_TOP_FLIGHTS,
+];
+
 const PALETTE = ["#c7ff35", "#45b7ff", "#ff5c7a", "#ffc857", "#9b7bff", "#36d399", "#ff8a3d"];
 const COUNTRY_LEVEL: Record<string, number> = {
   ENG: 4, ESP: 4, GER: 4, ITA: 4, FRA: 4, POR: 3, NED: 3, BRA: 4, ARG: 4,
   USA: 3, BEL: 3, SCO: 3, TUR: 3, SAU: 4, JPN: 3, MEX: 3,
   ISR: 2, POL: 2, CYP: 2, CRO: 2, GRE: 3, AUT: 3, CZE: 3, DEN: 3,
   SUI: 3, NOR: 3, SWE: 3, UKR: 3, SRB: 2, ROU: 2, HUN: 2,
+  ALB: 2, AND: 1, ARM: 2, AZE: 2, BLR: 2, BIH: 2, BUL: 2, EST: 1,
+  FRO: 1, FIN: 2, GEO: 2, GIB: 1, ISL: 2, KAZ: 2, KOS: 1, LVA: 1,
+  LTU: 1, LUX: 1, MLT: 1, MDA: 1, MNE: 1, MKD: 1, NIR: 2, IRL: 2,
+  SMR: 1, SVK: 2, SVN: 2, WAL: 2,
 };
 
 function shortName(name: string) {
@@ -430,8 +440,8 @@ export const FULL_LEAGUE_CLUBS: Club[] = COMPLETE_LEAGUES.flatMap((league) =>
 
 export const COMPLETE_LEAGUE_CLUB_COUNT = FULL_LEAGUE_CLUBS.length;
 
-if (COMPLETE_LEAGUE_CLUB_COUNT !== 738) {
-  throw new Error(`Complete catalog has ${COMPLETE_LEAGUE_CLUB_COUNT} clubs; expected 738.`);
+if (COMPLETE_LEAGUE_CLUB_COUNT !== 1061) {
+  throw new Error(`Complete catalog has ${COMPLETE_LEAGUE_CLUB_COUNT} clubs; expected 1061.`);
 }
 
 const uniqueClubKeys = new Set(FULL_LEAGUE_CLUBS.map((club) => `${club.country}:${club.name}`));

@@ -3,8 +3,8 @@ import { competitionFormat, PYRAMID_BOUNDARIES, type PyramidBoundary } from "./c
 import { competitionStrength } from "./competitionStrength";
 import { clubFinance } from "./finances";
 import { CATALOG_SEASON, COMPLETE_LEAGUES } from "./leagueCatalog";
-import { calculateEuropeanPerformance, simulateUefaCompetitions } from "./uefaCompetitions";
-import type { Club, ClubSeasonState, CompetitionTitle, ContinentalClub, ContinentalCompetition, CupHonours, PlayoffBracket, PlayoffTie, StandingGroup, WorldMovement, WorldState } from "./domain";
+import { calculateEuropeanPerformance, projectNextUefaQualification, simulateUefaCompetitions } from "./uefaSeason";
+import type { Club, ClubSeasonState, CompetitionTitle, ContinentalCompetition, CupHonours, EuropeanQualification, PlayoffBracket, PlayoffTie, StandingGroup, WorldMovement, WorldState } from "./domain";
 
 export type WorldPlayerImpact = { club: string; boost: number };
 export type WorldCompetitionOutcome = {
@@ -23,6 +23,7 @@ export type WorldSeasonSimulation = {
   cupWinners: Record<string, string>;
   additionalCups: CupHonours[];
   continentalCompetitions: ContinentalCompetition[];
+  nextSeasonEuropeanQualification: EuropeanQualification[];
   movements: WorldMovement[];
   playoffBrackets: PlayoffBracket[];
 };
@@ -423,22 +424,35 @@ export function simulateWorldSeason(
     winner: knockoutCupWinner(Object.values(world.clubs).filter((club) => club.country === "ENG"), impact, random),
   }];
   const previousSeason = world.history.at(-1);
-  const legacyChampion = (key: ContinentalCompetition["key"]): ContinentalClub | undefined => {
-    const winner = previousSeason?.champions[`EUROPE:${key}`]?.[0]?.winner;
-    const club = winner ? Object.values(world.clubs).find((candidate) => candidate.club === winner) : undefined;
-    return club ? { club: club.club, country: club.country } : undefined;
-  };
-  const previousChampions = previousSeason?.continentalChampions ?? {
-    "champions-league": legacyChampion("champions-league"),
-    "europa-league": legacyChampion("europa-league"),
-    "conference-league": legacyChampion("conference-league"),
-  };
-  const continentalCompetitions = simulateUefaCompetitions(world.clubs, competitions, cupWinners, {
-    additionalCups,
-    previousChampions,
-    previousPerformance: previousSeason?.europeanPerformance,
-  }, impact, random);
+  const baselineCompetitions = [...groups.entries()].map(([key, clubs]) => ({
+    key,
+    country: clubs[0].country,
+    league: clubs[0].league,
+    division: clubs[0].division,
+    table: [...clubs].sort((left, right) => effectiveStrength(right, { club: "", boost: 0 }) - effectiveStrength(left, { club: "", boost: 0 })).map((club) => club.club),
+    titles: [],
+    standings: [],
+    playoffBrackets: [],
+  } satisfies WorldCompetitionOutcome));
+  const baselineCupWinners = Object.fromEntries([...new Set(Object.values(world.clubs).map((club) => club.country))].map((country) => {
+    const strongest = Object.values(world.clubs)
+      .filter((club) => club.country === country)
+      .sort((left, right) => effectiveStrength(right, { club: "", boost: 0 }) - effectiveStrength(left, { club: "", boost: 0 }))[0];
+    return [country, strongest?.club ?? ""];
+  }));
+  const currentEuropeanQualification = previousSeason?.nextEuropeanQualification ?? projectNextUefaQualification(
+    world.clubs,
+    baselineCompetitions,
+    baselineCupWinners,
+    { additionalCups },
+  );
+  const continentalCompetitions = simulateUefaCompetitions(world.clubs, currentEuropeanQualification, impact, random);
   const europeanPerformance = calculateEuropeanPerformance(continentalCompetitions);
+  const nextSeasonEuropeanQualification = projectNextUefaQualification(world.clubs, competitions, cupWinners, {
+    additionalCups,
+    previousChampions: Object.fromEntries(continentalCompetitions.map((competition) => [competition.key, competition.champion])),
+    previousPerformance: europeanPerformance,
+  });
 
   evolveClubs(world, competitions, random);
   const movementSimulation = resolveMovements(world, competitions, impact, random);
@@ -454,7 +468,8 @@ export function simulateWorldSeason(
     movements,
     continentalChampions: Object.fromEntries(continentalCompetitions.map((competition) => [competition.key, competition.champion])),
     europeanPerformance,
+    nextEuropeanQualification: nextSeasonEuropeanQualification,
   }].slice(-30);
   assertMembership(world);
-  return { world, competitions, cupWinners, additionalCups, continentalCompetitions, movements, playoffBrackets };
+  return { world, competitions, cupWinners, additionalCups, continentalCompetitions, nextSeasonEuropeanQualification, movements, playoffBrackets };
 }
