@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { agentProfile, type AgentOption } from "../agents";
 import { clubByName, country } from "../catalog";
 import type { AnnualHonours, ContinentalCompetition, Offer, Player, PlayoffBracket, SavedGame, Scenario, ScenarioOption, StandingGroup } from "../domain";
@@ -82,6 +82,10 @@ function StandingTable({ group, annual, activeClub, activeCountry }: {
   );
 }
 
+function StandingLegend() {
+  return <div className="standing-legend"><span><b className="c">C</b> Champion</span><span><b className="cw">CW</b> Cup winner</span><span><b className="cl">CL</b> Next-season Champions League</span><span><b className="el">EL</b> Next-season Europa League</span><span><b className="ecl">ECL</b> Next-season Conference League</span><span><b className="p">P</b> Promoted</span><span><b className="r">R</b> Relegated</span></div>;
+}
+
 function PlayoffBracketView({ bracket, activeClub }: { bracket: PlayoffBracket; activeClub: string }) {
   const rounds = [...new Set(bracket.ties.map((tie) => tie.round))];
   return (
@@ -134,10 +138,82 @@ function ContinentalTable({ competition, activeClub, activeCountry }: {
   );
 }
 
-function SeasonAtAGlance({ annual, activeClub, activeCountry }: {
+type SeasonDetailKind = "league" | "europe";
+
+function enteredEuropeanCompetition(competition: ContinentalCompetition, activeClub: string, activeCountry: string) {
+  return competition.entrants.some((club) => club.club === activeClub && club.country === activeCountry)
+    || competition.table.some((club) => club.club === activeClub && club.country === activeCountry)
+    || competition.qualifyingBrackets.some((bracket) => bracket.ties.some((tie) => tie.home === activeClub || tie.away === activeClub))
+    || competition.bracket.ties.some((tie) => tie.home === activeClub || tie.away === activeClub);
+}
+
+function SeasonDetailDialog({ kind, annual, activeClub, activeCountry, onClose }: {
+  kind: SeasonDetailKind;
   annual: AnnualHonours;
   activeClub: string;
   activeCountry: string;
+  onClose: () => void;
+}) {
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const matchingLeagueGroups = (annual.standingGroups ?? []).filter((group) => group.clubs.includes(activeClub));
+  const leagueGroups = matchingLeagueGroups.length ? matchingLeagueGroups : (annual.standingGroups ?? []);
+  const domesticBrackets = (annual.playoffBrackets ?? []).filter((bracket) => bracket.ties.some((tie) => tie.home === activeClub || tie.away === activeClub));
+  const europeanCompetitions = (annual.continentalRoll ?? []).filter((competition) => enteredEuropeanCompetition(competition, activeClub, activeCountry));
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeButtonRef.current?.focus();
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [onClose]);
+
+  return (
+    <div className="season-detail-backdrop">
+      <section className="season-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="season-detail-title">
+        <header><div><span>{annual.season} · {activeClub}</span><h3 id="season-detail-title">{kind === "league" ? "League season" : "European campaign"}</h3></div><button type="button" ref={closeButtonRef} onClick={onClose} aria-label="Close season details">×</button></header>
+        <div className="season-detail-body">
+          {kind === "league" && (
+            <>
+              {leagueGroups.length ? <div className="standing-groups">{leagueGroups.map((group) => <StandingTable group={group} annual={annual} activeClub={activeClub} activeCountry={activeCountry} key={group.name} />)}</div> : <p className="season-detail-empty">No league table was recorded for this season.</p>}
+              {!!leagueGroups.length && <StandingLegend />}
+              {!!domesticBrackets.length && <div className="season-dialog-brackets"><h4>Your playoff route</h4><div className="playoff-brackets">{domesticBrackets.map((bracket) => <PlayoffBracketView bracket={bracket} activeClub={activeClub} key={`${bracket.competition}-${bracket.name}`} />)}</div></div>}
+            </>
+          )}
+          {kind === "europe" && (
+            europeanCompetitions.length ? <div className="season-dialog-competitions">{europeanCompetitions.map((competition) => {
+              const qualifyingBrackets = competition.qualifyingBrackets
+                .map((bracket) => ({ ...bracket, ties: bracket.ties.filter((tie) => tie.home === activeClub || tie.away === activeClub) }))
+                .filter((bracket) => bracket.ties.length);
+              const reachedLeaguePhase = competition.table.some((club) => club.club === activeClub && club.country === activeCountry);
+              const reachedKnockouts = competition.bracket.ties.some((tie) => tie.home === activeClub || tie.away === activeClub);
+              return (
+                <section className="season-dialog-competition" key={competition.key}>
+                  <div className="season-dialog-competition-heading"><div><small>{competition.name}</small><h4>{competition.shortName}</h4></div><span>Champion · {competition.champion.club}</span></div>
+                  {!!qualifyingBrackets.length && <div className="season-dialog-brackets"><h4>Your qualifying route</h4><div className="playoff-brackets">{qualifyingBrackets.map((bracket) => <PlayoffBracketView bracket={bracket} activeClub={activeClub} key={`${competition.key}-${bracket.name}`} />)}</div></div>}
+                  {reachedLeaguePhase && <div className="season-dialog-table"><div className="continental-table-heading"><h5>League phase</h5><small>Your club is highlighted</small></div><ContinentalTable competition={competition} activeClub={activeClub} activeCountry={activeCountry} /></div>}
+                  {reachedKnockouts && <div className="season-dialog-brackets"><h4>Knockout bracket</h4><PlayoffBracketView bracket={competition.bracket} activeClub={activeClub} /></div>}
+                </section>
+              );
+            })}</div> : <p className="season-detail-empty">{activeClub} did not play in Europe this season.</p>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function SeasonAtAGlance({ annual, activeClub, activeCountry, onOpen }: {
+  annual: AnnualHonours;
+  activeClub: string;
+  activeCountry: string;
+  onOpen: (kind: SeasonDetailKind, annual: AnnualHonours) => void;
 }) {
   const league = leagueSeasonFocus(annual, activeClub);
   const europeanCampaigns = europeanSeasonFocus(annual, activeClub, activeCountry);
@@ -146,20 +222,22 @@ function SeasonAtAGlance({ annual, activeClub, activeCountry }: {
     <article className="season-focus-year">
       <h4>{annual.season} · {annual.league}</h4>
       <div className="season-focus-grid">
-        <div className="season-focus-card league-focus">
+        <button type="button" className="season-focus-card season-focus-button league-focus" onClick={() => onOpen("league", annual)} aria-label={`Open ${annual.league} table for ${annual.season}`}>
           <small>League position</small>
           <strong>{league.result}</strong>
           <span>{league.detail}</span>
-        </div>
-        <div className="season-focus-card european-focus">
+          <em>View table →</em>
+        </button>
+        <button type="button" className="season-focus-card season-focus-button european-focus" onClick={() => onOpen("europe", annual)} aria-label={`Open European campaign for ${annual.season}`}>
           <small>European performance</small>
           {europeanCampaigns.length ? europeanCampaigns.map((campaign) => (
-            <div className="european-focus-line" key={`${campaign.competition}-${campaign.result}`}>
+            <span className="european-focus-line" key={`${campaign.competition}-${campaign.result}`}>
               <strong>{campaign.result}</strong>
               <span>{campaign.competition} · {campaign.detail}</span>
-            </div>
+            </span>
           )) : <><strong>No campaign</strong><span>{activeClub} did not play in Europe</span></>}
-        </div>
+          <em>{europeanCampaigns.length ? "View campaign →" : "View details →"}</em>
+        </button>
         <div className={annual.playerHonours.length ? "season-focus-card honours-focus won" : "season-focus-card honours-focus"}>
           <small>Your honours</small>
           {annual.playerHonours.length ? (
@@ -175,6 +253,7 @@ export function CareerScreen({
   game, player, scenario, achievements, canRequestTransfer, canReviewAgent, agentOptions, onSeasonSpanChange, onRevealOrigin,
   onOffer, onRequestTransfer, onAgentReview, onAgentChoice, onContinueSeason, onScenario, onContinueScenario,
 }: CareerScreenProps) {
+  const [seasonDetail, setSeasonDetail] = useState<{ kind: SeasonDetailKind; annual: AnnualHonours } | null>(null);
   const playerCountry = country(player.nation);
   const decisionDockRef = useRef<HTMLDivElement>(null);
   const decisionScrollKey = game.phase === "decision"
@@ -314,7 +393,7 @@ export function CareerScreen({
             {!!game.lastSeason.honours?.length && (
               <section className="season-focus">
                 <div className="season-focus-heading"><span>Your season at a glance</span><small>The results that affect your career.</small></div>
-                {game.lastSeason.honours.map((annual) => <SeasonAtAGlance annual={annual} activeClub={game.lastSeason!.club} activeCountry={game.lastSeason!.country} key={annual.season} />)}
+                {game.lastSeason.honours.map((annual) => <SeasonAtAGlance annual={annual} activeClub={game.lastSeason!.club} activeCountry={game.lastSeason!.country} onOpen={(kind, selectedAnnual) => setSeasonDetail({ kind, annual: selectedAnnual })} key={annual.season} />)}
               </section>
             )}
             <button className="primary-button story-continue" onClick={onContinueSeason}>Continue career <span>→</span></button>
@@ -369,7 +448,7 @@ export function CareerScreen({
                         </div>
                       </details>
                     )}
-                    {!!annual.standingGroups?.length && <details className="world-honours-roll competition-roll"><summary>{annual.standingGroups.length === 1 ? `League table · ${annual.standingGroups[0].clubs.length} clubs` : `League tables · ${annual.standingGroups.length} groups`}</summary><div className="standing-groups">{annual.standingGroups.map((group) => <StandingTable group={group} annual={annual} activeClub={game.lastSeason!.club} activeCountry={game.lastSeason!.country} key={group.name} />)}</div><div className="standing-legend"><span><b className="c">C</b> Champion</span><span><b className="cw">CW</b> Cup winner</span><span><b className="cl">CL</b> Next-season Champions League</span><span><b className="el">EL</b> Next-season Europa League</span><span><b className="ecl">ECL</b> Next-season Conference League</span><span><b className="p">P</b> Promoted</span><span><b className="r">R</b> Relegated</span></div></details>}
+                    {!!annual.standingGroups?.length && <details className="world-honours-roll competition-roll"><summary>{annual.standingGroups.length === 1 ? `League table · ${annual.standingGroups[0].clubs.length} clubs` : `League tables · ${annual.standingGroups.length} groups`}</summary><div className="standing-groups">{annual.standingGroups.map((group) => <StandingTable group={group} annual={annual} activeClub={game.lastSeason!.club} activeCountry={game.lastSeason!.country} key={group.name} />)}</div><StandingLegend /></details>}
                     {!!annual.playoffBrackets?.length && <details className="world-honours-roll competition-roll"><summary>Playoff brackets · {annual.playoffBrackets.length}</summary><div className="playoff-brackets">{annual.playoffBrackets.map((bracket) => <PlayoffBracketView bracket={bracket} activeClub={game.lastSeason!.club} key={`${bracket.competition}-${bracket.name}`} />)}</div></details>}
                     {!!annual.movements?.length && <details className="world-honours-roll"><summary>Promotion &amp; relegation · {annual.movements.length / 2} swaps</summary><div className="world-honours-columns"><div><h5>Promoted</h5>{annual.movements.filter((movement) => movement.direction === "promoted").map((movement) => <div className="world-honour-row" key={`up-${movement.country}-${movement.club}`}><span>↑</span><div><strong>{movement.club}</strong><small>{movement.fromLeague} → {movement.toLeague} · {movement.route}</small></div></div>)}</div><div><h5>Relegated</h5>{annual.movements.filter((movement) => movement.direction === "relegated").map((movement) => <div className="world-honour-row" key={`down-${movement.country}-${movement.club}`}><span>↓</span><div><strong>{movement.club}</strong><small>{movement.fromLeague} → {movement.toLeague} · {movement.route}</small></div></div>)}</div></div></details>}
                     <details className="world-honours-roll">
@@ -429,6 +508,7 @@ export function CareerScreen({
           <div className="achievement-list">{achievements.map((item, index) => <div key={item}><span>{index + 1}</span><strong>{item}</strong></div>)}</div>
         </aside>
       </div>
+      {seasonDetail && <SeasonDetailDialog kind={seasonDetail.kind} annual={seasonDetail.annual} activeClub={game.lastSeason?.club ?? player.currentClub} activeCountry={game.lastSeason?.country ?? clubByName(player.currentClub)?.country ?? player.nation} onClose={() => setSeasonDetail(null)} />}
     </section>
   );
 }

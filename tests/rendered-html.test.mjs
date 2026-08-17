@@ -39,13 +39,14 @@ test("server-renders the Goalbound career simulator", async () => {
 });
 
 test("keeps career rules, content, persistence, and rendering behind clear modules", async () => {
-  const [page, engine, domain, storage, game, careerScreen, layout, packageJson, catalog, leagueCatalog, honours, trophyRoom] = await Promise.all([
+  const [page, engine, domain, storage, game, careerScreen, setupScreen, layout, packageJson, catalog, leagueCatalog, honours, trophyRoom] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../features/career/engine.ts", import.meta.url), "utf8"),
     readFile(new URL("../features/career/domain.ts", import.meta.url), "utf8"),
     readFile(new URL("../features/career/storage.ts", import.meta.url), "utf8"),
     readFile(new URL("../features/career/GoalboundGame.tsx", import.meta.url), "utf8"),
     readFile(new URL("../features/career/components/CareerScreen.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../features/career/components/SetupScreen.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
     readFile(new URL("../features/career/catalog.ts", import.meta.url), "utf8"),
@@ -86,9 +87,20 @@ test("keeps career rules, content, persistence, and rendering behind clear modul
   assert.match(careerScreen, /European performance/);
   assert.match(careerScreen, /Your honours/);
   assert.match(careerScreen, /Full season report/);
+  assert.match(careerScreen, /role="dialog"/);
+  assert.match(careerScreen, /View table →/);
+  assert.match(careerScreen, /View campaign →/);
+  assert.match(careerScreen, /Your qualifying route/);
+  assert.match(careerScreen, /Knockout bracket/);
   const seasonResultStart = careerScreen.indexOf('game.phase === "season-result"');
   const seasonResultSource = careerScreen.slice(seasonResultStart, careerScreen.indexOf('game.phase === "scenario"', seasonResultStart));
   assert.ok(seasonResultSource.indexOf("Continue career") < seasonResultSource.indexOf("Full season report"));
+  assert.match(setupScreen, /Player creation progress/);
+  assert.match(setupScreen, /Step 1 of 3/);
+  assert.match(setupScreen, /Step 2 of 3/);
+  assert.match(setupScreen, /Step 3 of 3/);
+  assert.match(setupScreen, /Search by country or code/);
+  assert.match(setupScreen, /Draw my starting route/);
   assert.doesNotMatch(careerScreen, /Review representation/);
   assert.match(layout, /Goalbound — Your Football Career/);
   assert.match(packageJson, /"build": "WRANGLER_LOG_PATH=/);

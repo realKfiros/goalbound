@@ -97,6 +97,7 @@ button { color: inherit; }
 .primary-button:hover { background: #d7ff72; transform: translateY(-2px); }
 .secondary-button { background: transparent; color: var(--ink); border-color: var(--line); }
 .secondary-button:hover { border-color: rgba(255,255,255,.36); transform: translateY(-2px); }
+.primary-button:disabled, .secondary-button:disabled { opacity: .38; cursor: not-allowed; transform: none; }
 .nation-strip { display: flex; flex-wrap: wrap; gap: 9px; max-width: 560px; margin-top: 38px; }
 .nation-strip span { width: 32px; height: 32px; display: grid; place-items: center; background: rgba(255,255,255,.05); border: 1px solid var(--line); border-radius: 50%; font-size: 16px; }
 
@@ -170,6 +171,41 @@ button { color: inherit; }
 .setup-grid { display: grid; grid-template-columns: 1.3fr .7fr; gap: 28px; align-items: start; }
 .form-panel, .live-card, .timeline-panel, .achievements-panel { background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(18px); }
 .form-panel { padding: 36px; }
+.setup-heading { margin-bottom: 30px; }
+.wizard-panel { padding: 0; overflow: hidden; }
+.setup-steps { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--line); }
+.setup-steps button { min-height: 68px; padding: 12px 16px; display: flex; align-items: center; gap: 10px; text-align: left; background: rgba(255,255,255,.018); border: 0; border-right: 1px solid var(--line); cursor: pointer; }
+.setup-steps button:last-child { border-right: 0; }
+.setup-steps button span { width: 26px; height: 26px; display: grid; place-items: center; flex: 0 0 auto; color: #737771; border: 1px solid var(--line); border-radius: 50%; font: 8px monospace; }
+.setup-steps button strong { color: #777b75; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+.setup-steps button.active { background: rgba(199,255,53,.07); box-shadow: inset 0 -2px var(--lime); }
+.setup-steps button.active span, .setup-steps button.complete span { color: #090a09; background: var(--lime); border-color: var(--lime); }
+.setup-steps button.active strong, .setup-steps button.complete strong { color: var(--ink); }
+.wizard-stage { min-height: 520px; padding: 30px 32px; display: flex; flex-direction: column; }
+.wizard-stage-heading > span { color: var(--lime); font: 8px monospace; letter-spacing: .12em; text-transform: uppercase; }
+.wizard-stage-heading h3 { margin: 9px 0 7px; font-size: clamp(28px, 3vw, 42px); letter-spacing: -.045em; }
+.wizard-stage-heading p { max-width: 620px; margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+.country-search { margin: 24px 0 12px; display: flex; flex-direction: column; gap: 7px; }
+.country-search span { color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+.country-search input { width: 100%; height: 48px; padding: 0 15px; color: var(--ink); background: #0d0f0d; border: 1px solid var(--line); border-radius: 3px; outline: none; }
+.country-search input:focus { border-color: var(--lime); box-shadow: 0 0 0 3px rgba(199,255,53,.09); }
+.compact-country-grid { max-height: 330px; padding-right: 4px; overflow-y: auto; overscroll-behavior: contain; }
+.compact-country-grid::-webkit-scrollbar { width: 5px; }
+.compact-country-grid::-webkit-scrollbar-thumb { background: rgba(199,255,53,.35); border-radius: 5px; }
+.wizard-empty { padding: 40px 12px; color: var(--muted); text-align: center; }
+.wizard-actions { min-height: 76px; margin-top: auto; padding-top: 22px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); }
+.compact-country-grid + .wizard-actions { margin-top: 18px; }
+.wizard-actions > span { color: var(--muted); font: 9px monospace; }
+.wizard-actions .primary-button b { font-size: 16px; }
+.identity-fields { margin-top: 32px; }
+.identity-confirmation { margin-top: 18px; padding: 16px; display: flex; align-items: center; gap: 13px; background: rgba(255,255,255,.025); border: 1px solid var(--line); }
+.identity-confirmation > span { font-size: 28px; }
+.identity-confirmation div { display: flex; flex-direction: column; gap: 3px; }
+.identity-confirmation small { color: var(--muted); font-size: 8px; letter-spacing: .1em; text-transform: uppercase; }
+.identity-confirmation strong { font-size: 13px; }
+.identity-confirmation button { margin-left: auto; padding: 7px; color: var(--lime); background: transparent; border: 0; font-size: 9px; font-weight: 800; cursor: pointer; }
+.wizard-fieldset { margin-top: 28px; }
+.live-card-note { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.5; text-align: center; }
 .field-grid { display: grid; grid-template-columns: 1fr 150px; gap: 16px; }
 .field { display: flex; flex-direction: column; gap: 10px; }
 .field span, .field > label, legend { color: var(--muted); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; }
@@ -369,6 +405,10 @@ legend { margin-bottom: 13px; }
 .season-focus-year > h4 { margin: 0 0 10px; color: #9fa39c; font: 9px monospace; letter-spacing: .09em; text-transform: uppercase; }
 .season-focus-grid { display: grid; grid-template-columns: .72fr 1.28fr; gap: 7px; }
 .season-focus-card { min-height: 104px; padding: 14px; display: flex; flex-direction: column; background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.075); }
+.season-focus-button { position: relative; color: var(--ink); font: inherit; text-align: left; cursor: pointer; transition: background .18s ease, border-color .18s ease, transform .18s ease; }
+.season-focus-button:hover { background: rgba(199,255,53,.065); border-color: rgba(199,255,53,.42); transform: translateY(-2px); }
+.season-focus-button:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+.season-focus-button > em { margin-top: auto; padding-top: 11px; color: var(--lime); font-size: 7px; font-style: normal; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; }
 .season-focus-card > small { color: var(--muted); font-size: 7px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
 .season-focus-card > strong, .european-focus-line strong { margin: 12px 0 5px; font-size: 18px; letter-spacing: -.03em; }
 .season-focus-card > span, .european-focus-line span { color: #92978e; font-size: 8px; line-height: 1.4; }
@@ -389,6 +429,27 @@ legend { margin-bottom: 13px; }
 .season-report > summary > small { color: var(--muted); font-size: 8px; }
 .season-report[open] > summary { color: var(--lime); border-bottom: 1px solid var(--line); }
 .season-report > .honours-board { margin-top: 0; border: 0; }
+.season-detail-backdrop { position: fixed; inset: 0; z-index: 90; padding: 24px; display: grid; place-items: center; background: rgba(3,4,3,.84); backdrop-filter: blur(13px); animation: motionFade .18s ease both; }
+.season-detail-dialog { width: min(1040px, 100%); max-height: calc(100dvh - 48px); overflow: hidden; display: grid; grid-template-rows: auto minmax(0, 1fr); background: linear-gradient(145deg, #1b1e1a, #0c0e0c); border: 1px solid rgba(199,255,53,.36); box-shadow: 0 30px 100px rgba(0,0,0,.58); }
+.season-detail-dialog > header { min-height: 86px; padding: 18px 22px; display: flex; align-items: center; justify-content: space-between; gap: 18px; border-bottom: 1px solid var(--line); }
+.season-detail-dialog > header span { color: var(--lime); font: 8px monospace; letter-spacing: .11em; text-transform: uppercase; }
+.season-detail-dialog > header h3 { margin: 5px 0 0; font-size: 26px; letter-spacing: -.035em; }
+.season-detail-dialog > header button { width: 42px; height: 42px; flex: 0 0 auto; color: var(--ink); background: rgba(255,255,255,.04); border: 1px solid var(--line); border-radius: 50%; font-size: 24px; cursor: pointer; }
+.season-detail-dialog > header button:hover, .season-detail-dialog > header button:focus-visible { color: #090a09; background: var(--lime); border-color: var(--lime); outline: none; }
+.season-detail-body { min-height: 0; padding: 18px; overflow-y: auto; overscroll-behavior: contain; }
+.season-detail-body > .standing-groups { padding-top: 0; }
+.season-detail-empty { margin: 0; padding: 60px 20px; color: var(--muted); text-align: center; }
+.season-dialog-competitions { display: grid; gap: 16px; }
+.season-dialog-competition { min-width: 0; padding: 16px; background: rgba(255,255,255,.018); border: 1px solid var(--line); }
+.season-dialog-competition-heading { margin-bottom: 16px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.season-dialog-competition-heading small { color: var(--lime); font: 8px monospace; text-transform: uppercase; letter-spacing: .1em; }
+.season-dialog-competition-heading h4 { margin: 4px 0 0; font-size: 20px; }
+.season-dialog-competition-heading > span { color: var(--muted); font-size: 9px; }
+.season-dialog-table { min-width: 0; margin-top: 18px; overflow-x: auto; }
+.season-dialog-brackets { min-width: 0; margin-top: 18px; }
+.season-dialog-brackets > h4 { margin: 0 0 8px; color: var(--muted); font: 8px monospace; letter-spacing: .1em; text-transform: uppercase; }
+.season-dialog-brackets > .playoff-bracket { margin-top: 0; }
+.season-dialog-brackets > .playoff-brackets { padding: 0; }
 .honours-board { margin-top: 22px; border: 1px solid var(--line); background: rgba(7, 8, 7, .45); }
 .honours-board-heading { padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--line); }
 .honours-board-heading span { color: var(--lime); font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .12em; }
@@ -728,7 +789,23 @@ footer { position: relative; z-index: 1; width: min(1320px, calc(100% - 64px)); 
   .setup-page, .career-page { padding-top: 34px; }
   .page-heading h2 { font-size: 50px; }
   .form-panel { padding: 22px 16px; }
+  .wizard-panel { padding: 0; }
+  .setup-heading { margin-bottom: 24px; }
+  .setup-heading h2 { font-size: 46px; }
+  .setup-steps button { min-height: 60px; padding: 10px 8px; justify-content: center; }
+  .setup-steps button span { width: 23px; height: 23px; }
+  .setup-steps button strong { display: none; }
+  .wizard-stage { min-height: 500px; padding: 24px 16px 18px; }
+  .wizard-stage-heading h3 { font-size: 31px; }
+  .compact-country-grid { max-height: 43vh; }
+  .wizard-actions { align-items: stretch; flex-direction: column-reverse; }
+  .wizard-actions .primary-button, .wizard-actions .secondary-button { width: 100%; justify-content: space-between; }
+  .wizard-actions > span { text-align: center; }
+  .wizard-actions.final { flex-direction: column; }
+  .identity-fields { margin-top: 24px; grid-template-columns: 1fr; }
+  .identity-confirmation { margin-bottom: 18px; }
   .field-grid { grid-template-columns: 1fr 110px; }
+  .field-grid.identity-fields { grid-template-columns: 1fr; }
   .country-grid { grid-template-columns: repeat(2, 1fr); }
   .position-grid { grid-template-columns: repeat(5, 1fr); }
   .career-head { align-items: flex-start; }
@@ -779,6 +856,13 @@ footer { position: relative; z-index: 1; width: min(1320px, calc(100% - 64px)); 
   .season-report > summary { align-items: flex-start; flex-wrap: wrap; }
   .season-report > summary > small { width: calc(100% - 30px); order: 3; line-height: 1.4; }
   .season-report > summary::after { order: 2; }
+  .season-detail-backdrop { padding: 8px; align-items: end; }
+  .season-detail-dialog { max-height: calc(100dvh - 16px); }
+  .season-detail-dialog > header { min-height: 72px; padding: 14px 16px; }
+  .season-detail-dialog > header h3 { font-size: 21px; }
+  .season-detail-body { padding: 12px; }
+  .season-dialog-competition { padding: 12px; }
+  .season-dialog-competition-heading { align-items: flex-start; flex-direction: column; gap: 7px; }
   .honours-board-heading { align-items: flex-start; flex-direction: column; }
   .honour-results { grid-template-columns: 1fr; }
   .scenario-options > button { padding: 20px 18px 42px 48px; grid-template-columns: 1fr; gap: 16px; }
