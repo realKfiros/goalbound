@@ -282,6 +282,27 @@ test("former clubs return only when the sporting and financial level is realisti
   assert.equal(returnOffer.label, "Former-club return");
 });
 
+test("a forced sale never opens an empty decision screen", () => {
+  const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
+  const player = eliteEnglishProspect("ISR", {
+    currentClub: "Maccabi Haifa", position: "ST", age: 26,
+    rating: 90, potential: 94, value: 120_000_000,
+    reputation: 96, agent: "International agent", contractYears: 3,
+    clubSeasons: 6, lastRole: "Star",
+  });
+  const beat = createCareerEngine(() => 0).nextBeat(player, null);
+  assert.equal(beat.type, "decision");
+  assert.equal(beat.kind, "forced-sale");
+  assert.ok(beat.offers.length > 0, "Forced sale must include at least one accepted bid");
+
+  const impossibleMarket = createCareerEngine(() => 0).nextBeat({ ...player, value: 500_000_000 }, null);
+  assert.ok(impossibleMarket.type !== "decision" || impossibleMarket.kind !== "forced-sale" || impossibleMarket.offers.length > 0);
+
+  const recovered = createCareerEngine(() => 0).recoverDecision(player, "forced-sale");
+  assert.equal(recovered.kind, "forced-sale");
+  assert.ok(recovered.offers.length > 0, "A previously stuck forced-sale save must be repaired on load");
+});
+
 test("season development can rise for a young player and fall with age or injury", () => {
   const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
   const southend = club("Southend United");

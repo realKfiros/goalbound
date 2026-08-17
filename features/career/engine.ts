@@ -153,11 +153,18 @@ export function createCareerEngine(random = Math.random) {
       return makeOffer(club, player, player.origin === "gem" && club.level >= 4 ? "First-team fast track" : "Senior contract", "permanent", role, player.origin === "gem" ? `${role} role · the scouts believe the hype` : `${role} role · senior football immediately`);
     });
   }
-  function externalOffers(player: Player, count = 2, permanentOnly = false, requiresTransferFee = false, world?: WorldState | null): Offer[] {
+  function externalOffers(
+    player: Player,
+    count = 2,
+    permanentOnly = false,
+    requiresTransferFee = false,
+    world?: WorldState | null,
+    minimumFeeRatio = .92,
+  ): Offer[] {
     const ideal = idealClubLevel(player);
     const profile = agentProfile(player.agent);
     const declining = isDeclining(player);
-    const minimumFee = player.value * .92;
+    const minimumFee = player.value * minimumFeeRatio;
     const market = CLUBS.map((club) => clubInWorld(club, world)).filter((club) => {
       const role = roleFor(player.rating, club.level, player.age, player.roleBoost);
       return club.name !== player.currentClub
@@ -195,16 +202,30 @@ export function createCareerEngine(random = Math.random) {
       return makeOffer(club, player, loan ? "Loan proposal" : label, loan ? "loan" : "permanent", loan ? "Starter" : role, undefined, world);
     });
   }
-  function permanentOffers(player: Player, count = 2, requiresTransferFee = false, world?: WorldState | null): Offer[] {
-    return externalOffers(player, count, true, requiresTransferFee, world);
+  function permanentOffers(player: Player, count = 2, requiresTransferFee = false, world?: WorldState | null, minimumFeeRatio = .92): Offer[] {
+    return externalOffers(player, count, true, requiresTransferFee, world, minimumFeeRatio);
   }
-  function contractedBids(player: Player, count = 2, world?: WorldState | null): Offer[] {
-    return permanentOffers(player, count, true, world).map((offer) => {
+  function contractedBids(player: Player, count = 2, world?: WorldState | null, minimumFeeRatio = .92): Offer[] {
+    return permanentOffers(player, count, true, world, minimumFeeRatio).map((offer) => {
       const rounding = clubDivision(offer) <= 2 ? 50_000 : 10_000;
       const proposedFee = Math.round(player.value * (randomInt(92, 128) / 100) / rounding) * rounding;
       const fee = Math.min(proposedFee, maxSingleFee(offer, offer.role));
       return makeOffer(offer, player, "Accepted transfer bid", "permanent", offer.role, `${offer.name} agreed ${formatMoney(fee)} with ${player.currentClub} · proposed ${offer.role.toLowerCase()} role`);
     });
+  }
+  function forcedSaleDecision(player: Player, world?: WorldState | null) {
+    const marketRateBids = contractedBids(player, 3, world);
+    const offers = marketRateBids.length ? marketRateBids : contractedBids(player, 3, world, .6);
+    if (!offers.length) return null;
+    const current = currentClubFor(player, world);
+    return decision(
+      "forced-sale",
+      `${player.currentClub} has accepted that you must be sold`,
+      current && current.level <= 2
+        ? "Your value is now larger than several items on the club balance sheet. The board calls the sale ‘strategic’."
+        : "The accounts need help. The board has discovered that loyalty does not appear as cash on the annual report.",
+      offers,
+    );
   }
   function stayOffer(player: Player, kind: "stay" | "renewal" | "promotion" = "stay", world?: WorldState | null): Offer | null {
     const catalogClub = clubByName(player.currentClub);
@@ -427,13 +448,19 @@ export function createCareerEngine(random = Math.random) {
     }
     const forcedSaleChance = current && current.level <= 2 && player.rating >= 72 ? .2 : player.value >= 35_000_000 && current && current.level <= 3 ? .14 : .045;
     if (random() < forcedSaleChance) {
-      return decision("forced-sale", `${player.currentClub} has accepted that you must be sold`, current && current.level <= 2 ? "Your value is now larger than several items on the club balance sheet. The board calls the sale ‘strategic’." : "The accounts need help. The board has discovered that loyalty does not appear as cash on the annual report.", permanentOffers(player, 3, true, world));
+      const forcedSale = forcedSaleDecision(player, world);
+      if (forcedSale) return forcedSale;
     }
     const seasons = Math.max(1, (latest?.toAge ?? player.age) - (latest?.fromAge ?? player.age - 1));
     if ((latest?.apps ?? 99) / seasons < 12 && player.age >= 20 && random() < .42) {
       return decision("released", `${player.currentClub} no longer sees a role for you`, "The manager says this is purely professional, which is football language for ‘please choose one of these exits’.", permanentOffers(player, 3, false, world));
     }
     return random() < .54 ? { type: "scenario", scenario: eligibleScenario(player, world) } : ordinaryDecision(player, world);
+  }
+
+  function recoverDecision(player: Player, kind: CareerDecision["kind"], world?: WorldState | null): CareerDecision {
+    if (kind === "forced-sale") return forcedSaleDecision(player, world) ?? ordinaryDecision(player, world);
+    return ordinaryDecision(player, world);
   }
 
   function resolveScenario(player: Player, scenario: Scenario, option: ScenarioOption): ScenarioResolution {
@@ -473,7 +500,7 @@ export function createCareerEngine(random = Math.random) {
     return list;
   }
 
-  return { createCareer, simulateSeason, ordinaryDecision, nextBeat, resolveScenario, achievements, marketOffers: externalOffers };
+  return { createCareer, simulateSeason, ordinaryDecision, nextBeat, recoverDecision, resolveScenario, achievements, marketOffers: externalOffers };
 }
 
 export const careerEngine = createCareerEngine();

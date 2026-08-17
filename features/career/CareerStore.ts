@@ -62,6 +62,9 @@ export class CareerStore {
           archive = mergeCareerSnapshot(archive, saved.careerId, saved.player);
         }
         this.game = saved;
+        if (saved.player && saved.phase === "decision" && saved.decisionKind === "forced-sale" && saved.offers.length === 0) {
+          this.applyBeat(careerEngine.recoverDecision(saved.player, saved.decisionKind, saved.world));
+        }
       }
       this.trophyRoom = archive;
       this.hydrated = true;
