@@ -91,7 +91,10 @@ test("the share canvas keeps the full route and lays honours out as a gallery", 
   const { careerShareCanvasLayout } = loadTypeScriptModule("features/career/careerShare.ts");
   const layout = careerShareCanvasLayout(player);
   assert.equal(layout.width, 1400);
-  assert.equal(layout.routeRows, 3);
+  assert.equal(layout.routeItems, 3);
+  assert.equal(layout.routeColumns, 2);
+  assert.equal(layout.routeRows, 2);
+  assert.equal(layout.routeCardHeight, 184);
   assert.equal(layout.galleryItems, 2);
   assert.equal(layout.honourColumns, 3);
   assert.equal(layout.honourRows, 1);

@@ -1,4 +1,5 @@
-import { country } from "./catalog";
+import { clubByName, country } from "./catalog";
+import { resolveClubBadge } from "./clubBadges";
 import type { Player, PlayerHonour, Season } from "./domain";
 
 export type CareerClubSpell = {
@@ -208,13 +209,16 @@ function drawStat(context: CanvasRenderingContext2D, x: number, y: number, value
 export function careerShareCanvasLayout(player: Player) {
   const summary = careerSummary(player);
   const { gallery, legacyTrophies } = groupedCareerHonours(player, summary);
-  const routeRows = Math.max(1, summary.spells.length);
+  const routeColumns = 2;
+  const routeItems = Math.max(1, summary.spells.length);
+  const routeRows = Math.ceil(routeItems / routeColumns);
   const honourColumns = 3;
   const galleryItems = Math.max(1, gallery.length);
   const honourRows = Math.ceil(galleryItems / honourColumns);
   const routeStart = 615;
-  const routeRowHeight = 86;
-  const honoursHeading = routeStart + routeRows * routeRowHeight + 60;
+  const routeCardHeight = 184;
+  const routeGap = 18;
+  const honoursHeading = routeStart + routeRows * routeCardHeight + Math.max(0, routeRows - 1) * routeGap + 60;
   const honoursStart = honoursHeading + 48;
   const honourCardHeight = 112;
   const honourGap = 16;
@@ -223,12 +227,15 @@ export function careerShareCanvasLayout(player: Player) {
   return {
     width: 1400,
     height: Math.max(980, footer + 72),
+    routeItems,
     routeRows,
+    routeColumns,
     honourRows,
     honourColumns,
     galleryItems,
     routeStart,
-    routeRowHeight,
+    routeCardHeight,
+    routeGap,
     honoursHeading,
     honoursStart,
     honourCardHeight,
@@ -236,6 +243,90 @@ export function careerShareCanvasLayout(player: Player) {
     footer,
     legacyTrophies,
   };
+}
+
+function fallbackClubShort(name: string) {
+  const words = name.match(/[\p{L}\p{N}]+/gu) ?? [];
+  return words.slice(0, 3).map((word) => word[0]).join("").toUpperCase() || "FC";
+}
+
+function loadCanvasClubCrest(src?: string) {
+  if (!src) return Promise.resolve<HTMLImageElement | null>(null);
+  return new Promise<HTMLImageElement | null>((resolve) => {
+    const image = new Image();
+    let settled = false;
+    const finish = (result: HTMLImageElement | null) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      image.onload = null;
+      image.onerror = null;
+      resolve(result);
+    };
+    const timeout = window.setTimeout(() => finish(null), 3_000);
+    image.crossOrigin = "anonymous";
+    image.referrerPolicy = "no-referrer";
+    image.onload = () => finish(image);
+    image.onerror = () => finish(null);
+    image.src = src;
+  });
+}
+
+async function resolveCanvasClubCrest(clubName: string) {
+  const club = clubByName(clubName);
+  if (!club) return null;
+  let timeout: number | undefined;
+  const src = await Promise.race([
+    resolveClubBadge(club),
+    new Promise<null>((resolve) => {
+      timeout = window.setTimeout(() => resolve(null), 2_500);
+    }),
+  ]);
+  if (timeout) window.clearTimeout(timeout);
+  return loadCanvasClubCrest(src ?? undefined);
+}
+
+function drawClubCardBackdrop(
+  context: CanvasRenderingContext2D,
+  clubName: string,
+  crest: HTMLImageElement | null,
+  left: number,
+  top: number,
+  width: number,
+  height: number,
+) {
+  const club = clubByName(clubName);
+  const color = club?.colors ?? "#c7ff35";
+  context.save();
+  context.beginPath();
+  context.roundRect(left, top, width, height, 14);
+  context.clip();
+  context.fillStyle = color;
+  context.globalAlpha = .08;
+  context.fillRect(left + width * .58, top, width * .42, height);
+
+  if (crest) {
+    const maxWidth = 182;
+    const maxHeight = 156;
+    const scale = Math.min(maxWidth / crest.naturalWidth, maxHeight / crest.naturalHeight);
+    const crestWidth = crest.naturalWidth * scale;
+    const crestHeight = crest.naturalHeight * scale;
+    context.globalAlpha = .18;
+    context.drawImage(
+      crest,
+      left + width - crestWidth - 24,
+      top + (height - crestHeight) / 2,
+      crestWidth,
+      crestHeight,
+    );
+  } else {
+    context.fillStyle = color;
+    context.globalAlpha = .14;
+    context.textAlign = "right";
+    fitText(context, club?.short ?? fallbackClubShort(clubName), 190, 78, 46);
+    context.fillText(club?.short ?? fallbackClubShort(clubName), left + width - 24, top + 116);
+  }
+  context.restore();
 }
 
 function canvasBlob(canvas: HTMLCanvasElement) {
@@ -248,6 +339,16 @@ export async function createCareerShareImage(player: Player) {
   const summary = careerSummary(player);
   const { gallery } = groupedCareerHonours(player, summary);
   const layout = careerShareCanvasLayout(player);
+  const spells = summary.spells.length ? summary.spells : [{
+    club: player.currentClub, country: player.nation, league: "Career club", fromAge: summary.debutAge,
+    toAge: player.age, apps: player.totalApps, goals: player.totalGoals, assists: player.totalAssists,
+    trophies: player.trophies, ratingBefore: player.rating, ratingAfter: player.rating,
+  }];
+  const uniqueClubs = [...new Set(spells.map((spell) => spell.club))];
+  const clubCrests = new Map(await Promise.all(uniqueClubs.map(async (clubName) => {
+    const crest = await resolveCanvasClubCrest(clubName);
+    return [clubName, crest] as const;
+  })));
   const canvas = document.createElement("canvas");
   canvas.width = layout.width;
   canvas.height = layout.height;
@@ -317,32 +418,53 @@ export async function createCareerShareImage(player: Player) {
   context.textAlign = "right";
   context.fillText(`${summary.seasons} SEASONS  ·  ${summary.uniqueClubs} CLUBS  ·  ${summary.countriesPlayed} COUNTRIES`, 1328, 535);
 
-  const spells = summary.spells.length ? summary.spells : [{
-    club: player.currentClub, country: player.nation, league: "Career club", fromAge: summary.debutAge,
-    toAge: player.age, apps: player.totalApps, goals: player.totalGoals, assists: player.totalAssists,
-    trophies: player.trophies, ratingBefore: player.rating, ratingAfter: player.rating,
-  }];
+  const routeWidth = 1256;
+  const routeCardWidth = (routeWidth - layout.routeGap * (layout.routeColumns - 1)) / layout.routeColumns;
   spells.forEach((spell, index) => {
-    const top = layout.routeStart + index * layout.routeRowHeight;
-    context.fillStyle = index % 2 ? "rgba(255,255,255,.035)" : "rgba(255,255,255,.055)";
+    const column = index % layout.routeColumns;
+    const row = Math.floor(index / layout.routeColumns);
+    const left = 72 + column * (routeCardWidth + layout.routeGap);
+    const top = layout.routeStart + row * (layout.routeCardHeight + layout.routeGap);
+    const club = clubByName(spell.club);
+    context.fillStyle = row % 2 ? "rgba(255,255,255,.035)" : "rgba(255,255,255,.055)";
     context.strokeStyle = "rgba(255,255,255,.08)";
-    roundedRect(context, 72, top, 1256, 72, 8);
+    roundedRect(context, left, top, routeCardWidth, layout.routeCardHeight, 14);
+    drawClubCardBackdrop(
+      context,
+      spell.club,
+      clubCrests.get(spell.club) ?? null,
+      left,
+      top,
+      routeCardWidth,
+      layout.routeCardHeight,
+    );
+    context.fillStyle = club?.colors ?? "#c7ff35";
+    context.fillRect(left, top, 6, layout.routeCardHeight);
     context.textAlign = "left";
     context.fillStyle = "#c7ff35";
     context.font = "800 12px monospace";
-    context.fillText(String(index + 1).padStart(2, "0"), 94, top + 42);
-    context.fillStyle = "#f4f5f1";
-    fitText(context, spell.club, 480, 24, 14);
-    context.fillText(spell.club, 140, top + 31);
+    context.fillText(String(index + 1).padStart(2, "0"), left + 26, top + 30);
     context.fillStyle = "#9fa49b";
-    context.font = "600 13px Arial, sans-serif";
-    context.fillText(`${country(spell.country).name}  ·  ${spell.league}  ·  Ages ${spell.fromAge}–${spell.toAge}`, 140, top + 54);
     context.textAlign = "right";
+    context.font = "700 11px Arial, sans-serif";
+    context.fillText(`AGES ${spell.fromAge}–${spell.toAge}`, left + routeCardWidth - 24, top + 30);
+    context.textAlign = "left";
+    context.fillStyle = "#f4f5f1";
+    fitText(context, spell.club, routeCardWidth - 54, 29, 16);
+    context.fillText(spell.club, left + 26, top + 72);
+    context.fillStyle = "#9fa49b";
+    fitText(context, `${country(spell.country).name}  ·  ${spell.league}`, routeCardWidth - 52, 13, 9, 600);
+    context.fillText(`${country(spell.country).name}  ·  ${spell.league}`, left + 26, top + 98);
     context.fillStyle = "#d8dbd5";
-    context.font = "700 14px Arial, sans-serif";
-    context.fillText(`${spell.apps} APPS   ·   ${spell.goals} GOALS   ·   ${spell.assists} ASSISTS`, 1148, top + 31);
+    context.font = "700 12px Arial, sans-serif";
+    context.fillText(`${spell.apps} APPS   ·   ${spell.goals} GOALS   ·   ${spell.assists} ASSISTS`, left + 26, top + 132);
     context.fillStyle = "#c7ff35";
-    context.fillText(`OVR ${spell.ratingBefore} → ${spell.ratingAfter}`, 1304, top + 53);
+    context.font = "800 12px Arial, sans-serif";
+    context.fillText(`OVR ${spell.ratingBefore} → ${spell.ratingAfter}`, left + 26, top + 160);
+    if (spell.trophies > 0) {
+      context.textAlign = "right";
+      context.fillText(`🏆 ${spell.trophies}`, left + routeCardWidth - 24, top + 160);
+    }
   });
 
   context.textAlign = "left";

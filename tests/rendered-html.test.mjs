@@ -140,6 +140,10 @@ test("the career finale creates a downloadable image and uses the native share s
   assert.match(careerShare, /summary\.spells\.length/);
   assert.match(careerShare, /careerHonourGallery/);
   assert.match(careerShare, /honour\.count > 1/);
+  assert.match(careerShare, /clubByName/);
+  assert.match(careerShare, /crossOrigin = "anonymous"/);
+  assert.match(careerShare, /drawClubCardBackdrop/);
+  assert.match(careerShare, /context\.drawImage/);
   assert.doesNotMatch(careerShare, /ellipsize/);
   assert.doesNotMatch(careerShare, /honours\.slice/);
 });
