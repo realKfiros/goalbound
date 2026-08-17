@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { agentProfile } from "../agents";
+import { useEffect, useRef, useState } from "react";
+import { agentProfile, type AgentProfile } from "../agents";
 import { clubByName, country } from "../catalog";
 import type { AnnualHonours, ContinentalCompetition, Offer, Player, PlayoffBracket, SavedGame, Scenario, ScenarioOption, StandingGroup } from "../domain";
 import { ClubBadge } from "./ClubBadge";
@@ -12,10 +12,12 @@ type CareerScreenProps = {
   scenario: Scenario | null;
   achievements: string[];
   canRequestTransfer: boolean;
+  agentOptions: AgentProfile[];
   onSeasonSpanChange: (years: number) => void;
   onRevealOrigin: () => void;
   onOffer: (offer: Offer) => void;
   onRequestTransfer: () => void;
+  onAgentChange: (name: string) => void;
   onContinueSeason: () => void;
   onScenario: (option: ScenarioOption) => void;
   onContinueScenario: () => void;
@@ -130,11 +132,12 @@ function ContinentalTable({ competition, activeClub, activeCountry }: {
 }
 
 export function CareerScreen({
-  game, player, scenario, achievements, canRequestTransfer, onSeasonSpanChange, onRevealOrigin,
-  onOffer, onRequestTransfer, onContinueSeason, onScenario, onContinueScenario,
+  game, player, scenario, achievements, canRequestTransfer, agentOptions, onSeasonSpanChange, onRevealOrigin,
+  onOffer, onRequestTransfer, onAgentChange, onContinueSeason, onScenario, onContinueScenario,
 }: CareerScreenProps) {
   const playerCountry = country(player.nation);
   const decisionDockRef = useRef<HTMLDivElement>(null);
+  const [representationOpen, setRepresentationOpen] = useState(false);
   const decisionScrollKey = game.phase === "decision"
     ? `decision:${game.decisionKind}:${game.decisionTitle}`
     : game.phase === "scenario" && scenario
@@ -209,12 +212,34 @@ export function CareerScreen({
                 <div className="club-option-copy"><small>{offer.label}</small><strong>{offer.name}</strong><span>{offer.league} · {country(offer.country).flag} {offer.role}</span><p>{offer.reason}</p></div><em>Choose →</em>
               </button>
             ))}</div>
-            {canRequestTransfer && game.decisionKind === "continue" && (
-              <div className="player-transfer-action">
-                <div><small>PLAYER POWER</small><strong>Think you have outgrown {player.currentClub}?</strong><p>Ask your agent to find a move. The club may lower its price—but handing in a request will damage morale if the market says no.</p></div>
-                <button onClick={onRequestTransfer}>Request a transfer <span>→</span></button>
+            <div className="player-career-actions">
+              {canRequestTransfer && game.decisionKind === "continue" && (
+                <div className="player-transfer-action">
+                  <div><small>PLAYER POWER</small><strong>Want a new challenge away from {player.currentClub}?</strong><p>You can ask to leave even while under contract. Your level, the club&apos;s finances, its league and your agent determine whether credible bids arrive.</p></div>
+                  <button onClick={onRequestTransfer}>Request a transfer <span>→</span></button>
+                </div>
+              )}
+              <div className="agent-management">
+                <div className="agent-management-heading">
+                  <div><small>REPRESENTATION</small><strong>{player.agent}</strong><p>{agentProfile(player.agent).description}</p></div>
+                  <button type="button" aria-expanded={representationOpen} onClick={() => setRepresentationOpen((open) => !open)}>{representationOpen ? "Close agent list" : "Review representation"}</button>
+                </div>
+                {representationOpen && (
+                  <div className="agent-options" aria-label="Available agents">
+                    {agentOptions.map((profile) => {
+                      const current = profile.name === player.agent;
+                      return (
+                        <button type="button" className={current ? "active" : ""} disabled={current} onClick={() => onAgentChange(profile.name)} key={profile.name}>
+                          <span><strong>{profile.name}</strong><small>{profile.market === "global" ? "Global network" : profile.market === "development" ? "Development markets" : profile.market === "veteran" ? "Veteran markets" : "Domestic network"}</small></span>
+                          <p>{profile.description}</p>
+                          <em>{current ? "Current agent" : "Choose"}</em>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         )}
 

@@ -1,5 +1,5 @@
 import { CLUBS, SCENARIOS, clubByName, country } from "./catalog";
-import { DEVELOPMENT_MARKETS, VETERAN_MARKETS, agentProfile } from "./agents";
+import { DEVELOPMENT_MARKETS, VETERAN_MARKETS, agentProfile, availableAgentProfiles, canHireAgent } from "./agents";
 import { clubDivision, maxSingleFee } from "./finances";
 import { simulateHonoursWithWorld } from "./honours";
 import { generateName } from "./names";
@@ -75,9 +75,13 @@ export function createCareerEngine(random = Math.random) {
     return player.age >= 19 && (levelGap >= 2 || levelGap >= 1 && qualityGap >= 5);
   }
   function canRequestTransfer(player: Player, world?: WorldState | null) {
-    return player.squad === "senior" && player.contractYears > 0 && player.age >= 19
-      && !!currentClubFor(player, world)
-      && (hasOutgrownClub(player, world) || player.morale <= 50 || player.clubSeasons >= 4);
+    return player.squad === "senior" && player.contractYears > 0 && !!currentClubFor(player, world);
+  }
+  function availableAgents(player: Player) {
+    return availableAgentProfiles(player);
+  }
+  function changeAgent(player: Player, name: string) {
+    return canHireAgent(player, name) ? { ...player, agent: name } : player;
   }
   function marketRoute(club: Club, player: Player, world?: WorldState | null) {
     const current = currentClubFor(player, world);
@@ -566,7 +570,8 @@ export function createCareerEngine(random = Math.random) {
 
   return {
     createCareer, simulateSeason, ordinaryDecision, nextBeat, recoverDecision, requestTransfer,
-    canRequestTransfer, hasOutgrownClub, resolveScenario, achievements, marketOffers: externalOffers,
+    canRequestTransfer, hasOutgrownClub, availableAgents, changeAgent,
+    resolveScenario, achievements, marketOffers: externalOffers,
   };
 }
 

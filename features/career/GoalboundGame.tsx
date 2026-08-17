@@ -15,7 +15,7 @@ export const GoalboundGame = observer(function GoalboundGame() {
 
   useEffect(() => store.startPersistence(), [store]);
 
-  const { game, player, scenario, achievements, canRequestTransfer, trophyTotals, draft, motion, trophyRoom } = store;
+  const { game, player, scenario, achievements, canRequestTransfer, availableAgents, trophyTotals, draft, motion, trophyRoom } = store;
 
   return (
     <>
@@ -77,10 +77,12 @@ export const GoalboundGame = observer(function GoalboundGame() {
             scenario={scenario}
             achievements={achievements}
             canRequestTransfer={canRequestTransfer}
+            agentOptions={availableAgents}
             onSeasonSpanChange={store.setSeasonSpan}
             onRevealOrigin={store.revealOrigin}
             onOffer={store.chooseOffer}
             onRequestTransfer={store.requestTransfer}
+            onAgentChange={store.changeAgent}
             onContinueSeason={store.continueAfterSeason}
             onScenario={store.resolveScenario}
             onContinueScenario={store.continueAfterScenario}

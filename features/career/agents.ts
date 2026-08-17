@@ -79,3 +79,38 @@ export const AGENT_PROFILES: Record<string, AgentProfile> = {
 export function agentProfile(name: string | undefined): AgentProfile {
   return AGENT_PROFILES[name ?? ""] ?? AGENT_PROFILES["Self-represented"];
 }
+
+const AGENT_ORDER = [
+  "Self-represented",
+  "Family representative",
+  "Local specialist",
+  "Development agency",
+  "International agent",
+  "Elite super-agent",
+  "Veteran broker",
+  "Optimistic agent",
+] as const;
+
+type AgentCandidate = {
+  age: number;
+  rating: number;
+  reputation: number;
+  agent?: string;
+};
+
+export function availableAgentProfiles(player: AgentCandidate): AgentProfile[] {
+  return AGENT_ORDER
+    .filter((name) => {
+      if (name === player.agent) return true;
+      if (name === "Development agency") return player.age <= 25;
+      if (name === "International agent") return player.rating >= 68 || player.reputation >= 35;
+      if (name === "Elite super-agent") return player.rating >= 84 && player.reputation >= 75;
+      if (name === "Veteran broker") return player.age >= 29;
+      return true;
+    })
+    .map((name) => AGENT_PROFILES[name]);
+}
+
+export function canHireAgent(player: AgentCandidate, name: string): boolean {
+  return availableAgentProfiles(player).some((profile) => profile.name === name);
+}

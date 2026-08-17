@@ -53,6 +53,10 @@ export class CareerStore {
     return this.player ? careerEngine.canRequestTransfer(this.player, this.game.world) : false;
   }
 
+  get availableAgents() {
+    return this.player ? careerEngine.availableAgents(this.player) : [];
+  }
+
   get trophyTotals() {
     return trophyRoomTotals(this.trophyRoom);
   }
@@ -192,6 +196,11 @@ export class CareerStore {
       this.updateGame({ player: result.player });
       this.applyBeat(result.decision);
     }, 900);
+  }
+
+  changeAgent(name: string) {
+    if (!this.player) return;
+    this.updateGame({ player: careerEngine.changeAgent(this.player, name) });
   }
 
   continueAfterSeason() {

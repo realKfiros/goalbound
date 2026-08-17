@@ -277,13 +277,31 @@ legend { margin-bottom: 13px; }
 .club-option-copy > span { grid-column: 1; color: var(--muted); font-size: 10px; }
 .club-option-copy > p { grid-column: 2; grid-row: 1 / 4; margin: 0; color: #bec1bb; font-size: 12px; line-height: 1.5; }
 .club-options em { position: absolute; right: 18px; color: var(--lime); font-size: 9px; font-style: normal; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
-.player-transfer-action { margin-top: 16px; padding: 18px 20px; display: flex; align-items: center; justify-content: space-between; gap: 28px; background: rgba(255,255,255,.025); border: 1px dashed rgba(199,255,53,.35); }
+.player-career-actions { margin-top: 16px; display: grid; gap: 10px; }
+.player-transfer-action { padding: 18px 20px; display: flex; align-items: center; justify-content: space-between; gap: 28px; background: rgba(255,255,255,.025); border: 1px dashed rgba(199,255,53,.35); }
 .player-transfer-action > div { max-width: 690px; }
 .player-transfer-action small { color: var(--lime); font: 8px monospace; letter-spacing: .13em; }
 .player-transfer-action strong { display: block; margin: 5px 0; font-size: 17px; }
 .player-transfer-action p { margin: 0; color: #aeb2ab; font-size: 11px; line-height: 1.5; }
 .player-transfer-action button { flex: 0 0 auto; padding: 13px 16px; background: var(--lime); border: 0; border-radius: 3px; color: #090a09; font-size: 10px; font-weight: 850; text-transform: uppercase; letter-spacing: .06em; cursor: pointer; }
 .player-transfer-action button span { margin-left: 8px; }
+.agent-management { padding: 18px 20px; background: rgba(255,255,255,.018); border: 1px solid var(--line); }
+.agent-management-heading { display: flex; align-items: center; justify-content: space-between; gap: 28px; }
+.agent-management-heading > div { max-width: 690px; }
+.agent-management-heading small { color: #f3c667; font: 8px monospace; letter-spacing: .13em; }
+.agent-management-heading strong { display: block; margin: 5px 0; font-size: 17px; }
+.agent-management-heading p { margin: 0; color: #aeb2ab; font-size: 11px; line-height: 1.5; }
+.agent-management-heading > button { flex: 0 0 auto; padding: 12px 15px; background: transparent; border: 1px solid rgba(243,198,103,.5); border-radius: 3px; color: #f3c667; font-size: 9px; font-weight: 850; text-transform: uppercase; letter-spacing: .06em; cursor: pointer; }
+.agent-management-heading > button:hover { background: rgba(243,198,103,.08); border-color: #f3c667; }
+.agent-options { margin-top: 16px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+.agent-options > button { min-height: 105px; padding: 14px; display: grid; grid-template-columns: 1fr auto; gap: 8px 14px; text-align: left; background: rgba(255,255,255,.025); border: 1px solid var(--line); cursor: pointer; }
+.agent-options > button:hover:not(:disabled) { background: rgba(243,198,103,.06); border-color: rgba(243,198,103,.55); }
+.agent-options > button.active { background: rgba(199,255,53,.055); border-color: rgba(199,255,53,.4); cursor: default; }
+.agent-options span { display: flex; flex-direction: column; gap: 4px; }
+.agent-options strong { font-size: 14px; }
+.agent-options small { color: #f3c667; font-size: 8px; text-transform: uppercase; letter-spacing: .08em; }
+.agent-options p { grid-column: 1 / -1; margin: 0; color: #aeb2ab; font-size: 10px; line-height: 1.45; }
+.agent-options em { color: var(--lime); font-size: 8px; font-style: normal; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
 .decision-dock .season-stage { min-height: 420px; }
 .decision-dock .season-club { margin-top: 24px; }
 .decision-dock .season-club h3 { font-size: clamp(34px, 4.5vw, 58px); }
@@ -634,6 +652,9 @@ footer { position: relative; z-index: 1; width: min(1320px, calc(100% - 64px)); 
   .club-options em { right: 10px; bottom: 10px; }
   .player-transfer-action { align-items: stretch; flex-direction: column; gap: 14px; }
   .player-transfer-action button { width: 100%; }
+  .agent-management-heading { align-items: stretch; flex-direction: column; gap: 14px; }
+  .agent-management-heading > button { width: 100%; }
+  .agent-options { grid-template-columns: 1fr; }
   .motion-card { padding: 32px 20px; }
   .offer-card h4 { margin-top: 38px; }
   .story-stage { margin-top: 38px; padding: 28px 18px; }

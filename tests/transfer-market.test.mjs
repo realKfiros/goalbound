@@ -303,7 +303,7 @@ test("a forced sale never opens an empty decision screen", () => {
   assert.ok(recovered.offers.length > 0, "A previously stuck forced-sale save must be repaired on load");
 });
 
-test("an outgrown player can request a move and Israeli clubs accept realistic export fees", () => {
+test("any contracted senior player can request a move and Israeli clubs accept realistic export fees", () => {
   const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
   const engine = createCareerEngine(seededRandom(1948));
   const player = eliteEnglishProspect("ISR", {
@@ -330,8 +330,24 @@ test("an outgrown player can request a move and Israeli clubs accept realistic e
 
   const settledAtEliteClub = { ...player, currentClub: "Manchester City", rating: 90, value: 120_000_000, clubSeasons: 2 };
   assert.equal(engine.hasOutgrownClub(settledAtEliteClub), false);
-  assert.equal(engine.canRequestTransfer(settledAtEliteClub), false);
+  assert.equal(engine.canRequestTransfer(settledAtEliteClub), true);
   assert.equal(engine.canRequestTransfer({ ...settledAtEliteClub, clubSeasons: 5 }), true);
+});
+
+test("players can review eligible agents and change representation without waiting for a scenario", () => {
+  const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
+  const engine = createCareerEngine(() => .5);
+  const player = eliteEnglishProspect("ISR", {
+    currentClub: "Maccabi Haifa", age: 22, rating: 73,
+    reputation: 48, agent: "Self-represented", contractYears: 2,
+  });
+
+  const options = engine.availableAgents(player);
+  assert.ok(options.length >= 4);
+  assert.ok(options.some((agent) => agent.name === "Local specialist"));
+  assert.ok(options.some((agent) => agent.name === "International agent"));
+  assert.equal(engine.changeAgent(player, "International agent").agent, "International agent");
+  assert.equal(engine.changeAgent(player, "Elite super-agent").agent, "Self-represented");
 });
 
 test("season development can rise for a young player and fall with age or injury", () => {
