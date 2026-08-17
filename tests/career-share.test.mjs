@@ -86,3 +86,13 @@ test("career summary uses the actual peak and named honours", () => {
   assert.equal(summary.biggestRise.club, "Maccabi Haifa");
   assert.equal(summary.breakouts, 2);
 });
+
+test("the share canvas grows to include every route and honour row", () => {
+  const { careerShareCanvasLayout } = loadTypeScriptModule("features/career/careerShare.ts");
+  const layout = careerShareCanvasLayout(player);
+  assert.equal(layout.width, 1400);
+  assert.equal(layout.routeRows, 3);
+  assert.equal(layout.honourRows, 2);
+  assert.equal(layout.legacyTrophies, 8);
+  assert.equal(layout.height, layout.footer + 72);
+});

@@ -112,4 +112,9 @@ test("the career finale creates a downloadable image and uses the native share s
   assert.match(careerShare, /navigator\.canShare/);
   assert.match(careerShare, /navigator\.share/);
   assert.match(careerShare, /goalbound\.kfiros\.com/);
+  assert.match(careerShare, /careerShareCanvasLayout/);
+  assert.match(careerShare, /summary\.spells\.length/);
+  assert.match(careerShare, /summary\.honours\.map/);
+  assert.doesNotMatch(careerShare, /ellipsize/);
+  assert.doesNotMatch(careerShare, /honours\.slice/);
 });

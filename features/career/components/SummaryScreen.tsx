@@ -181,7 +181,7 @@ export function SummaryScreen({ player, onReset, onTrophyRoom }: SummaryScreenPr
         <div className="summary-share-copy">
           <span className="eyebrow">Share the career</span>
           <h3>Your career card</h3>
-          <p>A 1200 × 630 image with the route, peak rating and final numbers. On supported phones, Share to apps opens the native share sheet.</p>
+          <p>A high-resolution image that grows to fit every club spell and every honour. On supported phones, Share to apps opens the native share sheet.</p>
           <div className="summary-share-actions">
             <button className="primary-button" onClick={handleShare} disabled={!shareBlob || shareBusy}>
               {nativeShare ? "Share to apps" : "Download share image"}<span>↗</span>
