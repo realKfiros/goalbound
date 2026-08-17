@@ -15,20 +15,16 @@ type SummaryScreenProps = {
 export function SummaryScreen({ player, onReset, onTrophyRoom }: SummaryScreenProps) {
   const summary = useMemo(() => careerSummary(player), [player]);
   const [shareBlob, setShareBlob] = useState<Blob | null>(null);
-  const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [nativeShare, setNativeShare] = useState(false);
   const [shareStatus, setShareStatus] = useState("Creating your career image…");
   const [shareBusy, setShareBusy] = useState(true);
 
   useEffect(() => {
     let active = true;
-    let imageUrl: string | null = null;
 
     createCareerShareImage(player).then((blob) => {
       if (!active) return;
-      imageUrl = URL.createObjectURL(blob);
       setShareBlob(blob);
-      setShareUrl(imageUrl);
       setNativeShare(Boolean(navigator.share && navigator.canShare?.({
         files: [new File([blob], "goalbound-career.png", { type: "image/png" })],
       })));
@@ -36,13 +32,12 @@ export function SummaryScreen({ player, onReset, onTrophyRoom }: SummaryScreenPr
       setShareBusy(false);
     }).catch(() => {
       if (!active) return;
-      setShareStatus("The image could not be created in this browser. You can still view the full career below.");
+      setShareStatus("The image could not be created in this browser. The full career above is unaffected.");
       setShareBusy(false);
     });
 
     return () => {
       active = false;
-      if (imageUrl) URL.revokeObjectURL(imageUrl);
     };
   }, [player]);
 
@@ -183,19 +178,16 @@ export function SummaryScreen({ player, onReset, onTrophyRoom }: SummaryScreenPr
           <h3>Your career card</h3>
           <p>A high-resolution image that grows to fit every club spell and every honour. On supported phones, Share to apps opens the native share sheet.</p>
           <div className="summary-share-actions">
-            <button className="primary-button" onClick={handleShare} disabled={!shareBlob || shareBusy}>
-              {nativeShare ? "Share to apps" : "Download share image"}<span>↗</span>
+            {nativeShare && (
+              <button className="primary-button" onClick={handleShare} disabled={!shareBlob || shareBusy}>
+                Share to apps <span>↗</span>
+              </button>
+            )}
+            <button className={nativeShare ? "secondary-button" : "primary-button"} onClick={handleDownload} disabled={!shareBlob || shareBusy}>
+              Download full career PNG <span>↓</span>
             </button>
-            <button className="secondary-button" onClick={handleDownload} disabled={!shareBlob || shareBusy}>Download PNG</button>
           </div>
           <small className="summary-share-status" role="status" aria-live="polite">{shareStatus}</small>
-        </div>
-        <div className="summary-share-preview">
-          {shareUrl ? (
-            // The preview is generated locally from the player's career and has no static URL.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={shareUrl} alt={`Share card summarising ${player.name}'s career`} />
-          ) : <div className="summary-share-loading"><i /><span>{shareBusy ? "Drawing career card…" : "Preview unavailable"}</span></div>}
         </div>
       </section>
 

@@ -106,7 +106,9 @@ test("the career finale creates a downloadable image and uses the native share s
   assert.match(summaryScreen, /Club journey/);
   assert.match(summaryScreen, /Honours won/);
   assert.match(summaryScreen, /Share to apps/);
-  assert.match(summaryScreen, /Download PNG/);
+  assert.match(summaryScreen, /Download full career PNG/);
+  assert.doesNotMatch(summaryScreen, /summary-share-preview/);
+  assert.doesNotMatch(summaryScreen, /shareUrl/);
   assert.match(summaryScreen, /Returning to a former club earns its own chapter/);
   assert.match(careerShare, /canvas\.toBlob/);
   assert.match(careerShare, /navigator\.canShare/);
