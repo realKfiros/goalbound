@@ -237,6 +237,76 @@ test("European access routes carry titleholders and performance spots into the n
   assert.deepEqual(first.world.history.at(-1).nextEuropeanQualification, first.nextSeasonEuropeanQualification);
 });
 
+test("England and Israel preserve domestic UEFA quotas when cup winners qualify higher", () => {
+  const { createWorldState } = loadTypeScriptModule("features/career/world.ts");
+  const { projectNextUefaQualification, UEFA_ASSOCIATIONS } = loadTypeScriptModule("features/career/uefaSeason.ts");
+  const world = createWorldState();
+  const associationSet = new Set(UEFA_ASSOCIATIONS);
+  const tables = new Map();
+
+  Object.values(world.clubs)
+    .filter((club) => club.division === 1 && associationSet.has(club.country))
+    .forEach((club) => {
+      const table = tables.get(club.country) ?? [];
+      table.push(club);
+      tables.set(club.country, table);
+    });
+  tables.forEach((table) => table.sort((left, right) =>
+    right.squadQuality - left.squadQuality || right.reputation - left.reputation || left.club.localeCompare(right.club)));
+
+  const domestic = [...tables].map(([country, table]) => ({
+    country,
+    division: 1,
+    table: table.map((club) => club.club),
+  }));
+  const cupWinners = Object.fromEntries([...tables].map(([country, table]) => [country, table[0].club]));
+  const scottishChampion = tables.get("SCO")[0];
+  const greekChampion = tables.get("GRE")[0];
+  const places = projectNextUefaQualification(world.clubs, domestic, cupWinners, {
+    additionalCups: [{ country: "ENG", name: "EFL Cup", winner: tables.get("ENG")[0].club }],
+    previousChampions: {
+      "champions-league": scottishChampion,
+      "europa-league": greekChampion,
+      "conference-league": scottishChampion,
+    },
+    previousPerformance: { ENG: 100, ITA: 90 },
+  });
+
+  const forCountry = (country) => places.filter((place) => place.country === country);
+  const counts = (country) => Object.fromEntries(["champions-league", "europa-league", "conference-league"]
+    .map((competition) => [competition, forCountry(country).filter((place) => place.competition === competition).length]));
+  assert.deepEqual(counts("ENG"), {
+    "champions-league": 5,
+    "europa-league": 2,
+    "conference-league": 1,
+  });
+  assert.deepEqual(counts("ISR"), {
+    "champions-league": 1,
+    "europa-league": 1,
+    "conference-league": 2,
+  });
+
+  const english = tables.get("ENG");
+  const englandPlaces = forCountry("ENG");
+  assert.equal(englandPlaces.find((place) => place.qualifiedVia === "European Performance Spot")?.club, english[4].club);
+  assert.equal(englandPlaces.find((place) => place.qualifiedVia === "League position · Europa League")?.club, english[5].club);
+  assert.equal(englandPlaces.find((place) => place.qualifiedVia === "League position · FA Cup place passed down")?.club, english[6].club);
+  assert.equal(englandPlaces.find((place) => place.qualifiedVia === "League position · EFL Cup place passed down")?.club, english[7].club);
+
+  const israel = tables.get("ISR");
+  const israelPlaces = forCountry("ISR");
+  assert.equal(israelPlaces.find((place) => place.competition === "europa-league")?.club, israel[1].club);
+  assert.equal(israelPlaces.find((place) => place.competition === "europa-league")?.entryRound, "Second qualifying round");
+  assert.equal(israelPlaces.find((place) => place.competition === "europa-league")?.qualifiedVia,
+    "League position · State Cup place passed down");
+  assert.deepEqual(israelPlaces.filter((place) => place.competition === "conference-league").map((place) => place.club),
+    [israel[2].club, israel[3].club]);
+  assert.ok(israelPlaces.filter((place) => place.competition === "conference-league")
+    .every((place) => place.entryRound === "Second qualifying round"));
+
+  assert.equal(new Set(places.map((place) => `${place.country}:${place.club}`)).size, places.length);
+});
+
 test("continental calibration keeps domestic giants realistic in Europe", () => {
   const { createWorldState, simulateWorldSeason } = loadTypeScriptModule("features/career/world.ts");
   const { continentalClubStrength } = loadTypeScriptModule("features/career/uefaSeason.ts");

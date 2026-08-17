@@ -68,6 +68,8 @@ const UCL_DOMESTIC_SLOTS: ReadonlyArray<readonly [string, number]> = [
   ["NED", 2], ["POR", 1], ["BEL", 1], ["CZE", 1], ["TUR", 1],
 ];
 
+const EXPLICIT_DOMESTIC_ACCESS = new Set(["ENG", "ISR"]);
+
 const NATIONAL_CUP_NAMES: Record<string, string> = {
   ENG: "FA Cup", ITA: "Coppa Italia", ESP: "Copa del Rey", GER: "DFB-Pokal", FRA: "Coupe de France",
   NED: "KNVB Cup", POR: "Taça de Portugal", BEL: "Belgian Cup", CZE: "Czech Cup", TUR: "Turkish Cup",
@@ -147,6 +149,12 @@ export function projectNextUefaQualification(
     taken.add(clubKey(state));
     return true;
   };
+  const roundPlaceCount = (
+    competition: EuropeanCompetitionKey,
+    entryRound: EuropeanQualification["entryRound"],
+    path: EuropeanQualification["path"],
+  ) => places.filter((place) =>
+    place.competition === competition && place.entryRound === entryRound && place.path === path).length;
   const addUntil = (
     total: number,
     countries: readonly string[],
@@ -154,14 +162,35 @@ export function projectNextUefaQualification(
     entryRound: EuropeanQualification["entryRound"],
     path: EuropeanQualification["path"],
     via: string,
+    excludedCountries: ReadonlySet<string> = new Set(),
   ) => {
+    const eligibleCountries = countries.filter((country) => !excludedCountries.has(country));
+    if (eligibleCountries.length === 0) throw new Error(`No eligible associations for ${competition} ${entryRound} ${path}.`);
     let cursor = 0;
-    while (places.filter((place) => place.competition === competition && place.entryRound === entryRound && place.path === path).length < total) {
-      const country = countries[cursor % countries.length];
+    while (roundPlaceCount(competition, entryRound, path) < total) {
+      const country = eligibleCountries[cursor % eligibleCountries.length];
       add(nextAvailable(country), competition, entryRound, path, via);
       cursor += 1;
-      if (cursor > countries.length * 20) throw new Error(`Unable to fill ${competition} ${entryRound} ${path}.`);
+      if (cursor > eligibleCountries.length * 20) throw new Error(`Unable to fill ${competition} ${entryRound} ${path}.`);
     }
+  };
+  const addCountrySequence = (
+    total: number,
+    countries: readonly string[],
+    competition: EuropeanCompetitionKey,
+    entryRound: EuropeanQualification["entryRound"],
+    path: EuropeanQualification["path"],
+    via: string,
+  ) => {
+    const displaced: string[] = [];
+    countries.forEach((country) => {
+      if (roundPlaceCount(competition, entryRound, path) >= total) {
+        displaced.push(country);
+        return;
+      }
+      add(nextAvailable(country), competition, entryRound, path, via);
+    });
+    return displaced;
   };
   const addRankSlice = (
     from: number,
@@ -177,6 +206,18 @@ export function projectNextUefaQualification(
     const holder = access.previousChampions?.[key];
     return holder ? resolveClub(clubs, holder.country, holder.club) : undefined;
   };
+  const addCupPlace = (
+    country: string,
+    competition: EuropeanCompetitionKey,
+    entryRound: EuropeanQualification["entryRound"],
+    path: EuropeanQualification["path"],
+  ) => {
+    const cupName = NATIONAL_CUP_NAMES[country] ?? "National cup";
+    const cupWinner = resolveClub(clubs, country, cupWinners[country]);
+    if (add(cupWinner, competition, entryRound, path, `${cupName} winner`)) return true;
+    add(nextAvailable(country), competition, entryRound, path, `League position · ${cupName} place passed down`);
+    return false;
+  };
 
   add(previousChampion("champions-league"), "champions-league", ROUND.league, "Direct", "Champions League holder");
   add(previousChampion("europa-league"), "champions-league", ROUND.league, "Direct", "Europa League holder");
@@ -191,7 +232,7 @@ export function projectNextUefaQualification(
     .map(([country]) => country);
   [...new Set([...performanceAssociations, ...UEFA_ASSOCIATIONS])].slice(0, 2).forEach((country) =>
     add(nextAvailable(country), "champions-league", ROUND.league, "Direct", "European Performance Spot"));
-  addUntil(29, UEFA_ASSOCIATIONS, "champions-league", ROUND.league, "Direct", "Access-list rebalancing");
+  addUntil(29, UEFA_ASSOCIATIONS, "champions-league", ROUND.league, "Direct", "Access-list rebalancing", EXPLICIT_DOMESTIC_ACCESS);
 
   addRankSlice(25, 53, 0, "champions-league", ROUND.first, "Champions path", "Domestic champion");
   addUntil(28, UEFA_ASSOCIATIONS.slice(25), "champions-league", ROUND.first, "Champions path", "Access-list rebalancing");
@@ -206,32 +247,53 @@ export function projectNextUefaQualification(
 
   add(previousChampion("conference-league"), "europa-league", ROUND.league, "Direct", "Conference League holder");
   ["ENG", "ITA", "ESP", "GER", "FRA"].forEach((country) => {
+    const cupName = NATIONAL_CUP_NAMES[country] ?? "National cup";
     const cupWinner = resolveClub(clubs, country, cupWinners[country]);
-    add(cupWinner, "europa-league", ROUND.league, "Direct", `${NATIONAL_CUP_NAMES[country] ?? "National cup"} winner`);
-    add(nextAvailable(country), "europa-league", ROUND.league, "Direct", "League position");
+    const cupWinnerAdded = add(cupWinner, "europa-league", ROUND.league, "Direct", `${cupName} winner`);
+    add(nextAvailable(country), "europa-league", ROUND.league, "Direct", "League position · Europa League");
+    if (!cupWinnerAdded) {
+      add(nextAvailable(country), "europa-league", ROUND.league, "Direct", `League position · ${cupName} place passed down`);
+    }
   });
+  const europaDirectOverflow: string[] = [];
   ["NED", "POR", "BEL"].forEach((country) => {
-    const cupWinner = resolveClub(clubs, country, cupWinners[country]);
-    add(cupWinner, "europa-league", ROUND.league, "Direct", `${NATIONAL_CUP_NAMES[country] ?? "National cup"} winner`);
+    if (roundPlaceCount("europa-league", ROUND.league, "Direct") >= 13) {
+      europaDirectOverflow.push(country);
+    } else {
+      addCupPlace(country, "europa-league", ROUND.league, "Direct");
+    }
   });
-  addUntil(13, UEFA_ASSOCIATIONS, "europa-league", ROUND.league, "Direct", "Access-list rebalancing");
-  addRankSlice(41, 53, -1, "europa-league", ROUND.first, "Main path", "Cup or league place");
-  addUntil(12, UEFA_ASSOCIATIONS.slice(41), "europa-league", ROUND.first, "Main path", "Access-list rebalancing");
-  addRankSlice(29, 41, -1, "europa-league", ROUND.second, "Main path", "Cup or league place");
-  addUntil(12, UEFA_ASSOCIATIONS.slice(29, 41), "europa-league", ROUND.second, "Main path", "Access-list rebalancing");
-  addRankSlice(24, 27, -1, "europa-league", ROUND.third, "Main path", "Cup or league place");
-  addUntil(3, UEFA_ASSOCIATIONS.slice(24, 27), "europa-league", ROUND.third, "Main path", "Access-list rebalancing");
-  addRankSlice(18, 23, -1, "europa-league", ROUND.playoff, "Main path", "Cup or league place");
-  addUntil(5, UEFA_ASSOCIATIONS.slice(18), "europa-league", ROUND.playoff, "Main path", "Cup or league place");
+  addUntil(13, UEFA_ASSOCIATIONS, "europa-league", ROUND.league, "Direct", "Access-list rebalancing", EXPLICIT_DOMESTIC_ACCESS);
+  let europaOverflow = addCountrySequence(5, [...europaDirectOverflow, ...UEFA_ASSOCIATIONS.slice(18, 23)],
+    "europa-league", ROUND.playoff, "Main path", "Cup or league place");
+  addUntil(5, [...europaDirectOverflow, ...UEFA_ASSOCIATIONS.slice(18, 23)],
+    "europa-league", ROUND.playoff, "Main path", "Cup or league place", EXPLICIT_DOMESTIC_ACCESS);
+  europaOverflow = addCountrySequence(3, [...europaOverflow, ...UEFA_ASSOCIATIONS.slice(24, 27)],
+    "europa-league", ROUND.third, "Main path", "Cup or league place");
+  addUntil(3, [...europaOverflow, ...UEFA_ASSOCIATIONS.slice(24, 27)],
+    "europa-league", ROUND.third, "Main path", "Access-list rebalancing", EXPLICIT_DOMESTIC_ACCESS);
+  addCupPlace("ISR", "europa-league", ROUND.second, "Main path");
+  europaOverflow = addCountrySequence(12, [...europaOverflow, ...UEFA_ASSOCIATIONS.slice(29, 41)],
+    "europa-league", ROUND.second, "Main path", "Cup or league place");
+  addUntil(12, [...europaOverflow, ...UEFA_ASSOCIATIONS.slice(29, 41)],
+    "europa-league", ROUND.second, "Main path", "Access-list rebalancing", EXPLICIT_DOMESTIC_ACCESS);
+  addCountrySequence(12, [...europaOverflow, ...UEFA_ASSOCIATIONS.slice(41)],
+    "europa-league", ROUND.first, "Main path", "Cup or league place");
+  addUntil(12, [...europaOverflow, ...UEFA_ASSOCIATIONS.slice(41)],
+    "europa-league", ROUND.first, "Main path", "Access-list rebalancing", EXPLICIT_DOMESTIC_ACCESS);
 
   const weakestFirst = [...UEFA_ASSOCIATIONS].reverse();
-  addUntil(52, weakestFirst, "conference-league", ROUND.first, "Main path", "Cup or league place");
-  addUntil(54, weakestFirst, "conference-league", ROUND.second, "Main path", "Cup or league place");
   const eflCup = access.additionalCups?.find((cup) => cup.country === "ENG" && cup.name === "EFL Cup");
   if (eflCup) {
-    add(resolveClub(clubs, "ENG", eflCup.winner), "conference-league", ROUND.playoff, "Main path", "EFL Cup winner");
+    if (!add(resolveClub(clubs, "ENG", eflCup.winner), "conference-league", ROUND.playoff, "Main path", "EFL Cup winner")) {
+      add(nextAvailable("ENG"), "conference-league", ROUND.playoff, "Main path", "League position · EFL Cup place passed down");
+    }
   }
-  addUntil(5, UEFA_ASSOCIATIONS, "conference-league", ROUND.playoff, "Main path", "Cup or league place");
+  add(nextAvailable("ISR"), "conference-league", ROUND.second, "Main path", "League position · Conference League");
+  add(nextAvailable("ISR"), "conference-league", ROUND.second, "Main path", "League position · Conference League");
+  addUntil(52, weakestFirst, "conference-league", ROUND.first, "Main path", "Cup or league place", EXPLICIT_DOMESTIC_ACCESS);
+  addUntil(54, weakestFirst, "conference-league", ROUND.second, "Main path", "Cup or league place", EXPLICIT_DOMESTIC_ACCESS);
+  addUntil(5, UEFA_ASSOCIATIONS, "conference-league", ROUND.playoff, "Main path", "Cup or league place", EXPLICIT_DOMESTIC_ACCESS);
 
   return places;
 }
