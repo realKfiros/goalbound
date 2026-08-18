@@ -2,6 +2,7 @@ import type { Club, Role } from "./domain";
 import { CATALOG_SEASON } from "./leagueCatalog";
 
 export type FinancialBand = 1 | 2 | 3 | 4 | 5;
+export type TransferMarketTier = 1 | 2 | 3 | 4 | 5;
 
 export type ClubFinance = {
   financialBand: FinancialBand;
@@ -210,4 +211,18 @@ export function maxSingleFee(club: Club, role: Role, marqueeFactor = 1) {
     * clamp(marqueeFactor, 1, 1.8);
   const rounding = clubDivision(club) <= 2 ? 50_000 : 10_000;
   return Math.round(Math.min(tier.hardMaxSingleFee, estimate) / rounding) * rounding;
+}
+
+/**
+ * A club's worldwide transfer stature. `Club.level` describes its place inside
+ * its own league, so it cannot distinguish Liverpool from a dominant club in a
+ * much smaller market. Buying power supplies the missing cross-league scale.
+ */
+export function transferMarketTier(club: Club): TransferMarketTier {
+  const starCapacity = maxSingleFee(club, "Star");
+  if (starCapacity >= 60_000_000) return 5;
+  if (starCapacity >= 25_000_000) return 4;
+  if (starCapacity >= 10_000_000) return 3;
+  if (starCapacity >= 4_000_000) return 2;
+  return 1;
 }

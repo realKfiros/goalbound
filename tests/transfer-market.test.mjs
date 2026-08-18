@@ -177,6 +177,16 @@ test("club finance estimates are stable and role-sensitive", () => {
   assert.ok(maxSingleFee(arsenal, "Star") > maxSingleFee(arsenal, "Rotation"));
 });
 
+test("worldwide transfer tiers distinguish superclubs from dominant smaller-market clubs", () => {
+  const { transferMarketTier } = loadTypeScriptModule("features/career/finances.ts");
+
+  assert.equal(transferMarketTier(club("Liverpool")), 5);
+  assert.equal(transferMarketTier(club("Real Madrid")), 5);
+  assert.ok(transferMarketTier(club("Aktobe")) < 4);
+  assert.ok(transferMarketTier(club("Lausanne-Sport")) < 4);
+  assert.ok(transferMarketTier(club("Salford City")) < 4);
+});
+
 test("pyramid ceilings still override club stature", () => {
   const { maxSingleFee } = loadTypeScriptModule("features/career/finances.ts");
   assert.ok(maxSingleFee(club("Leicester City"), "Star") <= 4_000_000);
@@ -332,6 +342,65 @@ test("an expired Ballon d'Or winner can leave when the club cannot sustain his w
   assert.equal(beat.offers.some((offer) => offer.kind === "renewal"), false);
 });
 
+test("a declining former Ballon d'Or winner leaving Real Madrid retains a credible market", () => {
+  const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
+  const { clubDivision, maxSingleFee } = loadTypeScriptModule("features/career/finances.ts");
+  const formerWinner = eliteEnglishProspect("ENG", {
+    name: "Decorated Veteran", currentClub: "Real Madrid", age: 35,
+    rating: 86, potential: 95, value: 45_000_000, reputation: 100,
+    contractYears: 0, lastRole: "Starter", agent: "International agent",
+    history: [
+      {
+        fromAge: 34, toAge: 35, club: "Real Madrid", country: "ESP", league: "LaLiga",
+        role: "Starter", kind: "stay", apps: 31, goals: 9, assists: 8,
+        before: 89, after: 86, trophies: 0, event: "Age finally won a few sprints", honours: [],
+      },
+      {
+        fromAge: 28, toAge: 29, club: "Real Madrid", country: "ESP", league: "LaLiga",
+        role: "Star", kind: "stay", apps: 49, goals: 31, assists: 17,
+        before: 91, after: 93, trophies: 2, event: "The best player in the world",
+        honours: [{
+          season: "2028/29", league: "LaLiga", champion: "Real Madrid",
+          topScorer: { name: "Decorated Veteran", club: "Real Madrid", isPlayer: true },
+          playerOfSeason: { name: "Decorated Veteran", club: "Real Madrid", isPlayer: true },
+          cup: { name: "Copa del Rey", winner: "Real Madrid" },
+          ballonDor: { name: "Decorated Veteran", club: "Real Madrid", isPlayer: true },
+          playerHonours: [{
+            id: "ballon-dor-2028-29", kind: "ballon-dor", category: "individual",
+            name: "Ballon d'Or", season: "2028/29", club: "Real Madrid", country: "ESP", icon: "🌕",
+          }],
+        }],
+      },
+      {
+        fromAge: 18, toAge: 20, club: "Salford City", country: "ENG", league: "EFL League Two",
+        role: "Prospect", kind: "stay", apps: 32, goals: 4, assists: 6,
+        before: 59, after: 66, trophies: 0, event: "The beginning", honours: [],
+      },
+    ],
+  });
+
+  for (let seed = 1; seed <= 300; seed += 1) {
+    const engine = createCareerEngine(seededRandom(seed));
+    const offers = engine.marketOffers(formerWinner, 3, true, false);
+    const credibleOffers = offers.filter((offer) =>
+      offer.kind === "permanent" && clubDivision(offer) === 1 && maxSingleFee(offer, "Star") >= 25_000_000,
+    );
+    assert.ok(credibleOffers.length >= 2, `Only received: ${offers.map((offer) => `${offer.name} (€${Math.round(maxSingleFee(offer, "Star") / 1_000_000)}m capacity)`).join(", ")}`);
+  }
+
+  let releasedDecisions = 0;
+  for (let seed = 1; seed <= 300; seed += 1) {
+    const beat = createCareerEngine(seededRandom(seed)).nextBeat(formerWinner, formerWinner.history[0]);
+    if (beat.type !== "decision" || beat.kind !== "released") continue;
+    releasedDecisions += 1;
+    const credibleOffers = beat.offers.filter((offer) =>
+      offer.kind === "permanent" && clubDivision(offer) === 1 && maxSingleFee(offer, "Star") >= 25_000_000,
+    );
+    assert.ok(credibleOffers.length >= 2, `Release market only contained: ${beat.offers.map((offer) => offer.name).join(", ")}`);
+  }
+  assert.ok(releasedDecisions > 0, "Expected the ageing veteran to be released in some sampled seasons");
+});
+
 test("a club cannot release a player who is still under contract", () => {
   const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
   const player = eliteEnglishProspect("ENG", {
@@ -352,6 +421,7 @@ test("a club cannot release a player who is still under contract", () => {
 
 test("a global superstar's transfer request reaches the true superclubs", () => {
   const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
+  const { clubDivision, maxSingleFee } = loadTypeScriptModule("features/career/finances.ts");
   const player = {
     ...fourTimeBallonDorWinner(), currentClub: "Bayern Munich", contractYears: 2,
     history: fourTimeBallonDorWinner().history.map((season) => ({
@@ -366,7 +436,9 @@ test("a global superstar's transfer request reaches the true superclubs", () => 
   for (let seed = 1; seed <= 1_200; seed += 1) {
     const bids = createCareerEngine(seededRandom(seed)).requestTransfer(player).decision.offers
       .filter((offer) => offer.kind === "permanent");
-    assert.ok(bids.every((offer) => offer.level === 5 && (offer.division ?? 1) === 1));
+    assert.ok(bids.every((offer) => clubDivision(offer) === 1));
+    assert.ok(bids.every((offer) => maxSingleFee(offer, "Star") >= 60_000_000),
+      `Non-elite global market: ${bids.map((offer) => offer.name).join(", ")}`);
     bids.forEach((offer) => seen.add(offer.name));
   }
 

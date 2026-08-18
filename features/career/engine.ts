@@ -1,6 +1,6 @@
 import { CLUBS, SCENARIOS, clubByName, country } from "./catalog";
 import { DEVELOPMENT_MARKETS, VETERAN_MARKETS, agentProfile, availableAgentProfiles, canHireAgent } from "./agents";
-import { clubDivision, maxSingleFee } from "./finances";
+import { clubDivision, maxSingleFee, transferMarketTier } from "./finances";
 import { simulateHonoursWithWorld } from "./honours";
 import { generateName } from "./names";
 import { baseMarketValue, calculatedMarketValue, careerBallonDorWins, currentMarketValue } from "./valuation";
@@ -69,6 +69,16 @@ export function createCareerEngine(random = Math.random) {
   function isGlobalSuperstar(player: Player) {
     return player.rating >= 90 && player.reputation >= 85
       && (careerBallonDorWins(player) > 0 || player.rating >= 93);
+  }
+  function prestigeMarketTarget(player: Player) {
+    const wins = careerBallonDorWins(player);
+    const establishedTarget = player.rating >= 72 && player.reputation >= 75
+      ? idealClubLevel(player)
+      : 0;
+    if (wins === 0 || player.reputation < 80) return establishedTarget;
+    const serialWinnerBonus = wins >= 2 && player.rating >= 80 ? 1 : 0;
+    const legacyTarget = Math.min(5, Math.max(2, idealClubLevel(player) + serialWinnerBonus));
+    return Math.max(establishedTarget, legacyTarget);
   }
   function hasOutgrownClub(player: Player, world?: WorldState | null) {
     const current = currentClubFor(player, world);
@@ -264,14 +274,15 @@ export function createCareerEngine(random = Math.random) {
     const profile = agentProfile(player.agent);
     const declining = isDeclining(player);
     const globalSuperstar = isGlobalSuperstar(player);
-    const minimumLevel = globalSuperstar ? 5 : ideal - (declining ? 2 : 1);
+    const prestigeTarget = globalSuperstar ? 5 : prestigeMarketTarget(player);
+    const minimumLevel = globalSuperstar ? 1 : ideal - (declining ? 2 : 1);
     const market = CLUBS.map((club) => clubInWorld(club, world)).filter((club) => {
       const role = roleForPlayer(player, club);
       return club.name !== player.currentClub
         && isPlausibleMarketClub(club, player, world)
         && club.level >= minimumLevel
         && club.level <= ideal + profile.levelRange
-        && (!globalSuperstar || clubDivision(club) === 1)
+        && (!globalSuperstar || clubDivision(club) === 1 && transferMarketTier(club) === 5)
         && (!requiresTransferFee || buyerFeeCapacity(player, club, role) >= acceptedFeeFloor(player, club, bidContext, world));
     });
     const routeCounts = new Map<string, number>();
@@ -289,11 +300,20 @@ export function createCareerEngine(random = Math.random) {
       return Math.max(.001, base / Math.max(1, routeCounts.get(route) ?? 1));
     };
     const desiredCount = Math.min(3, count + profile.offerBonus);
-    const selected = market
+    const ranked = market
       .map((club) => ({ club, key: Math.pow(Math.max(random(), Number.MIN_VALUE), 1 / routeWeight(club)) }))
-      .sort((left, right) => right.key - left.key)
-      .slice(0, desiredCount)
-      .map(({ club }) => club);
+      .sort((left, right) => right.key - left.key);
+    const prestigeOptions = prestigeTarget > 0
+      ? ranked
+        .filter(({ club }) => clubDivision(club) === 1 && transferMarketTier(club) >= prestigeTarget)
+        .slice(0, Math.min(2, desiredCount))
+        .map(({ club }) => club)
+      : [];
+    const prestigeNames = new Set(prestigeOptions.map((club) => `${club.country}:${club.name}`));
+    const remaining = ranked
+      .map(({ club }) => club)
+      .filter((club) => !prestigeNames.has(`${club.country}:${club.name}`));
+    const selected = [...prestigeOptions, ...remaining].slice(0, desiredCount);
     return selected.map((club) => {
       const role = roleForPlayer(player, club);
       const loan = !permanentOnly && player.age <= 22 && role === "Prospect" && random() < .55;
