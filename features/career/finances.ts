@@ -199,14 +199,15 @@ export function clubFinance(club: Club): ClubFinance {
   };
 }
 
-export function maxSingleFee(club: Club, role: Role) {
+export function maxSingleFee(club: Club, role: Role, marqueeFactor = 1) {
   const tier = tierFinance(club);
   const { financialBand } = clubFinance(club);
   const estimate = .10
     * tier.squadValueProxy
     * FINANCIAL_MULTIPLIER[financialBand]
     * seededWindowFactor(club)
-    * ROLE_FACTOR[role];
+    * ROLE_FACTOR[role]
+    * clamp(marqueeFactor, 1, 1.4);
   const rounding = clubDivision(club) <= 2 ? 50_000 : 10_000;
   return Math.round(Math.min(tier.hardMaxSingleFee, estimate) / rounding) * rounding;
 }

@@ -272,10 +272,41 @@ test("career honours create a persistent market-value premium", () => {
   };
 
   assert.equal(careerBallonDorWins(winner), 4);
-  assert.ok(calculatedMarketValue(winner) >= 120_000_000);
-  assert.ok(calculatedMarketValue(winner) > calculatedMarketValue(unawarded) * 2.75);
+  assert.ok(calculatedMarketValue(winner) >= 140_000_000);
+  assert.ok(calculatedMarketValue(winner) > calculatedMarketValue(unawarded) * 2.3);
   assert.equal(currentMarketValue(winner), calculatedMarketValue(winner));
-  assert.equal(currentMarketValue({ ...winner, value: 60_000_000, valuationVersion: 3 }), 60_000_000);
+  assert.equal(currentMarketValue({ ...winner, value: 60_000_000, valuationVersion: 4 }), 60_000_000);
+});
+
+test("recent goal contributions and domestic individual awards raise market value", () => {
+  const { calculatedMarketValue } = loadTypeScriptModule("features/career/valuation.ts");
+  const quietSeason = {
+    fromAge: 24, toAge: 25, club: "Liverpool", country: "ENG", league: "Premier League",
+    role: "Starter", kind: "stay", apps: 38, goals: 4, assists: 5,
+    before: 81, after: 82, trophies: 0, event: "A steady season", honours: [],
+  };
+  const prolificSeason = { ...quietSeason, goals: 25, assists: 15, event: "Forty goal contributions" };
+  const awardedSeason = {
+    ...prolificSeason,
+    honours: [{
+      season: "2030/31", league: "Premier League", champion: "Arsenal",
+      topScorer: { name: "Form Player", club: "Liverpool", isPlayer: true },
+      playerOfSeason: { name: "Form Player", club: "Liverpool", isPlayer: true },
+      cup: { name: "FA Cup", winner: "Chelsea" },
+      ballonDor: { name: "Another Player", club: "Real Madrid", isPlayer: false },
+      playerHonours: [
+        { id: "golden-boot-2031", kind: "golden-boot", category: "individual", name: "Premier League Golden Boot", season: "2030/31", club: "Liverpool", country: "ENG", icon: "👟" },
+        { id: "player-season-2031", kind: "player-of-season", category: "individual", name: "Premier League Player of the Season", season: "2030/31", club: "Liverpool", country: "ENG", icon: "⭐" },
+      ],
+    }],
+  };
+  const profile = { rating: 82, age: 25, potential: 86 };
+  const quietValue = calculatedMarketValue({ ...profile, history: [quietSeason] });
+  const prolificValue = calculatedMarketValue({ ...profile, history: [prolificSeason] });
+  const awardedValue = calculatedMarketValue({ ...profile, history: [awardedSeason] });
+
+  assert.ok(prolificValue > quietValue * 1.2);
+  assert.ok(awardedValue > prolificValue * 1.15);
 });
 
 test("a reigning Ballon d'Or winner is renewed by an elite club when his contract expires", () => {

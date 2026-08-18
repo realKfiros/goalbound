@@ -244,6 +244,10 @@ export function createCareerEngine(random = Math.random) {
     if (!club || careerBallonDorWins(player) === 0) return false;
     return maxSingleFee(club, "Star") < currentMarketValue(player) * .18;
   }
+  function buyerFeeCapacity(player: Player, club: Club, role: Role) {
+    const marqueeFactor = 1 + Math.min(.4, careerBallonDorWins(player) * .1);
+    return maxSingleFee(club, role, marqueeFactor);
+  }
   function externalOffers(
     player: Player,
     count = 2,
@@ -261,7 +265,7 @@ export function createCareerEngine(random = Math.random) {
         && isPlausibleMarketClub(club, player, world)
         && club.level >= ideal - (declining ? 2 : 1)
         && club.level <= ideal + profile.levelRange
-        && (!requiresTransferFee || maxSingleFee(club, role) >= acceptedFeeFloor(player, club, bidContext, world));
+        && (!requiresTransferFee || buyerFeeCapacity(player, club, role) >= acceptedFeeFloor(player, club, bidContext, world));
     });
     const routeCounts = new Map<string, number>();
     market.forEach((club) => {
@@ -304,7 +308,7 @@ export function createCareerEngine(random = Math.random) {
       const proposedFee = discountedMarket
         ? Math.round(floor * (randomInt(100, 145) / 100) / rounding) * rounding
         : Math.round(marketValue * (randomInt(92, 128) / 100) / rounding) * rounding;
-      const fee = Math.min(Math.max(floor, proposedFee), maxSingleFee(offer, offer.role));
+      const fee = Math.min(Math.max(floor, proposedFee), buyerFeeCapacity(player, offer, offer.role));
       return makeOffer(offer, player, "Accepted transfer bid", "permanent", offer.role, `${offer.name} agreed ${formatMoney(fee)} with ${player.currentClub} · proposed ${offer.role.toLowerCase()} role`);
     });
   }
@@ -423,7 +427,7 @@ export function createCareerEngine(random = Math.random) {
     const potential = origin === "gem" ? randomInt(90, 96) : origin === "senior" ? randomInt(79, 91) : randomInt(76, 93);
     const player: Player = {
       ...draft, name: draft.name.trim() || generateName(draft.nation, random), age, rating, potential,
-      value: baseMarketValue(rating, age, potential), valuationVersion: 3, currentClub: "Free agent", parentClub: null,
+      value: baseMarketValue(rating, age, potential), valuationVersion: 4, currentClub: "Free agent", parentClub: null,
       totalApps: 0, totalGoals: 0, totalAssists: 0, trophies: 0, caps: 0, nationalGoals: 0,
       morale: origin === "gem" ? 84 : 72, fitness: 92, reputation: origin === "gem" ? 24 : origin === "senior" ? 13 : 6,
       agent: "Self-represented", roleBoost: origin === "gem" ? 1 : 0, origin,
@@ -512,7 +516,7 @@ export function createCareerEngine(random = Math.random) {
     const next: Player = {
       ...player, age: player.age + years, rating: nextRating,
       value: calculatedMarketValue({ rating: nextRating, age: player.age + years, potential: player.potential, history: nextHistory }),
-      valuationVersion: 3,
+      valuationVersion: 4,
       currentClub: destination.kind === "loan" ? player.currentClub : destination.name, parentClub: null,
       totalApps: player.totalApps + apps, totalGoals: player.totalGoals + goals, totalAssists: player.totalAssists + assists,
       trophies: player.trophies + trophies, caps: player.caps + caps, nationalGoals: player.nationalGoals + nationalGoals,
@@ -648,7 +652,7 @@ export function createCareerEngine(random = Math.random) {
       player: {
         ...player, rating, potential,
         value: Math.round(calculatedMarketValue({ rating, age: player.age, potential, history: player.history }) * (effect.value ?? 1)),
-        valuationVersion: 3,
+        valuationVersion: 4,
         morale: clamp(player.morale + (effect.morale ?? 0), 0, 100),
         fitness: clamp(player.fitness + (effect.fitness ?? 0), 0, 100),
         reputation: clamp(player.reputation + (effect.reputation ?? 0), 0, 100),
