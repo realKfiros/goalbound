@@ -129,6 +129,34 @@ function club(name) {
   return match;
 }
 
+function fourTimeBallonDorWinner() {
+  const history = Array.from({ length: 4 }, (_, index) => {
+    const fromAge = 24 + index;
+    const season = `20${30 + index}/${String(31 + index).padStart(2, "0")}`;
+    return {
+      fromAge, toAge: fromAge + 1, club: "Liverpool", country: "ENG", league: "Premier League",
+      role: "Star", kind: "stay", apps: 48, goals: 35, assists: 18,
+      before: 91 + index, after: 92 + index, trophies: 2, event: "World-class season",
+      honours: [{
+        season, league: "Premier League", champion: "Liverpool",
+        topScorer: { name: "Serial Winner", club: "Liverpool", isPlayer: true },
+        playerOfSeason: { name: "Serial Winner", club: "Liverpool", isPlayer: true },
+        cup: { name: "FA Cup", winner: "Liverpool" },
+        ballonDor: { name: "Serial Winner", club: "Liverpool", isPlayer: true },
+        playerHonours: [{
+          id: `ballon-dor-${season}`, kind: "ballon-dor", category: "individual",
+          name: "Ballon d'Or", season, club: "Liverpool", country: "ENG", icon: "🌕",
+        }],
+      }],
+    };
+  });
+  return eliteEnglishProspect("ENG", {
+    name: "Serial Winner", currentClub: "Liverpool", age: 28, rating: 95, potential: 96,
+    value: 21_000_000, reputation: 100, trophies: 8, totalApps: 260, totalGoals: 170,
+    totalAssists: 85, caps: 70, nationalGoals: 42, lastRole: "Star", history,
+  });
+}
+
 test("club finances vary by stature within the same league", () => {
   const { clubFinance, maxSingleFee } = loadTypeScriptModule("features/career/finances.ts");
   const city = club("Manchester City");
@@ -215,6 +243,38 @@ test("National League clubs can still bid for affordable players", () => {
   );
   assert.ok(affordable, "Expected an affordable National League transfer to remain possible");
   assert.match(affordable.reason, /agreed €\d+k/);
+});
+
+test("a four-time Ballon d'Or winner cannot be sold for an ordinary €21m valuation", () => {
+  const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
+  const player = fourTimeBallonDorWinner();
+  const offers = [];
+  for (let seed = 1; seed <= 800; seed += 1) {
+    const decision = createCareerEngine(seededRandom(seed)).ordinaryDecision(player);
+    offers.push(...decision.offers.filter((offer) => offer.reason.includes(" agreed ")));
+  }
+  assert.ok(offers.length > 0, "Expected elite clubs to bid for the reigning four-time winner");
+  const fees = offers.map((offer) => {
+    const match = offer.reason.match(/agreed €([\d.]+)([mk])/);
+    assert.ok(match, offer.reason);
+    return Number(match[1]) * (match[2] === "m" ? 1_000_000 : 1_000);
+  });
+  assert.ok(Math.min(...fees) >= 80_000_000, `Lowest accepted fee was €${Math.min(...fees).toLocaleString("en-US")}`);
+});
+
+test("career honours create a persistent market-value premium", () => {
+  const { calculatedMarketValue, careerBallonDorWins, currentMarketValue } = loadTypeScriptModule("features/career/valuation.ts");
+  const winner = fourTimeBallonDorWinner();
+  const unawarded = {
+    ...winner,
+    history: winner.history.map((season) => ({ ...season, honours: [] })),
+  };
+
+  assert.equal(careerBallonDorWins(winner), 4);
+  assert.ok(calculatedMarketValue(winner) >= 90_000_000);
+  assert.ok(calculatedMarketValue(winner) > calculatedMarketValue(unawarded) * 2);
+  assert.equal(currentMarketValue(winner), calculatedMarketValue(winner));
+  assert.equal(currentMarketValue({ ...winner, value: 60_000_000, valuationVersion: 2 }), 60_000_000);
 });
 
 test("forced sales also respect the buying club's budget", () => {

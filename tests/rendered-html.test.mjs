@@ -81,6 +81,7 @@ test("keeps career rules, content, persistence, and rendering behind clear modul
   assert.match(careerScreen, /Keep current agent/);
   assert.match(careerScreen, /Available agents/);
   assert.match(careerScreen, /Breakout season/);
+  assert.match(careerScreen, /currentMarketValue\(player\)/);
   assert.match(careerScreen, /fitness and development affected/);
   assert.match(careerScreen, /Your season at a glance/);
   assert.match(careerScreen, /League position/);

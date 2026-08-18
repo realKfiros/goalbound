@@ -123,6 +123,7 @@ export type Player = {
   rating: number;
   potential: number;
   value: number;
+  valuationVersion?: 2;
   currentClub: string;
   parentClub: string | null;
   totalApps: number;

@@ -6,6 +6,7 @@ import { agentProfile, type AgentOption } from "../agents";
 import { clubByName, country } from "../catalog";
 import type { AnnualHonours, ContinentalCompetition, Offer, Player, PlayoffBracket, SavedGame, Scenario, ScenarioOption, StandingGroup } from "../domain";
 import { europeanSeasonFocus, leagueSeasonFocus } from "../seasonSummary";
+import { currentMarketValue } from "../valuation";
 import { ClubBadge } from "./ClubBadge";
 
 type CareerScreenProps = {
@@ -290,7 +291,7 @@ export function CareerScreen({
         <div className="rating-block"><strong>{player.rating}</strong><span>OVR</span></div>
       </div>
       <div className="career-stats">
-        <div><small>Market value</small><strong>{formatMoney(player.value)}</strong></div>
+        <div><small>Market value</small><strong>{formatMoney(currentMarketValue(player))}</strong></div>
         <div><small>Appearances</small><strong>{player.totalApps}</strong></div>
         <div><small>Goals</small><strong>{player.totalGoals}</strong></div>
         <div><small>Assists</small><strong>{player.totalAssists}</strong></div>
