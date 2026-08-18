@@ -59,6 +59,8 @@ test("keeps career rules, content, persistence, and rendering behind clear modul
   assert.ok(page.split("\n").length < 10);
   assert.match(domain, /type Origin = "academy" \| "senior" \| "gem"/);
   assert.match(domain, /contractYears: number/);
+  assert.match(domain, /type ContractTerms/);
+  assert.match(domain, /weeklyWage: number/);
   assert.match(domain, /division\?: number/);
   assert.match(engine, /function createCareerEngine/);
   assert.match(engine, /function simulateSeason/);
@@ -82,6 +84,8 @@ test("keeps career rules, content, persistence, and rendering behind clear modul
   assert.match(careerScreen, /Available agents/);
   assert.match(careerScreen, /Breakout season/);
   assert.match(careerScreen, /currentMarketValue\(player\)/);
+  assert.match(careerScreen, /offer\.contract/);
+  assert.match(careerScreen, /\/week/);
   assert.match(careerScreen, /fitness and development affected/);
   assert.match(careerScreen, /Your season at a glance/);
   assert.match(careerScreen, /League position/);

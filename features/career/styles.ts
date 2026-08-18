@@ -304,14 +304,16 @@ legend { margin-bottom: 13px; }
 .dock-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
 .dock-heading .season-control { flex: 0 0 auto; margin-top: 4px; }
 .club-options { display: grid; gap: 8px; }
-.club-options > button { position: relative; min-height: 106px; padding: 16px 74px 16px 56px; display: flex; align-items: center; gap: 18px; text-align: left; background: rgba(255,255,255,.025); border: 1px solid var(--line); cursor: pointer; transition: transform .18s ease, background .18s ease, border-color .18s ease; }
+.club-options > button { position: relative; min-height: 116px; padding: 16px 74px 16px 56px; display: flex; align-items: center; gap: 18px; text-align: left; background: rgba(255,255,255,.025); border: 1px solid var(--line); cursor: pointer; transition: transform .18s ease, background .18s ease, border-color .18s ease; }
 .club-options > button:hover { transform: translateX(5px); background: rgba(199,255,53,.05); border-color: rgba(199,255,53,.5); }
 .club-options .club-badge { width: 60px; height: 60px; }
 .club-option-copy { min-width: 0; display: grid; grid-template-columns: minmax(170px, .85fr) 1.15fr; align-items: center; column-gap: 18px; flex: 1; }
 .club-option-copy > small { grid-column: 1; color: var(--lime); font-size: 8px; text-transform: uppercase; letter-spacing: .12em; }
 .club-option-copy > strong { grid-column: 1; font-size: 21px; line-height: 1.1; }
 .club-option-copy > span { grid-column: 1; color: var(--muted); font-size: 10px; }
-.club-option-copy > p { grid-column: 2; grid-row: 1 / 4; margin: 0; color: #bec1bb; font-size: 12px; line-height: 1.5; }
+.club-option-copy > p { grid-column: 2; grid-row: 1 / 5; margin: 0; color: #bec1bb; font-size: 12px; line-height: 1.5; }
+.offer-contract { grid-column: 1; margin-top: 7px; display: flex; flex-wrap: wrap; gap: 5px; }
+.offer-contract span { padding: 5px 7px; color: #f3c667; background: rgba(243,198,103,.08); border: 1px solid rgba(243,198,103,.22); font: 8px monospace; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
 .club-options em { position: absolute; right: 18px; color: var(--lime); font-size: 9px; font-style: normal; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
 .player-career-actions { margin-top: 16px; display: grid; gap: 10px; }
 .player-transfer-action { padding: 18px 20px; display: flex; align-items: center; justify-content: space-between; gap: 28px; background: rgba(255,255,255,.025); border: 1px dashed rgba(199,255,53,.35); }
@@ -830,7 +832,7 @@ footer { position: relative; z-index: 1; width: min(1320px, calc(100% - 64px)); 
   .club-options > button { min-height: 132px; padding: 16px 44px 16px 44px; gap: 12px; align-items: flex-start; }
   .club-options .club-badge { width: 46px; height: 46px; }
   .club-option-copy { grid-template-columns: 1fr; row-gap: 3px; }
-  .club-option-copy > small, .club-option-copy > strong, .club-option-copy > span, .club-option-copy > p { grid-column: 1; grid-row: auto; }
+  .club-option-copy > small, .club-option-copy > strong, .club-option-copy > span, .club-option-copy > .offer-contract, .club-option-copy > p { grid-column: 1; grid-row: auto; }
   .club-option-copy > strong { font-size: 17px; }
   .club-option-copy > p { margin-top: 8px; font-size: 10px; }
   .club-options em { right: 10px; bottom: 10px; }

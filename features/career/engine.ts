@@ -1,5 +1,6 @@
 import { CLUBS, SCENARIOS, clubByName, country } from "./catalog";
 import { DEVELOPMENT_MARKETS, VETERAN_MARKETS, agentProfile, availableAgentProfiles, canHireAgent } from "./agents";
+import { contractTermsForOffer } from "./contracts";
 import { clubDivision, maxSingleFee, transferMarketTier } from "./finances";
 import { simulateHonoursWithWorld } from "./honours";
 import { generateName } from "./names";
@@ -24,6 +25,8 @@ import type {
 } from "./domain";
 
 const ROLE_SCORE: Record<Role, number> = { Prospect: 1, Rotation: 2, Starter: 3, Star: 4 };
+const MAJOR_CAREER_MARKETS = new Set(["ENG", "ESP", "GER", "ITA", "FRA", "POR", "NED"]);
+const PRESTIGE_VETERAN_MARKETS = new Set(["USA", "SAU", "TUR", "GRE", "MEX", "JPN"]);
 type BidContext = "standard" | "forced-sale" | "player-request";
 
 export function createCareerEngine(random = Math.random) {
@@ -220,7 +223,14 @@ export function createCareerEngine(random = Math.random) {
   }
   function makeOffer(club: Club, player: Player, label: string, kind: OfferKind, role?: Role, reason?: string, world?: WorldState | null): Offer {
     const resolvedRole = role ?? roleForPlayer(player, club);
-    return { ...club, role: resolvedRole, label, reason: reason ?? offerReason(club, player, resolvedRole, world), kind };
+    return {
+      ...club,
+      role: resolvedRole,
+      label,
+      reason: reason ?? offerReason(club, player, resolvedRole, world),
+      kind,
+      contract: contractTermsForOffer(club, player, resolvedRole, kind),
+    };
   }
   function firstOffers(player: Player): Offer[] {
     const domestic = CLUBS.filter((club) => club.country === player.nation);
@@ -275,13 +285,21 @@ export function createCareerEngine(random = Math.random) {
     const declining = isDeclining(player);
     const globalSuperstar = isGlobalSuperstar(player);
     const prestigeTarget = globalSuperstar ? 5 : prestigeMarketTarget(player);
+    const eliteVeteran = player.age >= 31 && prestigeTarget >= 3;
     const minimumLevel = globalSuperstar ? 1 : ideal - (declining ? 2 : 1);
     const market = CLUBS.map((club) => clubInWorld(club, world)).filter((club) => {
       const role = roleForPlayer(player, club);
+      const route = marketRoute(club, player, world);
+      const veteranDestinationFits = !eliteVeteran
+        || route === "former-club"
+        || clubDivision(club) === 1
+          && (MAJOR_CAREER_MARKETS.has(club.country) || PRESTIGE_VETERAN_MARKETS.has(club.country))
+          && transferMarketTier(club) >= Math.max(3, prestigeTarget - 1);
       return club.name !== player.currentClub
         && isPlausibleMarketClub(club, player, world)
-        && club.level >= minimumLevel
-        && club.level <= ideal + profile.levelRange
+        && veteranDestinationFits
+        && (eliteVeteran && route === "former-club" || club.level >= minimumLevel)
+        && (eliteVeteran && route === "former-club" || club.level <= ideal + profile.levelRange)
         && (!globalSuperstar || clubDivision(club) === 1 && transferMarketTier(club) === 5)
         && (!requiresTransferFee || buyerFeeCapacity(player, club, role) >= acceptedFeeFloor(player, club, bidContext, world));
     });
@@ -297,7 +315,11 @@ export function createCareerEngine(random = Math.random) {
           : route === "home-country" ? profile.homeWeight * (declining ? 1.45 : 1)
             : route === "familiar-country" ? profile.familiarCountryWeight * (declining ? 1.35 : 1)
               : profile.foreignWeight * (.35 + player.reputation / 100) * (currentClubFor(player, world) && clubDivision(currentClubFor(player, world)!) >= 3 ? .6 : 1);
-      return Math.max(.001, base / Math.max(1, routeCounts.get(route) ?? 1));
+      const veteranWeight = !eliteVeteran ? 1
+        : ["USA", "SAU"].includes(club.country) ? 2.25
+          : PRESTIGE_VETERAN_MARKETS.has(club.country) ? .8
+            : 1;
+      return Math.max(.001, base * veteranWeight / Math.max(1, routeCounts.get(route) ?? 1));
     };
     const desiredCount = Math.min(3, count + profile.offerBonus);
     const ranked = market
@@ -313,7 +335,13 @@ export function createCareerEngine(random = Math.random) {
     const remaining = ranked
       .map(({ club }) => club)
       .filter((club) => !prestigeNames.has(`${club.country}:${club.name}`));
-    const selected = [...prestigeOptions, ...remaining].slice(0, desiredCount);
+    const legacyOption = eliteVeteran && random() < .12
+      ? remaining.find((club) => marketRoute(club, player, world) === "former-club")
+      : undefined;
+    const wildcardOptions = legacyOption
+      ? [legacyOption, ...remaining.filter((club) => club !== legacyOption)]
+      : remaining;
+    const selected = [...prestigeOptions, ...wildcardOptions].slice(0, desiredCount);
     return selected.map((club) => {
       const role = roleForPlayer(player, club);
       const loan = !permanentOnly && player.age <= 22 && role === "Prospect" && random() < .55;
@@ -359,7 +387,7 @@ export function createCareerEngine(random = Math.random) {
     const club = clubInWorld(catalogClub, world);
     const role = player.squad === "academy" && kind === "stay" ? "Prospect" : roleForPlayer(player, club, player.roleBoost + (kind === "promotion" ? 0 : 1));
     const copy = kind === "renewal"
-      ? { label: "Renew contract", reason: "A new 3–5 year deal · keep building in familiar colours" }
+      ? { label: "Renew contract", reason: "The club wants to extend your stay in familiar colours" }
       : kind === "promotion"
         ? { label: "Join the senior squad", reason: role === "Prospect" ? "Train with the first team and wait for minutes" : `The manager sees you as ${role.toLowerCase()}` }
         : { label: `Stay at ${club.name}`, reason: role === "Prospect" ? "Fight for a place without uprooting your life" : "Continuity, trust and unfinished business" };
@@ -459,7 +487,7 @@ export function createCareerEngine(random = Math.random) {
       morale: origin === "gem" ? 84 : 72, fitness: 92, reputation: origin === "gem" ? 24 : origin === "senior" ? 13 : 6,
       agent: "Self-represented", roleBoost: origin === "gem" ? 1 : 0, origin,
       developmentTrend: 0,
-      squad: origin === "academy" ? "academy" : "senior", contractYears: 0, clubSeasons: 0,
+      squad: origin === "academy" ? "academy" : "senior", contractYears: 0, weeklyWage: 0, clubSeasons: 0,
       lastRole: "Prospect", seenScenarios: [], history: [],
     };
     const title = origin === "gem" ? "The scouts think they have found a gem" : origin === "senior" ? "A senior coach is willing to take the risk" : "Your first route runs through the academy system";
@@ -474,7 +502,9 @@ export function createCareerEngine(random = Math.random) {
   function simulateSeason(player: Player, offer: Offer, requestedYears: number, existingWorld?: WorldState | null): SeasonSimulation {
     const startingWorld = existingWorld ?? createWorldState();
     const destination = { ...offer, ...clubInWorld(offer, startingWorld), role: offer.role, label: offer.label, reason: offer.reason, kind: offer.kind };
-    const years = Math.min(requestedYears, 36 - player.age);
+    const contractWindow = destination.contract?.years
+      ?? (destination.kind === "stay" || destination.kind === "loan" ? player.contractYears : requestedYears);
+    const years = Math.min(requestedYears, 36 - player.age, contractWindow > 0 ? contractWindow : requestedYears);
     const roleScore = clamp(ROLE_SCORE[destination.role] + player.roleBoost, 1, 4);
     const perYearApps = roleScore === 1 ? randomInt(4, 15) : roleScore === 2 ? randomInt(16, 29) : roleScore === 3 ? randomInt(28, 42) : randomInt(36, 48);
     const injuryChance = clamp(.08 + (100 - player.fitness) / 240 + Math.max(0, player.age - 30) / 80, .07, .38);
@@ -534,11 +564,11 @@ export function createCareerEngine(random = Math.random) {
       breakout, injury,
       honours,
     };
-    const contractAtKickoff = destination.kind === "renewal" ? randomInt(3, 5)
+    const contractAtKickoff = destination.contract?.years ?? (destination.kind === "renewal" ? randomInt(3, 5)
       : destination.kind === "academy" ? randomInt(3, 4)
         : destination.kind === "promotion" ? Math.max(player.contractYears, randomInt(2, 4))
           : destination.kind === "permanent" ? randomInt(2, 5)
-            : player.contractYears;
+            : player.contractYears);
     const nextHistory = [season, ...player.history];
     const next: Player = {
       ...player, age: player.age + years, rating: nextRating,
@@ -553,6 +583,7 @@ export function createCareerEngine(random = Math.random) {
       roleBoost: 0, squad: destination.kind === "academy" || destination.kind === "stay" && player.squad === "academy" ? "academy" : "senior",
       developmentTrend: trajectory > 0 ? trajectory - 1 : trajectory < 0 ? trajectory + 1 : 0,
       contractYears: Math.max(0, contractAtKickoff - years),
+      weeklyWage: destination.kind === "loan" ? player.weeklyWage : destination.contract?.weeklyWage ?? player.weeklyWage,
       clubSeasons: destination.name === player.currentClub || destination.kind === "loan" ? player.clubSeasons + years : years,
       lastRole: destination.role, history: nextHistory,
     };

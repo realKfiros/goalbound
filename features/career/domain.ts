@@ -19,7 +19,8 @@ export type Club = {
 };
 
 export type OfferKind = "permanent" | "loan" | "academy" | "stay" | "renewal" | "promotion";
-export type Offer = Club & { role: Role; label: string; reason: string; kind: OfferKind };
+export type ContractTerms = { years: number; weeklyWage: number };
+export type Offer = Club & { role: Role; label: string; reason: string; kind: OfferKind; contract?: ContractTerms };
 export type HonourKind = "league-title" | "national-cup" | "continental-title" | "golden-boot" | "player-of-season" | "ballon-dor";
 export type HonourCategory = "team" | "individual";
 export type AwardWinner = { name: string; club: string; isPlayer: boolean; detail?: string };
@@ -142,6 +143,7 @@ export type Player = {
   origin: Origin;
   squad: "academy" | "senior";
   contractYears: number;
+  weeklyWage: number;
   clubSeasons: number;
   lastRole: Role;
   seenScenarios: string[];

@@ -34,6 +34,10 @@ function formatMoney(value: number) {
     : `€${Math.round(value / 1_000)}k`;
 }
 
+function formatWeeklyWage(value: number) {
+  return value >= 1_000 ? `€${Math.round(value / 1_000)}k` : `€${Math.round(value)}`;
+}
+
 const EUROPEAN_MARKERS = {
   "champions-league": { label: "CL", title: "Champions League qualification", className: "cl" },
   "europa-league": { label: "EL", title: "Europa League qualification", className: "el" },
@@ -302,7 +306,7 @@ export function CareerScreen({
         <span><i style={{ width: `${player.fitness}%` }} /><small>Fitness</small><strong>{player.fitness}</strong></span>
         <span><i style={{ width: `${player.morale}%` }} /><small>Morale</small><strong>{player.morale}</strong></span>
         <span><i style={{ width: `${player.reputation}%` }} /><small>Reputation</small><strong>{player.reputation}</strong></span>
-        <span className="contract-pill"><small>Contract</small><strong>{player.currentClub === "Free agent" ? "None" : player.contractYears ? `${player.contractYears}Y left` : "Expired"}</strong></span>
+        <span className="contract-pill"><small>Contract</small><strong>{player.currentClub === "Free agent" ? "None" : player.contractYears ? `${player.contractYears}Y left${player.weeklyWage > 0 ? ` · ${formatWeeklyWage(player.weeklyWage)}/w` : ""}` : "Expired"}</strong></span>
         <span className="agent-pill" title={agentProfile(player.agent).description} aria-label={`Representation: ${player.agent}. ${agentProfile(player.agent).description}`}><small>Representation</small><strong>{player.agent}</strong></span>
       </div>
 
@@ -351,7 +355,11 @@ export function CareerScreen({
             <div className="club-options">{game.offers.map((offer, index) => (
               <button key={`${offer.name}-${offer.kind}-${index}`} onClick={() => onOffer(offer)}>
                 <span className="option-number">0{index + 1}</span><ClubBadge club={offer} />
-                <div className="club-option-copy"><small>{offer.label}</small><strong>{offer.name}</strong><span>{offer.league} · {country(offer.country).flag} {offer.role}</span><p>{offer.reason}</p></div><em>Choose →</em>
+                <div className="club-option-copy">
+                  <small>{offer.label}</small><strong>{offer.name}</strong><span>{offer.league} · {country(offer.country).flag} {offer.role}</span>
+                  {offer.contract && <div className="offer-contract" aria-label={`${offer.kind === "stay" ? `${offer.contract.years} years remaining` : `${offer.contract.years}-year contract`} worth ${formatWeeklyWage(offer.contract.weeklyWage)} per week`}><span>{offer.kind === "stay" ? `${offer.contract.years}Y remaining` : `${offer.contract.years}Y contract`}</span><span>{formatWeeklyWage(offer.contract.weeklyWage)}/week</span></div>}
+                  <p>{offer.reason}</p>
+                </div><em>Choose →</em>
               </button>
             ))}</div>
             <div className="player-career-actions">

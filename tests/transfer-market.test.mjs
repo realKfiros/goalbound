@@ -344,7 +344,7 @@ test("an expired Ballon d'Or winner can leave when the club cannot sustain his w
 
 test("a declining former Ballon d'Or winner leaving Real Madrid retains a credible market", () => {
   const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
-  const { clubDivision, maxSingleFee } = loadTypeScriptModule("features/career/finances.ts");
+  const { clubDivision, maxSingleFee, transferMarketTier } = loadTypeScriptModule("features/career/finances.ts");
   const formerWinner = eliteEnglishProspect("ENG", {
     name: "Decorated Veteran", currentClub: "Real Madrid", age: 35,
     rating: 86, potential: 95, value: 45_000_000, reputation: 100,
@@ -379,6 +379,11 @@ test("a declining former Ballon d'Or winner leaving Real Madrid retains a credib
     ],
   });
 
+  const expectedMarkets = new Set(["ENG", "ESP", "GER", "ITA", "FRA", "POR", "NED", "USA", "SAU", "TUR", "GRE", "MEX", "JPN"]);
+  const seenCountries = new Set();
+  const seenClubs = new Set();
+  const maximumWageByCountry = new Map();
+  let salfordWage = 0;
   for (let seed = 1; seed <= 300; seed += 1) {
     const engine = createCareerEngine(seededRandom(seed));
     const offers = engine.marketOffers(formerWinner, 3, true, false);
@@ -386,7 +391,28 @@ test("a declining former Ballon d'Or winner leaving Real Madrid retains a credib
       offer.kind === "permanent" && clubDivision(offer) === 1 && maxSingleFee(offer, "Star") >= 25_000_000,
     );
     assert.ok(credibleOffers.length >= 2, `Only received: ${offers.map((offer) => `${offer.name} (€${Math.round(maxSingleFee(offer, "Star") / 1_000_000)}m capacity)`).join(", ")}`);
+    offers.forEach((offer) => {
+      const formerClub = formerWinner.history.some((season) => season.club === offer.name && season.country === offer.country);
+      assert.ok(formerClub || clubDivision(offer) === 1,
+        `${offer.name} is a lower-tier offer without a genuine former-club connection`);
+      assert.ok(formerClub || expectedMarkets.has(offer.country),
+        `${offer.name} is an implausible late-career market in ${offer.country}`);
+      assert.ok(formerClub || transferMarketTier(offer) >= 3,
+        `${offer.name} does not have the stature to approach this veteran`);
+      assert.ok(offer.contract && offer.contract.years >= 1 && offer.contract.years <= 3,
+        `${offer.name} did not provide realistic veteran contract length`);
+      assert.ok(offer.contract.weeklyWage > 0, `${offer.name} did not provide a weekly wage`);
+      seenCountries.add(offer.country);
+      seenClubs.add(offer.name);
+      maximumWageByCountry.set(offer.country, Math.max(maximumWageByCountry.get(offer.country) ?? 0, offer.contract.weeklyWage));
+      if (offer.name === "Salford City") salfordWage = offer.contract.weeklyWage;
+    });
   }
+  assert.ok(seenCountries.has("USA"), "Expected MLS to be represented in the veteran market");
+  assert.ok(seenCountries.has("SAU"), "Expected Saudi Arabia to be represented in the veteran market");
+  assert.ok(seenClubs.has("Salford City"), "Expected a genuine former-club homecoming to remain possible");
+  assert.ok((maximumWageByCountry.get("SAU") ?? 0) > salfordWage * 10,
+    "Expected the Saudi route to offer a meaningful financial premium over the sentimental homecoming");
 
   let releasedDecisions = 0;
   for (let seed = 1; seed <= 300; seed += 1) {
@@ -399,6 +425,31 @@ test("a declining former Ballon d'Or winner leaving Real Madrid retains a credib
     assert.ok(credibleOffers.length >= 2, `Release market only contained: ${beat.offers.map((offer) => offer.name).join(", ")}`);
   }
   assert.ok(releasedDecisions > 0, "Expected the ageing veteran to be released in some sampled seasons");
+});
+
+test("permanent moves and renewals carry contract terms that become the player's deal", () => {
+  const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
+  const player = { ...fourTimeBallonDorWinner(), weeklyWage: 240_000, contractYears: 2 };
+  const engine = createCareerEngine(seededRandom(41));
+  const offer = engine.marketOffers(player, 1, true, false)[0];
+
+  assert.ok(offer.contract);
+  assert.ok(offer.contract.years >= 1 && offer.contract.years <= 5);
+  assert.ok(offer.contract.weeklyWage > 0);
+
+  const simulation = engine.simulateSeason(player, offer, 3);
+  const elapsed = simulation.season.toAge - simulation.season.fromAge;
+  assert.ok(elapsed <= offer.contract.years);
+  assert.equal(simulation.player.contractYears, offer.contract.years - elapsed);
+  assert.equal(simulation.player.weeklyWage, offer.contract.weeklyWage);
+
+  const expired = { ...player, contractYears: 0 };
+  const renewalDecision = createCareerEngine(() => 0).nextBeat(expired, expired.history[0]);
+  const renewal = renewalDecision.type === "decision"
+    ? renewalDecision.offers.find((candidate) => candidate.kind === "renewal")
+    : undefined;
+  assert.ok(renewal?.contract);
+  assert.ok(renewal.contract.weeklyWage > 0);
 });
 
 test("a club cannot release a player who is still under contract", () => {
