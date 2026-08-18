@@ -45,6 +45,10 @@ export function createCareerEngine(random = Math.random) {
     if (score >= required - 7) return "Rotation";
     return "Prospect";
   }
+  function roleForPlayer(player: Player, club: Club, boost = player.roleBoost) {
+    if (careerBallonDorWins(player) > 0 && player.rating >= 86) return "Star";
+    return roleFor(player.rating, club.level, player.age, boost);
+  }
   function formatMoney(value: number) {
     return value >= 1_000_000 ? `€${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1)}m` : `€${Math.round(value / 1_000)}k`;
   }
@@ -201,7 +205,7 @@ export function createCareerEngine(random = Math.random) {
     return `${club.development}/5 development · a credible next step`;
   }
   function makeOffer(club: Club, player: Player, label: string, kind: OfferKind, role?: Role, reason?: string, world?: WorldState | null): Offer {
-    const resolvedRole = role ?? roleFor(player.rating, club.level, player.age, player.roleBoost);
+    const resolvedRole = role ?? roleForPlayer(player, club);
     return { ...club, role: resolvedRole, label, reason: reason ?? offerReason(club, player, resolvedRole, world), kind };
   }
   function firstOffers(player: Player): Offer[] {
@@ -236,6 +240,10 @@ export function createCareerEngine(random = Math.random) {
     if (context === "player-request") return marketValue * (hasOutgrownClub(player, world) ? .65 : .8);
     return marketValue * .92;
   }
+  function cannotSustainEliteWages(player: Player, club: Club | undefined) {
+    if (!club || careerBallonDorWins(player) === 0) return false;
+    return maxSingleFee(club, "Star") < currentMarketValue(player) * .18;
+  }
   function externalOffers(
     player: Player,
     count = 2,
@@ -248,7 +256,7 @@ export function createCareerEngine(random = Math.random) {
     const profile = agentProfile(player.agent);
     const declining = isDeclining(player);
     const market = CLUBS.map((club) => clubInWorld(club, world)).filter((club) => {
-      const role = roleFor(player.rating, club.level, player.age, player.roleBoost);
+      const role = roleForPlayer(player, club);
       return club.name !== player.currentClub
         && isPlausibleMarketClub(club, player, world)
         && club.level >= ideal - (declining ? 2 : 1)
@@ -276,7 +284,7 @@ export function createCareerEngine(random = Math.random) {
       .slice(0, desiredCount)
       .map(({ club }) => club);
     return selected.map((club) => {
-      const role = roleFor(player.rating, club.level, player.age, player.roleBoost);
+      const role = roleForPlayer(player, club);
       const loan = !permanentOnly && player.age <= 22 && role === "Prospect" && random() < .55;
       const current = currentClubFor(player, world);
       const route = marketRoute(club, player, world);
@@ -318,7 +326,7 @@ export function createCareerEngine(random = Math.random) {
     const catalogClub = clubByName(player.currentClub);
     if (!catalogClub) return null;
     const club = clubInWorld(catalogClub, world);
-    const role = player.squad === "academy" && kind === "stay" ? "Prospect" : roleFor(player.rating, club.level, player.age, player.roleBoost + (kind === "promotion" ? 0 : 1));
+    const role = player.squad === "academy" && kind === "stay" ? "Prospect" : roleForPlayer(player, club, player.roleBoost + (kind === "promotion" ? 0 : 1));
     const copy = kind === "renewal"
       ? { label: "Renew contract", reason: "A new 3–5 year deal · keep building in familiar colours" }
       : kind === "promotion"
@@ -415,7 +423,7 @@ export function createCareerEngine(random = Math.random) {
     const potential = origin === "gem" ? randomInt(90, 96) : origin === "senior" ? randomInt(79, 91) : randomInt(76, 93);
     const player: Player = {
       ...draft, name: draft.name.trim() || generateName(draft.nation, random), age, rating, potential,
-      value: baseMarketValue(rating, age, potential), valuationVersion: 2, currentClub: "Free agent", parentClub: null,
+      value: baseMarketValue(rating, age, potential), valuationVersion: 3, currentClub: "Free agent", parentClub: null,
       totalApps: 0, totalGoals: 0, totalAssists: 0, trophies: 0, caps: 0, nationalGoals: 0,
       morale: origin === "gem" ? 84 : 72, fitness: 92, reputation: origin === "gem" ? 24 : origin === "senior" ? 13 : 6,
       agent: "Self-represented", roleBoost: origin === "gem" ? 1 : 0, origin,
@@ -504,7 +512,7 @@ export function createCareerEngine(random = Math.random) {
     const next: Player = {
       ...player, age: player.age + years, rating: nextRating,
       value: calculatedMarketValue({ rating: nextRating, age: player.age + years, potential: player.potential, history: nextHistory }),
-      valuationVersion: 2,
+      valuationVersion: 3,
       currentClub: destination.kind === "loan" ? player.currentClub : destination.name, parentClub: null,
       totalApps: player.totalApps + apps, totalGoals: player.totalGoals + goals, totalAssists: player.totalAssists + assists,
       trophies: player.trophies + trophies, caps: player.caps + caps, nationalGoals: player.nationalGoals + nationalGoals,
@@ -590,9 +598,18 @@ export function createCareerEngine(random = Math.random) {
     if (player.contractYears <= 0) {
       const seasons = Math.max(1, (latest?.toAge ?? player.age) - (latest?.fromAge ?? player.age - 1));
       const useful = (latest?.apps ?? 0) / seasons >= 14 || player.lastRole === "Star" || player.lastRole === "Starter";
-      const rejected = !useful && random() < .62 || player.age >= 34 && random() < .28;
+      const wageMismatch = cannotSustainEliteWages(player, current);
+      const rejected = wageMismatch || !useful && random() < .62 || player.age >= 34 && random() < .28;
       const renewal = rejected ? null : stayOffer(player, "renewal", world);
-      return decision(rejected ? "released" : "contract", rejected ? `${player.currentClub} will not renew your contract` : `${player.currentClub} has offered a new contract`, rejected ? "The sporting director thanks you for your service, then asks security whether the meeting room is needed at eleven." : `You can stay beyond ${player.clubSeasons} seasons at the club, or listen to the market.`, [...(renewal ? [renewal] : []), ...permanentOffers(player, rejected ? 3 : 2, false, world)]);
+      const title = wageMismatch
+        ? `${player.currentClub} cannot match your wage demands`
+        : rejected ? `${player.currentClub} will not renew your contract` : `${player.currentClub} has offered a new contract`;
+      const description = wageMismatch
+        ? "Your contract has expired and the club's budget cannot support a player of your global status. Everyone calls it mutual, especially the accountant."
+        : rejected
+          ? "The sporting director thanks you for your service, then asks security whether the meeting room is needed at eleven."
+          : `You can stay beyond ${player.clubSeasons} seasons at the club, or listen to the market.`;
+      return decision(rejected ? "released" : "contract", title, description, [...(renewal ? [renewal] : []), ...permanentOffers(player, rejected ? 3 : 2, false, world)]);
     }
     const forcedSaleChance = current && current.level <= 2 && player.rating >= 72 ? .2 : currentMarketValue(player) >= 35_000_000 && current && current.level <= 3 ? .14 : .045;
     if (random() < forcedSaleChance) {
@@ -601,7 +618,14 @@ export function createCareerEngine(random = Math.random) {
     }
     const seasons = Math.max(1, (latest?.toAge ?? player.age) - (latest?.fromAge ?? player.age - 1));
     if ((latest?.apps ?? 99) / seasons < 12 && player.age >= 20 && random() < .42) {
-      return decision("released", `${player.currentClub} no longer sees a role for you`, "The manager says this is purely professional, which is football language for ‘please choose one of these exits’.", permanentOffers(player, 3, false, world));
+      const stay = stayOffer(player, "stay", world);
+      const bids = contractedBids(player, 3, world, "forced-sale");
+      return decision(
+        bids.length ? "transfer-interest" : "continue",
+        `${player.currentClub} has placed you on the transfer list`,
+        `The manager no longer sees a role for you. The club can invite offers; it cannot make the remaining ${player.contractYears}-year contract disappear.`,
+        [...(stay ? [{ ...stay, label: "Stay and fight for a place", reason: "Reject the transfer list and honour the rest of your contract" }] : []), ...bids],
+      );
     }
     if (shouldStartAgentReview(player, world)) return agentReviewDecision(player, world);
     return random() < .54 ? { type: "scenario", scenario: eligibleScenario(player, world) } : ordinaryDecision(player, world);
@@ -624,7 +648,7 @@ export function createCareerEngine(random = Math.random) {
       player: {
         ...player, rating, potential,
         value: Math.round(calculatedMarketValue({ rating, age: player.age, potential, history: player.history }) * (effect.value ?? 1)),
-        valuationVersion: 2,
+        valuationVersion: 3,
         morale: clamp(player.morale + (effect.morale ?? 0), 0, 100),
         fitness: clamp(player.fitness + (effect.fitness ?? 0), 0, 100),
         reputation: clamp(player.reputation + (effect.reputation ?? 0), 0, 100),

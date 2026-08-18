@@ -26,16 +26,16 @@ export function calculatedMarketValue(profile: ValueProfile) {
   const ballonDorWins = countHonours(honours, "ballon-dor");
   const playerOfSeasonWins = countHonours(honours, "player-of-season");
   const goldenBoots = countHonours(honours, "golden-boot");
-  const ballonDorPremium = ballonDorWins ? .48 + Math.max(0, ballonDorWins - 1) * .22 : 0;
+  const ballonDorPremium = ballonDorWins ? .65 + Math.max(0, ballonDorWins - 1) * .4 : 0;
   const domesticPremium = Math.min(.25, playerOfSeasonWins * .06 + goldenBoots * .04);
-  const prestigeMultiplier = Math.min(2.35, 1 + ballonDorPremium + domesticPremium);
+  const prestigeMultiplier = Math.min(3.2, 1 + ballonDorPremium + domesticPremium);
   const value = baseMarketValue(profile.rating, profile.age, profile.potential) * prestigeMultiplier;
   const rounding = value >= 1_000_000 ? 100_000 : 10_000;
   return Math.round(value / rounding) * rounding;
 }
 
 export function currentMarketValue(player: Player) {
-  if (player.valuationVersion === 2) return player.value;
+  if (player.valuationVersion === 3) return player.value;
   // Only decorated old saves need migration; preserve deliberately low legacy values for everyone else.
   const honours = uniqueCareerHonours(player.history);
   const hasPrestigeAward = honours.some((honour) =>

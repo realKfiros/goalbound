@@ -149,7 +149,7 @@ function fourTimeBallonDorWinner() {
         }],
       }],
     };
-  });
+  }).reverse();
   return eliteEnglishProspect("ENG", {
     name: "Serial Winner", currentClub: "Liverpool", age: 28, rating: 95, potential: 96,
     value: 21_000_000, reputation: 100, trophies: 8, totalApps: 260, totalGoals: 170,
@@ -259,7 +259,8 @@ test("a four-time Ballon d'Or winner cannot be sold for an ordinary €21m valua
     assert.ok(match, offer.reason);
     return Number(match[1]) * (match[2] === "m" ? 1_000_000 : 1_000);
   });
-  assert.ok(Math.min(...fees) >= 80_000_000, `Lowest accepted fee was €${Math.min(...fees).toLocaleString("en-US")}`);
+  assert.ok(Math.min(...fees) >= 110_000_000, `Lowest accepted fee was €${Math.min(...fees).toLocaleString("en-US")}`);
+  assert.ok(offers.every((offer) => offer.role === "Star"));
 });
 
 test("career honours create a persistent market-value premium", () => {
@@ -271,10 +272,51 @@ test("career honours create a persistent market-value premium", () => {
   };
 
   assert.equal(careerBallonDorWins(winner), 4);
-  assert.ok(calculatedMarketValue(winner) >= 90_000_000);
-  assert.ok(calculatedMarketValue(winner) > calculatedMarketValue(unawarded) * 2);
+  assert.ok(calculatedMarketValue(winner) >= 120_000_000);
+  assert.ok(calculatedMarketValue(winner) > calculatedMarketValue(unawarded) * 2.75);
   assert.equal(currentMarketValue(winner), calculatedMarketValue(winner));
-  assert.equal(currentMarketValue({ ...winner, value: 60_000_000, valuationVersion: 2 }), 60_000_000);
+  assert.equal(currentMarketValue({ ...winner, value: 60_000_000, valuationVersion: 3 }), 60_000_000);
+});
+
+test("a reigning Ballon d'Or winner is renewed by an elite club when his contract expires", () => {
+  const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
+  const winner = { ...fourTimeBallonDorWinner(), contractYears: 0 };
+  const beat = createCareerEngine(() => 0).nextBeat(winner, winner.history[0]);
+
+  assert.equal(beat.type, "decision");
+  assert.equal(beat.kind, "contract");
+  assert.ok(beat.offers.some((offer) => offer.kind === "renewal"));
+});
+
+test("an expired Ballon d'Or winner can leave when the club cannot sustain his wages", () => {
+  const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
+  const winner = {
+    ...fourTimeBallonDorWinner(), currentClub: "Maccabi Haifa", contractYears: 0,
+  };
+  const beat = createCareerEngine(() => 0).nextBeat(winner, winner.history[0]);
+
+  assert.equal(beat.type, "decision");
+  assert.equal(beat.kind, "released");
+  assert.match(beat.title, /wage/i);
+  assert.equal(beat.offers.some((offer) => offer.kind === "renewal"), false);
+});
+
+test("a club cannot release a player who is still under contract", () => {
+  const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
+  const player = eliteEnglishProspect("ENG", {
+    currentClub: "Bristol City", contractYears: 2, age: 25, rating: 66,
+    history: [{
+      fromAge: 24, toAge: 25, club: "Bristol City", country: "ENG", league: "EFL Championship",
+      role: "Rotation", kind: "stay", apps: 5, goals: 0, assists: 1,
+      before: 67, after: 66, trophies: 0, event: "A season out of the team",
+    }],
+  });
+  const beat = createCareerEngine(() => .3).nextBeat(player, player.history[0]);
+
+  assert.equal(beat.type, "decision");
+  assert.ok(["continue", "transfer-interest"].includes(beat.kind));
+  assert.match(beat.title, /transfer list/i);
+  assert.ok(beat.offers.some((offer) => offer.kind === "stay"));
 });
 
 test("forced sales also respect the buying club's budget", () => {
