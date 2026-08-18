@@ -66,6 +66,10 @@ export function createCareerEngine(random = Math.random) {
   function idealClubLevel(player: Player) {
     return player.rating >= 87 ? 5 : player.rating >= 80 ? 4 : player.rating >= 72 ? 3 : player.rating >= 64 ? 2 : 1;
   }
+  function isGlobalSuperstar(player: Player) {
+    return player.rating >= 90 && player.reputation >= 85
+      && (careerBallonDorWins(player) > 0 || player.rating >= 93);
+  }
   function hasOutgrownClub(player: Player, world?: WorldState | null) {
     const current = currentClubFor(player, world);
     if (!current || player.squad === "academy") return false;
@@ -245,7 +249,7 @@ export function createCareerEngine(random = Math.random) {
     return maxSingleFee(club, "Star") < currentMarketValue(player) * .18;
   }
   function buyerFeeCapacity(player: Player, club: Club, role: Role) {
-    const marqueeFactor = 1 + Math.min(.4, careerBallonDorWins(player) * .1);
+    const marqueeFactor = 1 + Math.min(.8, careerBallonDorWins(player) * .2);
     return maxSingleFee(club, role, marqueeFactor);
   }
   function externalOffers(
@@ -259,12 +263,15 @@ export function createCareerEngine(random = Math.random) {
     const ideal = idealClubLevel(player);
     const profile = agentProfile(player.agent);
     const declining = isDeclining(player);
+    const globalSuperstar = isGlobalSuperstar(player);
+    const minimumLevel = globalSuperstar ? 5 : ideal - (declining ? 2 : 1);
     const market = CLUBS.map((club) => clubInWorld(club, world)).filter((club) => {
       const role = roleForPlayer(player, club);
       return club.name !== player.currentClub
         && isPlausibleMarketClub(club, player, world)
-        && club.level >= ideal - (declining ? 2 : 1)
+        && club.level >= minimumLevel
         && club.level <= ideal + profile.levelRange
+        && (!globalSuperstar || clubDivision(club) === 1)
         && (!requiresTransferFee || buyerFeeCapacity(player, club, role) >= acceptedFeeFloor(player, club, bidContext, world));
     });
     const routeCounts = new Map<string, number>();

@@ -350,6 +350,30 @@ test("a club cannot release a player who is still under contract", () => {
   assert.ok(beat.offers.some((offer) => offer.kind === "stay"));
 });
 
+test("a global superstar's transfer request reaches the true superclubs", () => {
+  const { createCareerEngine } = loadTypeScriptModule("features/career/engine.ts");
+  const player = {
+    ...fourTimeBallonDorWinner(), currentClub: "Bayern Munich", contractYears: 2,
+    history: fourTimeBallonDorWinner().history.map((season) => ({
+      ...season, club: "Bayern Munich", country: "GER", league: "Bundesliga",
+      honours: season.honours.map((annual) => ({
+        ...annual, league: "Bundesliga", champion: "Bayern Munich",
+        playerHonours: annual.playerHonours.map((honour) => ({ ...honour, club: "Bayern Munich", country: "GER" })),
+      })),
+    })),
+  };
+  const seen = new Set();
+  for (let seed = 1; seed <= 1_200; seed += 1) {
+    const bids = createCareerEngine(seededRandom(seed)).requestTransfer(player).decision.offers
+      .filter((offer) => offer.kind === "permanent");
+    assert.ok(bids.every((offer) => offer.level === 5 && (offer.division ?? 1) === 1));
+    bids.forEach((offer) => seen.add(offer.name));
+  }
+
+  ["Liverpool", "Manchester City", "Chelsea", "Arsenal", "Real Madrid", "Paris Saint-Germain"]
+    .forEach((name) => assert.ok(seen.has(name), `Expected ${name} to enter the superstar market`));
+});
+
 test("forced sales also respect the buying club's budget", () => {
   const invalid = sampledForcedSaleOffers().find((offer) => (offer.division ?? 1) >= 5);
   assert.equal(invalid, undefined, invalid

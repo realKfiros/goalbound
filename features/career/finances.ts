@@ -207,7 +207,7 @@ export function maxSingleFee(club: Club, role: Role, marqueeFactor = 1) {
     * FINANCIAL_MULTIPLIER[financialBand]
     * seededWindowFactor(club)
     * ROLE_FACTOR[role]
-    * clamp(marqueeFactor, 1, 1.4);
+    * clamp(marqueeFactor, 1, 1.8);
   const rounding = clubDivision(club) <= 2 ? 50_000 : 10_000;
   return Math.round(Math.min(tier.hardMaxSingleFee, estimate) / rounding) * rounding;
 }
